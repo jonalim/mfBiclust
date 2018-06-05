@@ -60,25 +60,26 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   #### Matrix factorization ################################################### 
   bc <- NULL
   
-  if (bicluster == "snmf/l" || bicluster == "snmf") {
+  if (bicluster == "pca") {
+    # use R pca.
+    pca <- function() {
+    prcmp <- prcomp(m, rank. = k, retx = TRUE)
+    bc <<- new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = t(prcmp$rotation)), 
+               method = "pca")
+    }
+    pca()
+  } else if (bicluster == "snmf/l" || bicluster == "snmf" || bicluster == "nmf") {
     # Use NMF package
-    tryCatch(bc <- NMF::nmf(m, k, method = bicluster),
+    tryCatch(bc <- NMF::nmf(m, k, method = "snmf/l"),
              error = function(c) {warning(paste0("Switching to PCA, the ",
                                                  "preferred method for a ",
                                                  "matrix containing negative ",
                                                  "values."))
-               prcmp <- prcomp(m, rank. = k, retx = TRUE)
-               bc <<- new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = prcmp$rotation), 
-                          method = "pca")
+               pca() # fallback to PCA
+               bc <<- bc
                bicluster <<- "pca"
              }
     )
-  }
-  else if (bicluster == "pca") {
-    # use R pca.
-    prcmp <- prcomp(m, rank. = k, retx = TRUE)
-    bc <- new("genericFit", fit = new("genericFactorization", W = t(prcmp$x), H = prcmp$rotation), 
-              method = "pca")
   }
   
   else if (bicluster == "plaid" || bicluster == "bimax") {
@@ -194,7 +195,20 @@ setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
 )
 
 #### HELPER FUNCTIONS ##########################################################
-# Combines threshold values and names into a matrix
+#' Combine threshold values and names into a matrix
+#' 
+#' Thresholds may contain a vector of the names of desired threshold algorithms.
+#' Alternatively, a numeric-mode object may be supplied. A single numeric 
+#' will be applied to all clusters. A vector of numerics, if the same size as 
+#' k, will be assumed to have a 1:1 relation with k. A matrix of numerics, 
+#' if k x Y, will be assumed to be a matrix where each row k contains Y 
+#' thresholds to plot for bicluster k. This argument's dimensions will be
+#' checked for compatibility with the target matrix.
+#'
+#' A matrix where each column is a series of thresholds. Each column is
+#' named by the threshold algorithm, if specified. Each row is named by the 
+#' provided biclustNames.
+#'
 #' @param thresholds either a numeric matrix, a numeric vector, or a character
 #'   vector
 #' @param matrix the target matrix, whose columns will be thresholded

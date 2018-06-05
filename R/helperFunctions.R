@@ -3,9 +3,18 @@ is.wholenumber <-
     abs(x - round(x)) < tol
   }
 
+#' Create annotations dataframe for heatmaps
+#' 
+#' Checks phenoLabels and biclustLabels for validity and then joins the 
+#' corresponding data extracted from the provided BiclusterExperiment.
+#' 
+#' Annotation tracks are converted to named dataframe columns.
+#' 
+#' @param x a BiclusterExperiment
 #' @param names the names of entities annotated- required
 #' @param strategy a strategy in x. Required whenever length(biclustLabels) > 0
-#' @param phenoLabels any phenotype labels in 
+#' @param phenoLabels any phenotype labels in x
+#' @param biclustLabels any bicluster labels in x
 createAnnots <- function(x, names, strategy = "", phenoLabels = c(), biclustLabels = c()) {
   annots <- NA
   # Process phenotype labels
