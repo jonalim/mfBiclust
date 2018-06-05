@@ -60,25 +60,26 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   #### Matrix factorization ################################################### 
   bc <- NULL
   
-  if (bicluster == "snmf/l" || bicluster == "snmf") {
+  if (bicluster == "pca") {
+    # use R pca.
+    pca <- function() {
+    prcmp <- prcomp(m, rank. = k, retx = TRUE)
+    bc <<- new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = t(prcmp$rotation)), 
+               method = "pca")
+    }
+    pca()
+  } else if (bicluster == "snmf/l" || bicluster == "snmf" || bicluster == "nmf") {
     # Use NMF package
-    tryCatch(bc <- NMF::nmf(m, k, method = bicluster),
+    tryCatch(bc <- NMF::nmf(m, k, method = "snmf/l"),
              error = function(c) {warning(paste0("Switching to PCA, the ",
                                                  "preferred method for a ",
                                                  "matrix containing negative ",
                                                  "values."))
-               prcmp <- prcomp(m, rank. = k, retx = TRUE)
-               bc <<- new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = prcmp$rotation), 
-                          method = "pca")
+               pca() # fallback to PCA
+               bc <<- bc
                bicluster <<- "pca"
              }
     )
-  }
-  else if (bicluster == "pca") {
-    # use R pca.
-    prcmp <- prcomp(m, rank. = k, retx = TRUE)
-    bc <- new("genericFit", fit = new("genericFactorization", W = t(prcmp$x), H = prcmp$rotation), 
-              method = "pca")
   }
   
   else if (bicluster == "plaid" || bicluster == "bimax") {
