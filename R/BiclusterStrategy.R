@@ -85,12 +85,12 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
     # FIXME use Biclust algorithms
   }
   
-  biclustNames <- unlist(sapply(seq_len(ncol(bc@fit@W)), function(x) {
+  biclustNames <- unlist(sapply(seq_len(k), function(x) {
     paste0("Bicluster.", x)
   }
   ))
   colnames(bc@fit@W) <- biclustNames
-  colnames(bc@fit@H) <- biclustNames
+  rownames(bc@fit@H) <- biclustNames
   
   #### Thresholding ############################################################
   st <- matrix()
@@ -100,66 +100,17 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   if (inherits(bc, "NMFfit") || inherits(bc, "genericFit")) {
     # thresholding needed if matrix-factorization is being performed
     #### Score thresholds ####
-    if (is.numeric(scoreThresh)) {
-      # User provided threshold(s)
-      st <- scoreThresh
-      if (inherits(scoreThresh, "matrix")) {
-        names <- unlist(lapply(
-          seq_len(ncol(scoreThresh)),
-          function(x) paste("User no.", bcs, sep = "")
-        ))
-      }
-      else {
-        names <- c("User")
-      }
-    } else {
-      # Calculate thresholds using available algorithms
-      st <- apply(bc@fit@W, 2, function(x) {
-        rescaled <- (x - min(x)) / (max(x) - min(x))
-        thresholds <- c(EBImage::otsu(as.matrix(rescaled)))
-        thresholds * (max(x) - min(x)) + min(x)
-      })
-      colNames <- c("otsu")
-    }
-    # combine threshold values and names into a matrix
-    st <- generateThresholdMatrix(st, k, biclustNames, colNames)
+    st <- generateThresholdMatrix(scoreThresh, bc@fit@W, biclustNames)
+    lt <- generateThresholdMatrix(loadingThresh, t(bc@fit@H), biclustNames)
     
     # Note that the user wants the otsu threshold to be applied (others can
     # be plotted simultaneously in the GUI)
-    if (length(scoreThresh) == 1 && scoreThresh %in% c("otsu")) {
+    if (identical(scoreThresh, "otsu")) {
       sta <- scoreThresh
     }
-    
-    #### Loading thresholds ####
-    if (is.numeric(loadingThresh)) {
-      # User provided threshold(s)
-      lt <- loadingThresh
-      if (inherits(loadingThresh, "matrix")) {
-        names <- unlist(lapply(
-          seq_len(ncol(loadingThresh)),
-          function(x) paste("User no.", bcs, sep = "")
-        ))
-      } else {
-        names <- c("User")
-      }
-    } else {
-      # Calculate thresholds using available algorithms
-      lt <- apply(bc@fit@H, 2, function(x) {
-        rescaled <- (x - min(x)) / (max(x) - min(x))
-        thresholds <- c(EBImage::otsu(as.matrix(rescaled)))
-        thresholds * (max(x) - min(x)) + min(x)
-      })
-      names <- c("otsu")
-      
-      # Note that the user wants the otsu threshold to be applied (others can
-      # be plotted simultaneously in the GUI)
-      if (length(loadingThresh) == 1 && loadingThresh %in% c("otsu")) {
-        lta <- loadingThresh
-      }
+    if(identical(loadingThresh, "otsu")) {
+      lta <- loadingThresh
     }
-    
-    # combine threshold values and names into a matrix
-    lt <- generateThresholdMatrix(lt, k, biclustNames, colNames)
   } else {
     # leave thresholds NULL?
   }
@@ -180,6 +131,28 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
 }
 
 #### METHODS ###################################################################
+
+#' Score matrix 
+#'
+#' For a data matrix M x N factorized to produce k biclusters, the score matrix is M x k.
+#''
+#' @export
+setGeneric("score", signature = "bcs", function(bcs) {standardGeneric("score")})
+setMethod("score", "BiclusterStrategy", function(bcs) {
+  bcs@factors@fit@W
+}
+)
+
+#' Loading matrix
+#'
+#' For a data matrix M x N factorized to produce k biclusters, the score matrix is k x N.
+#'
+#' @export
+setGeneric("loading", signature = "bcs", function(bcs) {standardGeneric("loading")})
+setMethod("loading", "BiclusterStrategy", function(bcs) {
+  bcs@factors@fit@H
+}
+)
 
 #' Names of biclusters in this BiclusterStrategy
 #' @export
@@ -222,36 +195,51 @@ setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
 
 #### HELPER FUNCTIONS ##########################################################
 # Combines threshold values and names into a matrix
-# Warning: does not do input format checking. Names must be same length as the
-# expected number of algorithms
-generateThresholdMatrix <- function(ts, k, rowNames, colNames) {
-  if (inherits(ts, "matrix") && mode(ts) == "numeric" && nrow(ts) == k) {
+#' @param thresholds either a numeric matrix, a numeric vector, or a character
+#'   vector
+#' @param matrix the target matrix, whose columns will be thresholded
+#' @param biclustNames names of the threshold matrix rows
+generateThresholdMatrix <- function(thresholds, matrix, biclustNames) {
+
+  if(identical(thresholds, "otsu")) {
+    # Calculate thresholds using available algorithms
+        tMatrix <- as.matrix(apply(matrix, 2, function(x) {
+          rescaled <- (x - min(x)) / (max(x) - min(x))
+          thresholds <- c(EBImage::otsu(as.matrix(rescaled)))
+          thresholds * (max(x) - min(x)) + min(x)
+        }), ncol = 1, dimnames = list(biclustNames, "otsu"))
+  } else if (inherits(thresholds, "matrix") && mode(thresholds) == "numeric" && nrow(thresholds) == k) {
     # A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
     # of thresholds, where each row k contains multiple thresholds to plot for
     # bicluster k.
-    tMatrix <- ts
-    if (!is.null(colnames(ts))) {
-      colnames(ts) <- colNames
+    colNames <- unlist(lapply(
+          seq_len(ncol(thresholds)),
+          function(x) paste("User.", bcs, sep = "")
+        ))
+    tMatrix <- thresholds
+    if (!is.null(colnames(tMatrix))) {
+      colnames(tMatrix) <- colNames
     }
-    if (!is.null(rownames(ts))) {
-      rownames(ts) <- rowNames
+    if (!is.null(rownames(tMatrix))) {
+      rownames(tMatrix) <- biclustNames
     }
-  } else if (inherits(ts, "numeric") && length(ts) == 1L) {
+  } else if (inherits(thresholds, "numeric") && length(thresholds) == 1L) {
     # A single numeric will be applied to all clusters
-    tMatrix <- matrix(rep(ts, times = k),
+    colNames <- c("User")
+    tMatrix <- matrix(rep(thresholds, times = k),
                       ncol = 1,
-                      dimnames = list(rowNames, colNames)
+                      dimnames = list(biclustNames, colNames)
     )
-  } else if (inherits(ts, "numeric") && length(ts) == k) {
+  } else if (inherits(thresholds, "numeric") && length(thresholds) == k) {
     # A vector of numerics, if the same size as k, will be assumed to have
     # a 1:1 relation with k
-    tMatrix <- matrix(ts,
+    tMatrix <- matrix(thresholds,
                       ncol = 1,
-                      dimnames = list(rowNames, colNames)
+                      dimnames = list(biclustNames, colNames)
     )
   } else {
-    stop("The format, dimensions, or length of the argument \"ts\"
-is incorrect. Please ensure \"ts\" is numeric, and either
+    stop("The format, dimensions, or length of the argument \"thresholds\"
+is incorrect. Please ensure \"thresholds\" is numeric, and either
 atomic, a vector of length k, or an matrix with k rows.")
   }
   tMatrix
