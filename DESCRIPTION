@@ -1,0 +1,40 @@
+Package: mfBiclust
+Type: Package
+Title: Toolbox for matrix-factorization-based biclustering
+Version: 0.0.0.9004
+Date: 2018-05-14
+Maintainer: Jonathan Lim <2329118L@student.gla.ac.uk>
+Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", role = "cre"),
+	person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk", role = c("aut", "cph")))
+Description: Matrix factorization algorithms can be used to approximate a 2D dataset
+		as a product of two matrices, designated score and loading matrices. This 
+		toolbox provides objects and functions for performing matrix factorization
+		and thresholding the score and loading matrices in order to
+		determine bicluster membership of each entity on the two dimensions.
+		Results can be displayed in an interactive Shiny webpage.
+License: GPL-3
+biocViews:
+Imports: 
+    Rcpp (>= 0.12.16),
+    shiny (>= 1.0.5),
+    pheatmap,
+    ggplot2,
+    NMF,
+    EBImage,
+    Biobase,
+    Matrix
+LinkingTo: Rcpp
+RoxygenNote: 6.0.1
+Collate: 
+    'containerGenerics.R'
+    'helperFunctions.R'
+    'BiclusterStrategy.R'
+    'BiclusterExperiment.R'
+    'RcppExports.R'
+    'biclusterGUI.R'
+    'helperClasses.R'
+    'mfBiclust.R'
+    'mfbc.R'
+    'readFile.R'
+Suggests: 
+    testthat
