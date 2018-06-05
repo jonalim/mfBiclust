@@ -320,10 +320,10 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
                    colNames = FALSE) {
             type <- match.arg(type)
             if(type == "score") {
-              data <- t(getStrat(obj, strategy)@factors@fit@W)
+              data <- t(score(getStrat(obj, strategy)))
               annots <- createAnnots(obj, colnames(data), strategy, phenoLabels, biclustLabels)
             } else {
-              data <- t(getStrat(obj, strategy)@factors@fit@H)
+              data <- loading(getStrat(obj, strategy))
               annots <- NA
             }
             
@@ -402,7 +402,7 @@ setMethod(
       "Dark2"
     )
     
-    data <- bcs@factors@fit@W[, bicluster]
+    data <- score(bcs)[, bicluster]
     ordering <- match.arg(ordering)
     # Plot
     if(ordering == "input") {
@@ -470,7 +470,7 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
               "Dark2"
             )
             
-            data <- bcs@factors@fit@H[, bicluster]
+            data <- t(loading(bcs))[, bicluster]
             ordering <- match.arg(ordering)
           
             # Plot
