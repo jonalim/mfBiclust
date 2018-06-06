@@ -4,7 +4,7 @@
 \alias{BiclusterExperiment}
 \title{Perform multiple biclustering runs}
 \usage{
-BiclusterExperiment(bcs, ...)
+BiclusterExperiment(m, ...)
 }
 \value{
 an instance of BiclusterExperiment-class
