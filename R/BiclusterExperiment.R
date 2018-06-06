@@ -48,26 +48,19 @@ setGeneric("BiclusterExperiment", function(m, ...) {
 #' Careful, for m, rows are samples and columns are features
 #' eSet objects store assayData transposed: rows are features and columns are samples.
 #' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
-setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, annot = data.frame(), bcv = FALSE) {
+setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE) {
   if (bcv == TRUE) {
     warning("Bi-cross-validation is still under development. msNMF
                       cannot predict the optimal clustering strategy.")
   }
   
   d <- dist(m, method = "euclidean")
-  
-  if(is.null(row.names(annot)) && is.null(row.names(m))) {
-    # If no sample names provided, just call them Sample.1, Sample.2, Sample.3
-    row.names(m) <- unlist(sapply(seq_along(nrow(m)), function(s) {
-      paste0("Sample.", s)
-    }
-    ))
-    row.names(annot) <- row.names(m)
-  } else if(is.null(row.names(annot))) {
-    # If sample names provided in one argument but not the other, just assume
-    row.names(annot) <- row.names(m)
-  } else if(is.null(row.names(m))) {
-    row.names(m) <- row.names(annot)
+
+  if(!inherits(phenoData, "AnnotatedDataFrame")) {
+    phenoData <- AnnotatedDataFrame(phenoData)
+  }
+  if(!inherits(featureData, "AnnotatedDataFrame")) {
+    featureData <- AnnotatedDataFrame(featureData)
   }
   
   ad <- Biobase::assayDataNew(storage.mode = "list")
@@ -77,10 +70,6 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, annot = data.
     if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
       stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
     }
-    if (length(bcs) == 0) {
-      warning("Since argument \"bcs\" is an empty list, an empty
-                    BiclusterExperiment object will be instantiated.")
-    }
     names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
   } else if(!is.null(bcs)) {
     bcs <- list(bcs)
@@ -88,8 +77,7 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, annot = data.
   } else {
     bcs <- list()
   }
-  
-  new("BiclusterExperiment", assayData = ad, phenoData = AnnotatedDataFrame(data = annot), strategies = bcs, distance = d)
+  new("BiclusterExperiment", assayData = ad, phenoData = phenoData, featureData = featureData, strategies = bcs, distance = d)
 })
 # 
 # setMethod("BiclusterExperiment", c(bcs = "list"), function(bcs, m = matrix(), annot = data.frame(), bcv = FALSE) {
@@ -149,7 +137,6 @@ setMethod("distMat", c(bce = "BiclusterExperiment"), function(bce) {
 )
 
 setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
-  browser()
   bce@strategies <- list(bce@strategies, bcs)
 })
 
@@ -396,7 +383,6 @@ setMethod(
   "plotSamples", signature(obj = "BiclusterExperiment"),
   function(obj, thresholds, strategy = "", bicluster = "Bicluster.1", 
            ordering = c("input", "distance", "cluster")) {
-    
     bcs <- getStrat(obj, strategy)
     bicluster <- validateBiclustNames(biclustNames = bicluster, bcs = bcs)
     if(length(bicluster) != 1) {
@@ -406,6 +392,7 @@ setMethod(
     if (is.null(thresholds)) {
       thresholds <- bcs@scoreThresh[bicluster, ]
       names(thresholds) <- colnames(bcs@scoreThresh)
+      # FIXME Try changing the BCE/BCS constructors so this check isn't necessary
     } else if (inherits(thresholds, "numeric")) {
       names(thresholds) <- as.character(thresholds)
     } else {
