@@ -83,7 +83,7 @@ setMethod(
                                                               loadingThresh))
     names(strats) <- as.character(ks)
 
-    bce <- BiclusterExperiment(m = dataset, bcs = strats, annot = annotations, 
+    bce <- BiclusterExperiment(m = dataset, bcs = strats, phenoData = annotations, 
                                bcv = FALSE)
     if (bcv == TRUE) {
       warning("Bi-cross-validation is still under development. msNMF
