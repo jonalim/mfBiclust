@@ -245,7 +245,8 @@ generateThresholdMatrix <- function(thresholds, matrix, biclustNames) {
           } else  {x[1] }
           # If all values of x are the same, then the threshold is that value
           # itself
-        }), ncol = 1, dimnames = list(biclustNames, "otsu"))
+        }), ncol = 1)
+        colnames(tMatrix) <- thresholds
   } else if (inherits(thresholds, "matrix") && mode(thresholds) == "numeric" && nrow(thresholds) == k) {
     # A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
     # of thresholds, where each row k contains multiple thresholds to plot for
@@ -258,27 +259,27 @@ generateThresholdMatrix <- function(thresholds, matrix, biclustNames) {
     if (!is.null(colnames(tMatrix))) {
       colnames(tMatrix) <- colNames
     }
-    if (!is.null(rownames(tMatrix))) {
-      rownames(tMatrix) <- biclustNames
-    }
   } else if (inherits(thresholds, "numeric") && length(thresholds) == 1L) {
     # A single numeric will be applied to all clusters
-    colNames <- c("User")
     tMatrix <- matrix(rep(thresholds, times = k),
                       ncol = 1,
-                      dimnames = list(biclustNames, colNames)
-    )
+                      dimnames = list(biclustNames, paste0("Th.", thresholds)))
   } else if (inherits(thresholds, "numeric") && length(thresholds) == k) {
     # A vector of numerics, if the same size as k, will be assumed to have
     # a 1:1 relation with k
+    coln <- unlist(sapply(thresholds, paste0("Th.", x)))
     tMatrix <- matrix(thresholds,
                       ncol = 1,
-                      dimnames = list(biclustNames, colNames)
+                      dimnames = list(biclustNames, coln)
     )
   } else {
     stop("The format, dimensions, or length of the argument \"thresholds\"
 is incorrect. Please ensure \"thresholds\" is numeric, and either
 atomic, a vector of length k, or an matrix with k rows.")
+  }
+  
+  if (!is.null(rownames(tMatrix))) {
+    rownames(tMatrix) <- biclustNames
   }
   tMatrix
 }
