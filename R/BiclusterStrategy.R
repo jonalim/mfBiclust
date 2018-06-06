@@ -67,7 +67,7 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
     # Use NMF package
     tryCatch(bc <- snmfWrapper(m, k),
              error = function(c) {warning(paste0("Sparse NMF failed, switching",
-                                                 "to PCA."))
+                                                 " to PCA."))
                bc <<- pcaWrapper(m, k) # fallback to PCA
                bicluster <<- "pca"
              }
@@ -234,13 +234,17 @@ pcaWrapper <- function(m, k) {
 #' @param matrix the target matrix, whose columns will be thresholded
 #' @param biclustNames names of the threshold matrix rows
 generateThresholdMatrix <- function(thresholds, matrix, biclustNames) {
-# browser() debug here next
   if(identical(thresholds, "otsu")) {
     # Calculate thresholds using available algorithms
         tMatrix <- as.matrix(apply(matrix, 2, function(x) {
-          rescaled <- (x - min(x)) / (max(x) - min(x))
-          thresholds <- c(EBImage::otsu(as.matrix(rescaled)))
-          thresholds * (max(x) - min(x)) + min(x)
+          if(max(x) != min(x)) {
+            rescaled <- (x - min(x)) / (max(x) - min(x))
+            m <- as.matrix(rescaled)
+            thresholds <- EBImage::otsu(m)
+            thresholds * (max(x) - min(x)) + min(x)
+          } else  {x[1] }
+          # If all values of x are the same, then the threshold is that value
+          # itself
         }), ncol = 1, dimnames = list(biclustNames, "otsu"))
   } else if (inherits(thresholds, "matrix") && mode(thresholds) == "numeric" && nrow(thresholds) == k) {
     # A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
