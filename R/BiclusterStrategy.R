@@ -62,21 +62,13 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   
   if (bicluster == "pca") {
     # use R pca.
-    pca <- function() {
-    prcmp <- prcomp(m, rank. = k, retx = TRUE)
-    bc <<- new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = t(prcmp$rotation)), 
-               method = "pca")
-    }
-    pca()
+    bc <- pcaWrapper(m, k)
   } else if (bicluster == "snmf/l" || bicluster == "snmf" || bicluster == "nmf") {
     # Use NMF package
-    tryCatch(bc <- NMF::nmf(m, k, method = "snmf/l"),
-             error = function(c) {warning(paste0("Switching to PCA, the ",
-                                                 "preferred method for a ",
-                                                 "matrix containing negative ",
-                                                 "values."))
-               pca() # fallback to PCA
-               bc <<- bc
+    tryCatch(bc <- snmfWrapper(m, k),
+             error = function(c) {warning(paste0("Sparse NMF failed, switching",
+                                                 "to PCA."))
+               bc <<- pcaWrapper(m, k) # fallback to PCA
                bicluster <<- "pca"
              }
     )
@@ -195,6 +187,34 @@ setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
 )
 
 #### HELPER FUNCTIONS ##########################################################
+
+#' Lower beta if nmf throws warning
+snmfWrapper <- function(m, k, beta = 0.01) {
+  tryCatch(suppressMessages(res <- NMF::nmf(m, k, method = "snmf/l", beta = beta)),
+    warning = function(w) {
+      if(any(suppressWarnings(grepl("too big 'beta' value", w$message, ignore.case = TRUE, fixed = TRUE)))) {
+        beta <<- beta^2
+        message(paste0("Decreased beta (sparsity parameter) to ", beta))
+        res <<- snmfWrapper(m, k, beta)
+      } else {
+        warning(w)
+      }
+    }, 
+    error = function(e) {
+      stop(e)
+    },
+    finally = function() {
+      res
+    }
+  )
+}
+
+pcaWrapper <- function(m, k) {
+  prcmp <- prcomp(m, rank. = k, retx = TRUE)
+  new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = t(prcmp$rotation)), 
+             method = "pca")
+}
+
 #' Combine threshold values and names into a matrix
 #' 
 #' Thresholds may contain a vector of the names of desired threshold algorithms.
@@ -214,7 +234,7 @@ setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
 #' @param matrix the target matrix, whose columns will be thresholded
 #' @param biclustNames names of the threshold matrix rows
 generateThresholdMatrix <- function(thresholds, matrix, biclustNames) {
-
+# browser() debug here next
   if(identical(thresholds, "otsu")) {
     # Calculate thresholds using available algorithms
         tMatrix <- as.matrix(apply(matrix, 2, function(x) {

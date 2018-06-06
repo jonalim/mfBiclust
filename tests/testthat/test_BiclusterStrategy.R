@@ -37,8 +37,13 @@ test_that("matrix factorization is accurate", {
 })
           
 test_that("snmf handles weird matrices", {
+  set.seed(1)
   m <- matrix(1:16, nrow = 4)
   bcs <- BiclusterStrategy(m, k = 3, bicluster = "snmf/l",
                            scoreThresh = "otsu",
                            loadingThresh = "otsu")
+  # The above matrix leads to an empty column with snmf;
+  # the correct behavior is to switch to pca
+  expect_equal(bcs@biclustAlgo, "pca")
+  
 })
