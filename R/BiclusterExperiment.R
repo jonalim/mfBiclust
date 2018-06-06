@@ -41,55 +41,17 @@ setClass("BiclusterExperiment", slots = list(
 #'   strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
 #'   distance: Object of class \code{\link{matrix}}. Pairwise distances
 #'     between the rows of \code{data}
-setGeneric("BiclusterExperiment", function(bcs, ...) {
+setGeneric("BiclusterExperiment", function(m, ...) {
   standardGeneric("BiclusterExperiment")
 })
 
 #' Careful, for m, rows are samples and columns are features
 #' eSet objects store assayData transposed: rows are features and columns are samples.
 #' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
-setMethod("BiclusterExperiment", c(bcs = "BiclusterStrategy"), function(bcs, m = matrix(), annot = data.frame(), bcv = FALSE) {
+setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, annot = data.frame(), bcv = FALSE) {
   if (bcv == TRUE) {
     warning("Bi-cross-validation is still under development. msNMF
                       cannot predict the optimal clustering strategy.")
-  }
-  
-  d <- as.matrix(dist(m, method = "euclidean"))
-  
-  if(is.null(row.names(annot)) && is.null(row.names(m))) {
-    # If no sample names provided, just call them Sample.1, Sample.2, Sample.3
-    row.names(m) <- unlist(sapply(seq_along(nrow(m)), function(s) {
-      paste0("Sample.", s)
-    }
-    ))
-    row.names(annot) <- row.names(m)
-  } else if(is.null(row.names(annot))) {
-    # If sample names provided in one argument but not the other, just assume
-    row.names(annot) <- row.names(m)
-  } else if(is.null(row.names(m))) {
-    row.names(m) <- row.names(annot)
-  }
-  
-  ad <- Biobase::assayDataNew(storage.mode = "list")
-  ad[[1]] <- t(m)
-  
-  bcs <- list(bcs)
-  names(bcs) <- name(bcs[[1]])
-  
-  new("BiclusterExperiment", assayData = t(m), phenoData = AnnotatedDataFrame(data = annot), strategies = bcs, distance = d)
-})
-
-setMethod("BiclusterExperiment", c(bcs = "list"), function(bcs, m = matrix(), annot = data.frame(), bcv = FALSE) {
-  if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
-    stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
-  }
-  if (length(bcs) == 0) {
-    warning("Since argument \"bcs\" is an empty list, an empty
-                    BiclusterExperiment object will be instantiated.")
-  }
-  if (bcv == TRUE) {
-    warning("Bi-cross-validation is still under development. msNMF cannot 
-            predict the optimal clustering strategy.")
   }
   
   d <- dist(m, method = "euclidean")
@@ -111,10 +73,61 @@ setMethod("BiclusterExperiment", c(bcs = "list"), function(bcs, m = matrix(), an
   ad <- Biobase::assayDataNew(storage.mode = "list")
   ad[[1]] <- t(m)
   
-  names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
+  if(inherits(bcs, "list")) {
+    if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
+      stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
+    }
+    if (length(bcs) == 0) {
+      warning("Since argument \"bcs\" is an empty list, an empty
+                    BiclusterExperiment object will be instantiated.")
+    }
+    names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
+  } else if(!is.null(bcs)) {
+    bcs <- list(bcs)
+    names(bcs) <- name(bcs[[1]])
+  } else {
+    bcs <- list()
+  }
   
   new("BiclusterExperiment", assayData = ad, phenoData = AnnotatedDataFrame(data = annot), strategies = bcs, distance = d)
 })
+# 
+# setMethod("BiclusterExperiment", c(bcs = "list"), function(bcs, m = matrix(), annot = data.frame(), bcv = FALSE) {
+#   if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
+#     stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
+#   }
+#   if (length(bcs) == 0) {
+#     warning("Since argument \"bcs\" is an empty list, an empty
+#                     BiclusterExperiment object will be instantiated.")
+#   }
+#   if (bcv == TRUE) {
+#     warning("Bi-cross-validation is still under development. msNMF cannot 
+#             predict the optimal clustering strategy.")
+#   }
+#   
+#   d <- dist(m, method = "euclidean")
+#   
+#   if(is.null(row.names(annot)) && is.null(row.names(m))) {
+#     # If no sample names provided, just call them Sample.1, Sample.2, Sample.3
+#     row.names(m) <- unlist(sapply(seq_along(nrow(m)), function(s) {
+#       paste0("Sample.", s)
+#     }
+#     ))
+#     row.names(annot) <- row.names(m)
+#   } else if(is.null(row.names(annot))) {
+#     # If sample names provided in one argument but not the other, just assume
+#     row.names(annot) <- row.names(m)
+#   } else if(is.null(row.names(m))) {
+#     row.names(m) <- row.names(annot)
+#   }
+#   
+#   ad <- Biobase::assayDataNew(storage.mode = "list")
+#   ad[[1]] <- t(m)
+#   
+#   names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
+#   
+#   new("BiclusterExperiment", assayData = ad, phenoData = AnnotatedDataFrame(data = annot), strategies = bcs, distance = d)
+# })
 
 #### METHODS ###################################################################
 
@@ -134,6 +147,11 @@ setMethod("distMat", c(bce = "BiclusterExperiment"), function(bce) {
   as.matrix(bce@distance)
 }
 )
+
+setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
+  browser()
+  bce@strategies <- list(bce@strategies, bcs)
+})
 
 #### Abundance heatmap #########################################################
 #' Abundance heatmap

@@ -8,6 +8,9 @@ setGeneric("names")
 setGeneric("getStrat", signature = "bce", function(bce, ...) {standardGeneric("getStrat")})
 
 #' @export
+setGeneric("addStrat", signature = "bce", function(bce, bcs) {standardGeneric("addStrat")})
+
+#' @export
 setGeneric("name", signature = "bcs", function(bcs) {standardGeneric("name")})
 
 #' @export
