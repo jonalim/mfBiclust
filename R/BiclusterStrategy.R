@@ -293,10 +293,3 @@ setMethod("threshold", c(m = "matrix"), function(m, th) {
   m
 }
 )
-#' @export
-setMethod("threshold", c(m = "Matrix"), function(m, th) {
-  m[m >= th] <- TRUE
-  m[m < th] <- FALSE
-  m
-}
-)
