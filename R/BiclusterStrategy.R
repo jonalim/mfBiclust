@@ -108,7 +108,7 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
     # leave thresholds NULL?
   }
   
-  #### Predictions #############################################################
+  #### Results #############################################################
   pred <- threshold(bc@fit@W, st[1])
   colnames(pred) <- lapply(seq_len(ncol(pred)), function(x) {
     paste0("Bicluster.", x)
@@ -124,6 +124,78 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
 }
 
 #### METHODS ###################################################################
+
+validBiclusterStrategy <- function(object) {
+  msg <- NULL
+  factors <- object@factors
+  if(!(inherits(factors, "NMFfit") || inherits(factors, "genericFit"))) {
+    msg <- c(msg, paste("The factors slot must be an 'NMFfit' or 'genericFit'", 
+                        "object"))
+  } else {
+    val <- validObject(factors, test = TRUE)
+    if(inherits(val, "character")) {
+      msg <- c(msg, val)
+    }
+  }
+  if(!inherits(object@biclustAlgo, "character")) {
+    msg <- c(msg, "The biclustAlgo slot must be a character string")
+  }
+  
+  sThresh <- scoreThresh(object)
+  if(!(inherits(sThresh, "matrix") && mode(sThresh) == "numeric")) {
+    msg <- c(msg, "The scoreThresh slot must be a numeric matrix")
+  } else {
+    if(nrow(sThresh) != nclust(object)) {
+    msg <- c(msg, paste("The scoreThresh matrix must have number of rows",
+                        "equal to the width of the score matrix"))
+    }
+    if(!setequal(rownames(sThresh), colnames(score(object)))) {
+      msg <- c(msg, paste("scoreThresh column names must correspond 1:1 with",
+                          "score matrix row names. These are bicluster names"))
+    }
+  }
+  
+  lThresh <- loadingThresh(object)
+  if(!(inherits(lThresh, "matrix") && mode(lThresh) == "numeric")) {
+    msg <- c(msg, "The loadingThresh slot must be a numeric matrix")
+  } else {
+    if(nrow(lThresh) != nclust(object)) {
+    msg <- c(msg, paste("The loadingThresh matrix must have number of rows", 
+                        "equal to the width of the score matrix"))
+    }
+    if(!setequal(rownames(lThresh), rownames(loading(object)))) {
+      msg <- c(msg, paste("loadingThresh column names must correspond 1:1 with",
+                          "loading matrix row names. These are bicluster names")
+      )
+    }
+  }
+  
+  if(!inherits(object@scoreThreshAlgo, "character")) {
+    msg <- c(msg, "The scoreThreshAlgo slot must be a character string")
+  }
+  if(!inherits(object@loadingThreshAlgo, "character")) {
+    msg <- c(msg, "The loadingThreshAlgo slot must be a character string")
+  }
+  
+  predM <- pred(object)
+  if(!(inherits(predM, "matrix") && mode(predM) == "logical")) {
+    msg <- c(msg, "The prediction matrix must be a logical matrix")
+  } else {
+    if(!identical(dim(predM), c(nrow(score(object)), nclust(object)))) {
+    msg <- c(msg, paste("The prediction matrix must have dimensions M x K",
+                        "where M = the height of score(object) and",
+                        "K = the width of score(object)."))
+    }
+    if(!identical(dimnames(predM), dimnames(score(object)))) {
+      msg <- c(msg, paste("The row and column names of the prediction matrix",
+                         "must be identical to the row and column names of the",
+                         "score matrix"))
+    }
+  }
+  if(is.null(msg)) TRUE else msg
+}
+
+setValidity("BiclusterStrategy", validBiclusterStrategy)
 
 #' Score matrix 
 #'
@@ -146,6 +218,22 @@ setMethod("loading", "BiclusterStrategy", function(bcs) {
   bcs@factors@fit@H
 }
 )
+
+#' Score thresholds
+#' 
+#' @export
+setGeneric("scoreThresh", signature = "bcs", function(bcs) {standardGeneric("scoreThresh")})
+setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
+  bcs@scoreThresh
+})
+
+#' Loading thresholds
+#' 
+#' @export
+setGeneric("loadingThresh", signature = "bcs", function(bcs) {standardGeneric("loadingThresh")})
+setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
+  bcs@loadingThresh
+})
 
 #' Names of biclusters in this BiclusterStrategy
 #' @export
@@ -288,9 +376,9 @@ atomic, a vector of length k, or an matrix with k rows.")
 setGeneric("threshold", signature = "m", function(m, ...) {standardGeneric("threshold")})
 #' @export
 setMethod("threshold", c(m = "matrix"), function(m, th) {
-  m[m >= th] <- TRUE
-  m[m < th] <- FALSE
-  m
+  mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m))
+  mat[m < th] <- FALSE
+  mat
 }
 )
 #' @export
