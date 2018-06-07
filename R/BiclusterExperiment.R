@@ -23,7 +23,7 @@ setClass("BiclusterExperiment", slots = list(
   ### FIXME: Change to similarity matrix? Use cor(t(as.matrix(x)), method = "pearson") to get similarity. Use "clustering_distance_rows = "correlation" in pheatmap calls.
 ), contains = "eSet")
 
-#### CONSTRUCTORS #############################################################
+#### CONSTRUCTOR ###############################################################
 #' Perform multiple biclustering runs
 #'
 #' BiclusterExperiment constructs an object holding data from multiple
@@ -76,43 +76,6 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phen
   }
   new("BiclusterExperiment", assayData = ad, phenoData = phenoData, featureData = featureData, strategies = bcs, distance = d)
 })
-# 
-# setMethod("BiclusterExperiment", c(bcs = "list"), function(bcs, m = matrix(), annot = data.frame(), bcv = FALSE) {
-#   if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
-#     stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
-#   }
-#   if (length(bcs) == 0) {
-#     warning("Since argument \"bcs\" is an empty list, an empty
-#                     BiclusterExperiment object will be instantiated.")
-#   }
-#   if (bcv == TRUE) {
-#     warning("Bi-cross-validation is still under development. msNMF cannot 
-#             predict the optimal clustering strategy.")
-#   }
-#   
-#   d <- dist(m, method = "euclidean")
-#   
-#   if(is.null(row.names(annot)) && is.null(row.names(m))) {
-#     # If no sample names provided, just call them Sample.1, Sample.2, Sample.3
-#     row.names(m) <- unlist(sapply(seq_along(nrow(m)), function(s) {
-#       paste0("Sample.", s)
-#     }
-#     ))
-#     row.names(annot) <- row.names(m)
-#   } else if(is.null(row.names(annot))) {
-#     # If sample names provided in one argument but not the other, just assume
-#     row.names(annot) <- row.names(m)
-#   } else if(is.null(row.names(m))) {
-#     row.names(m) <- row.names(annot)
-#   }
-#   
-#   ad <- Biobase::assayDataNew(storage.mode = "list")
-#   ad[[1]] <- t(m)
-#   
-#   names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
-#   
-#   new("BiclusterExperiment", assayData = ad, phenoData = AnnotatedDataFrame(data = annot), strategies = bcs, distance = d)
-# })
 
 #### METHODS ###################################################################
 
@@ -144,29 +107,29 @@ validBiclusterExperiment <- function( object ) {
   }
   if(is.null(msg)) TRUE else msg
 }
-
 setValidity("BiclusterExperiment", validBiclusterExperiment)
 
 #' @export
-setMethod("as.matrix", "BiclusterExperiment", function(x) t(assayData(x)[[1]]))
+setGeneric("addStrat", signature = "bce", function(bce, bcs) {standardGeneric("addStrat")})
+setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
+  bce@strategies <- list(bce@strategies, bcs)
+})
 
-#' Names of BiclusterStrategies in this BiclusterExperiment
 #' @export
-setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
-
-setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, stratName) {
-  bce@strategies[[stratName]]
-}
-)
+setMethod("as.matrix", "BiclusterExperiment", function(x) t(assayData(x)[[1]]))
 
 setMethod("distMat", c(bce = "BiclusterExperiment"), function(bce) {
   as.matrix(bce@distance)
 }
 )
 
-setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
-  bce@strategies <- list(bce@strategies, bcs)
+setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, stratName) {
+  bce@strategies[[stratName]]
 })
+
+#' Names of BiclusterStrategies in this BiclusterExperiment
+#' @export
+setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
 #### Abundance heatmap #########################################################
 #' Abundance heatmap
@@ -222,47 +185,6 @@ setMethod("plot", c(x = "BiclusterExperiment"),
                                      show_rownames = rowNames, show_colnames = colNames, annotation_row = annots)
           }
 )
-
-# adapted from sc3
-# make_ann_df_for_heatmaps <- function(annotations, showAnnot) {
-#   if (any(!showAnnot %in% colnames(annotations))) {
-#     # feedback; irrelevant for GUI
-#     warning(paste0(
-#       "Provided annotation tracks '",
-#       paste(showAnnot[!showAnnot %in% colnames(annotations)], 
-#             collapse = "', '"),
-#       "' do not exist in the dataframe. They will not be displayed."
-#     ))
-#     showAnnot <- showAnnot[showAnnot %in% colnames(annotations)]
-#   }
-#   ann <- annotations[showAnnot]
-#   
-#   # remove columns with 1 value only
-#   if (length(showAnnot) > 1) {
-#     if (ncol(ann) == 0) {
-#       ann <- NULL
-#     } else {
-#       ann <- as.data.frame(lapply(ann, function(x) {
-#         if (nlevels(as.factor(x)) > 9) {
-#           x
-#         } else {
-#           as.factor(x)
-#         }
-#       }))
-#     }
-#   } else {
-#     ann <- as.data.frame(ann)
-#     colnames(ann) <- showAnnot
-#     # ann <- as.data.frame(lapply(ann, function(x) {
-#     #   if (nlevels(as.factor(x)) > 9) {
-#     #     return(x)
-#     #   } else {
-#     #     return(as.factor(x))
-#     #   }
-#     # }))
-#   }
-#   return(ann)
-# }
 
 #### Distance heatmap #########################################################
 #' @export
