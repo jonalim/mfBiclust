@@ -18,22 +18,23 @@ setClass("BiclusterStrategy",
          )
 )
 
+#### CONSTRUCTOR ###############################################################
 #' Construct a BiclusterStrategy
 #'
 #' This class encapsulates bicluster results for one biclustering algorithm, one
 #' thresholding algorithms, and one quantity of biclusters. To visualize results
-#' in a GUI, wrap a \code{\link{BiclusterStrategy}} in a \code{\link{BiclusterExperiment}}, then call
-#' \code{\link{shinyStart()}}.
+#' in a GUI, wrap a \code{\link{BiclusterStrategy}} in a
+#' \code{\link{BiclusterExperiment}}, then call \code{\link{shinyStart()}}.
 #' 
 #' details
 #' @section Custom thresholds:
-#' When giving custom thresholds, various common use cases are assumed based on the data type:
-#' A single numeric will be applied to all clusters.
-#' A vector of numerics, if the same size as k, will be assumed to have
-#' a 1:1 relation with k.
-#' A matrix of numerics, if k x Y for any Y, will be assumed to be a
-#' matrix of thresholds, where each row k contains multiple thresholds to plot
-#' for bicluster k. The first threshold will be applied to determine bicluster members.
+#' When giving custom thresholds, various common use cases are assumed based on
+#' the data type: A single numeric will be applied to all clusters. A vector of
+#' numerics, if the same size as k, will be assumed to have a 1:1 relation with
+#' k. A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
+#' of thresholds, where each row k contains multiple thresholds to plot for
+#' bicluster k. The first threshold will be applied to determine bicluster
+#' members.
 #'
 #' To be added: factorize: sparsenmf, plaid, bimax.
 #' To be added: threshold: ita, fcm
@@ -65,12 +66,14 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
     bc <- pcaWrapper(m, k)
   } else if (bicluster == "snmf/l" || bicluster == "snmf" || bicluster == "nmf") {
     # Use NMF package
-    tryCatch(bc <- snmfWrapper(m, k),
-             error = function(c) {warning(paste0("Sparse NMF failed, switching",
-                                                 " to PCA."))
-               bc <<- pcaWrapper(m, k) # fallback to PCA
-               bicluster <<- "pca"
-             }
+    tryCatch(
+      bc <- snmfWrapper(m, k),
+      error = function(c) {
+        warning(paste0("Sparse NMF failed, switching",
+                       " to PCA."))
+        bc <<- pcaWrapper(m, k) # fallback to PCA
+        bicluster <<- "pca"
+      }
     )
   }
   
@@ -124,7 +127,6 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
 }
 
 #### METHODS ###################################################################
-
 validBiclusterStrategy <- function(object) {
   msg <- NULL
   factors <- object@factors
@@ -194,53 +196,7 @@ validBiclusterStrategy <- function(object) {
   }
   if(is.null(msg)) TRUE else msg
 }
-
 setValidity("BiclusterStrategy", validBiclusterStrategy)
-
-#' Score matrix 
-#'
-#' For a data matrix M x N factorized to produce k biclusters, the score matrix is M x k.
-#''
-#' @export
-setGeneric("score", signature = "bcs", function(bcs) {standardGeneric("score")})
-setMethod("score", "BiclusterStrategy", function(bcs) {
-  bcs@factors@fit@W
-}
-)
-
-#' Loading matrix
-#'
-#' For a data matrix M x N factorized to produce k biclusters, the score matrix is k x N.
-#'
-#' @export
-setGeneric("loading", signature = "bcs", function(bcs) {standardGeneric("loading")})
-setMethod("loading", "BiclusterStrategy", function(bcs) {
-  bcs@factors@fit@H
-}
-)
-
-#' Score thresholds
-#' 
-#' @export
-setGeneric("scoreThresh", signature = "bcs", function(bcs) {standardGeneric("scoreThresh")})
-setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
-  bcs@scoreThresh
-})
-
-#' Loading thresholds
-#' 
-#' @export
-setGeneric("loadingThresh", signature = "bcs", function(bcs) {standardGeneric("loadingThresh")})
-setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
-  bcs@loadingThresh
-})
-
-#' Names of biclusters in this BiclusterStrategy
-#' @export
-setMethod("names", "BiclusterStrategy", function(x) {
-  colnames(x@factors@fit@W)
-}
-)
 
 #' Name of a BiclusterStrategy 
 #' 
@@ -259,49 +215,66 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
 }
 )
 
-#' Cluster count accessor
-#' 
-#' Get the number of biclusters created in this BiclusterStrategy.
-#' 
-#' This function may not be used to modify a BiclusterStrategy's number of biclusters.
+#' Names of biclusters in this BiclusterStrategy
+#' @export
+setMethod("names", "BiclusterStrategy", function(x) {
+  colnames(x@factors@fit@W)
+}
+)
+
 setMethod("nclust", c(bcs = "BiclusterStrategy"), function(bcs) {
   ncol(bcs@factors@fit@W)
 }
 )
+setMethod("nclust", c(bcs = "list"), function(bcs) {
+  ncol(bcs[[1]]@factors@fit@W)
+}
+)
+
+#' Loading matrix
+#'
+#' For a data matrix M x N factorized to produce k biclusters, the score matrix is k x N.
+#'
+#' @export
+setGeneric("loading", signature = "bcs", function(bcs) {standardGeneric("loading")})
+setMethod("loading", "BiclusterStrategy", function(bcs) {
+  bcs@factors@fit@H
+}
+)
+
+#' Loading thresholds
+#' 
+#' @export
+setGeneric("loadingThresh", signature = "bcs", function(bcs) {standardGeneric("loadingThresh")})
+setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
+  bcs@loadingThresh
+})
 
 setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
   bcs@pred
 }
 )
 
+#' Score matrix 
+#'
+#' For a data matrix M x N factorized to produce k biclusters, the score matrix is M x k.
+#''
+#' @export
+setGeneric("score", signature = "bcs", function(bcs) {standardGeneric("score")})
+setMethod("score", "BiclusterStrategy", function(bcs) {
+  bcs@factors@fit@W
+}
+)
+
+#' Score thresholds
+#' 
+#' @export
+setGeneric("scoreThresh", signature = "bcs", function(bcs) {standardGeneric("scoreThresh")})
+setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
+  bcs@scoreThresh
+})
+
 #### HELPER FUNCTIONS ##########################################################
-
-#' Lower beta if nmf throws warning
-snmfWrapper <- function(m, k, beta = 0.01) {
-  tryCatch(suppressMessages(res <- NMF::nmf(m, k, method = "snmf/l", beta = beta)),
-    warning = function(w) {
-      if(any(suppressWarnings(grepl("too big 'beta' value", w$message, ignore.case = TRUE, fixed = TRUE)))) {
-        beta <<- beta^2
-        message(paste0("Decreased beta (sparsity parameter) to ", beta))
-        res <<- snmfWrapper(m, k, beta)
-      } else {
-        warning(w)
-      }
-    }, 
-    error = function(e) {
-      stop(e)
-    },
-    finally = function() {
-      res
-    }
-  )
-}
-
-pcaWrapper <- function(m, k) {
-  prcmp <- prcomp(m, rank. = k, retx = TRUE)
-  new("genericFit", fit = new("genericFactorization", W = prcmp$x, H = t(prcmp$rotation)), 
-             method = "pca")
-}
 
 #' Combine threshold values and names into a matrix
 #' 
@@ -371,13 +344,3 @@ atomic, a vector of length k, or an matrix with k rows.")
   }
   tMatrix
 }
-
-# Apply threshold to a score or loading matrix
-setGeneric("threshold", signature = "m", function(m, ...) {standardGeneric("threshold")})
-#' @export
-setMethod("threshold", c(m = "matrix"), function(m, th) {
-  mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m))
-  mat[m < th] <- FALSE
-  mat
-}
-)
