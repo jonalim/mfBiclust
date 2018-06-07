@@ -19,7 +19,7 @@ createAnnots(x, names, strategy = "", phenoLabels = c(),
 \item{biclustLabels}{any bicluster labels in x}
 }
 \description{
-Checks phenoLabels and biclustLabels for validity and then joins the 
+Checks phenoLabels and biclustLabels for validity and then joins the
 corresponding data extracted from the provided BiclusterExperiment.
 }
 \details{

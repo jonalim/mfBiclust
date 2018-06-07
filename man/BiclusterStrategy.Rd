@@ -19,21 +19,21 @@ bicluster is "plaid" or "bimax"}
 \description{
 This class encapsulates bicluster results for one biclustering algorithm, one
 thresholding algorithms, and one quantity of biclusters. To visualize results
-in a GUI, wrap a \code{\link{BiclusterStrategy}} in a \code{\link{BiclusterExperiment}}, then call
-\code{\link{shinyStart()}}.
+in a GUI, wrap a \code{\link{BiclusterStrategy}} in a
+\code{\link{BiclusterExperiment}}, then call \code{\link{shinyStart()}}.
 }
 \details{
 details
 }
 \section{Custom thresholds}{
 
-When giving custom thresholds, various common use cases are assumed based on the data type:
-A single numeric will be applied to all clusters.
-A vector of numerics, if the same size as k, will be assumed to have
-a 1:1 relation with k.
-A matrix of numerics, if k x Y for any Y, will be assumed to be a
-matrix of thresholds, where each row k contains multiple thresholds to plot
-for bicluster k. The first threshold will be applied to determine bicluster members.
+When giving custom thresholds, various common use cases are assumed based on
+the data type: A single numeric will be applied to all clusters. A vector of
+numerics, if the same size as k, will be assumed to have a 1:1 relation with
+k. A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
+of thresholds, where each row k contains multiple thresholds to plot for
+bicluster k. The first threshold will be applied to determine bicluster
+members.
 
 To be added: factorize: sparsenmf, plaid, bimax.
 To be added: threshold: ita, fcm
