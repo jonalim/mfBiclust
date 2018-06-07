@@ -46,6 +46,6 @@ test_that("snmf handles weird matrices", {
 
 test_that("thresholding is accurate", {
   load("../testdata/ref_threshold.rda")
-  res <- generateThresholdMatrix(l[[1]], l[[2]], l[[3]])
-  expect_equal(res, l[[4]])
+  res <- generateThresholdMatrix("otsu", l[[1]], l[[2]])
+  expect_equal(res, l[[3]])
 })
