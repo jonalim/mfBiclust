@@ -67,9 +67,6 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phen
   ad[[1]] <- t(m)
   
   if(inherits(bcs, "list")) {
-    if (!all(unlist(lapply(bcs, function(obj) inherits(obj, "BiclusterStrategy"))))) {
-      stop("Argument \"bcs\" must contain only BiclusterStrategy objects.")
-    }
     names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
   } else if(!is.null(bcs)) {
     bcs <- list(bcs)
@@ -118,6 +115,37 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phen
 # })
 
 #### METHODS ###################################################################
+
+validBiclusterExperiment <- function( object ) {
+  msg <- NULL
+  if(!inherits(object, "BiclusterExperiment")) {
+    msg <- c(msg, paste("Cannot validate a", class(object), 
+                        "as BiclusterExperiment"))
+  }
+
+  if(inherits(object@strategies, "list")) {
+    validBcs <- unlist(sapply(names(object), function(bcs) {
+      inherits(getStrat(object, bcs), "BiclusterStrategy")
+      }))
+    if (!all(validBcs)) {
+      msg <- c(msg, "All strategies must be BiclusterStrategy objects.")
+    } else {
+      sapply(names(object), function(bcs) { # Check validity of all strategies
+        res <- validObject(getStrat(object, bcs), test = TRUE)
+        if(inherits(res, "character")) { msg <<- c(msg, res) }
+      })
+    }
+  } else {
+    msg <- c(msg, "The strategies slot must be a 'list' object")
+  }
+  if(!inherits(object@distance, "dist")) {
+    msg <- c(msg, paste("The distance slot must be a 'dist' object as returned",
+                        "by dist()"))
+  }
+  if(is.null(msg)) TRUE else msg
+}
+
+setValidity("BiclusterExperiment", validBiclusterExperiment)
 
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) t(assayData(x)[[1]]))
