@@ -25,7 +25,7 @@ genBiclusters <- function(sizeX, sizeY, biclusterRows, biclusterCols, noise = 0)
   res
 }
 
-genSimData <- function() {
+genSimData3 <- function() {
   res <- genBiclusters(50, 250, rowIds, colIds, 0.25)
   res
 }

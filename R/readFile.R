@@ -29,7 +29,7 @@ chooseFile <- function() {
     else if(ext == "csv") {
       tryCatch({
         # CSV auto-header detection isn't working? Got 29 rows when 30 expected
-        input <- read.table(filepath, header = TRUE, sep = ",", quote = "\"",
+        input <- read.table(filepath, sep = ",", quote = "\"",
                             fill = TRUE, comment.char = "", colClasses = "numeric")
       }, warning = function(w) {
         res <- tcltk::tkmessageBox(message = paste(w, "\nPlease click OK to proceed"), icon = "warning", 
