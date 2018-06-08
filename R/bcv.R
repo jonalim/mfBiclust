@@ -24,28 +24,45 @@ bcv <- function(m, maxPCs, repetition = 20, center = TRUE) {
   ps
 }
 
-evalEsaBcv.sim <- function(numBiclust, center = TRUE) {
+evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, noise = 0.25, save = FALSE) {
   if(!is.null(numBiclust)) { 
-    # genSimData for given number of biclusters
+    sim <- genSimData(numBiclust, noise, save = save)
   } else {
-    genData3 <- genSimData3()
+    numBiclust <- "3_orig"
+    sim <- genSimData3(save = save)
   }
   
-  Sys.sleep(5)
-  
-  res <- rcvs(m = genData3, maxPCs = 10, center = center)
-  plot(x = rep(as.numeric(colnames(res)), each = nrow(res)), y = as.vector(res))
-
+  evalEsaBcv.matrix(m, TRUE, maxPCs, numBiclust, save)
 }
 
-evalEsaBcv.file <- function(numBiclust = NULL, center = TRUE) {
-  if(!is.null(numBiclust)) { 
-    # genSimData for given number of biclusters
-  }
+evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = maxPCs, fileid = "", save = FALSE) {
   
-  simdata5 <- chooseFile()
+  if(save) { png(paste0("clusters", fileid, ".png"))}
+  #plot
+  old.par <- par(no.readonly=T) 
+  par(mar=c(0, 0, 0, 0))
+  image(m, useRaster=TRUE, axes=FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
+  legend(grconvertX(0.5, "device"), grconvertY(1, "device"), c(min(m), round(max(m), digits = 3)),
+         fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
+  par(old.par)
+  if(save) {dev.off()}
   
-  res <- rcvs(m = genData3, maxPCs = 10, center = center)
-  plot(x = rep(as.numeric(colnames(res)), each = nrow(res)), y = as.vector(res))
+  ebTest <- esaBcv::EsaBcv(Y = m, r.limit = 3, nRepeat = NULL, svd.method = "fast")
+  k <- nrow(ebTest$result.list)
   
+  res <- rcvs(m = m, maxPCs = maxPCs, holdoutRepeat = k^2, center = center)
+  
+  if(save) { png(paste0("bcvPE", fileid, ".png")) }
+  df <- data.frame(bcv.PredictionError = rep(as.numeric(colnames(res)), each = nrow(res)),
+                   k = as.vector(res))
+  boxplot(k ~ bcv.PredictionError, data = df)
+  if(save) {dev.off()}
+  
+  as.numeric(names(which.min(colMeans(res))))
+}
+
+evalEsaBcv.file <- function(center = TRUE, save = FALSE) {
+  data <- chooseFile()
+  
+  evalEsaBcv.matrix(data, TRUE, 10, "_simdata5", save)
 }
