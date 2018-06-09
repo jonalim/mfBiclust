@@ -13,11 +13,19 @@ genBiclusters <- function(sizeX, sizeY, biclusterRows, biclusterCols, noise = 0)
   
   res <- res + noise * matrix(rnorm(n = sizeX * sizeY), nrow = sizeX)
   res <- res - min(res)
+  
+  old.par <- par(no.readonly=T) 
+  par(mar=c(0, 0, 0, 0))
+  image(res, useRaster=TRUE, axes=FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
+  legend(grconvertX(0.5, "device"), grconvertY(1, "device"), c(min(m), round(max(m), digits = 3)),
+         fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
+  par(old.par)
+  
   res
 }
 
 genSimData3 <- function(save = FALSE) {
-  res <- genBiclusters(50, 250, list(10:25, 26:38, 41:45), list(25:159, 101:200, 201:250), 0.25, save = save)
+  res <- genBiclusters(50, 250, list(10:25, 26:38, 41:45), list(25:159, 101:200, 201:250), 0.25)
   res
 }
 
