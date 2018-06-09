@@ -1,8 +1,8 @@
 # Use holdoutRepeat = NULL to do as many folds as max(dim(m) ./ holdouts) aka
 # k-fold but with random (not indexed) fold sampling each time. Known from esaBcv v1.2.1 source code.
-rcvs <- function(m, maxPCs, holdoutRepeat = 100, center = FALSE) {
+rcvs <- function(m, maxPCs, holdoutRepeat = 100, niter = 1, center = FALSE) {
   # EsaBcv(r.limit = 20, nRepeat = 12, center = FALSE)
-  eb <- esaBcv::EsaBcv(Y = m, r.limit = maxPCs, nRepeat = holdoutRepeat, center = center, only.r = TRUE)
+  eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = holdoutRepeat, center = center, only.r = TRUE)
   eb$result.list 
 }
 
@@ -14,7 +14,7 @@ bcv <- function(m, maxPCs, repetition = 20, center = TRUE) {
   # }))
   
   ebTest <- esaBcv::EsaBcv(Y = m, r.limit = 3, nRepeat = NULL)
-  k <- nrow(ebTest$result.list)
+  k <- min(nrow(ebTest$result.list), ncol(m), 10)
   
   ps <- unlist(sapply(seq_len(repetition), function(i) {
     # takes the argmin[index] of the colmeans of BCV prediction error
@@ -26,13 +26,13 @@ bcv <- function(m, maxPCs, repetition = 20, center = TRUE) {
 
 evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, noise = 0.25, save = FALSE) {
   if(!is.null(numBiclust)) { 
-    sim <- genSimData(numBiclust, noise, save = save)
+    sim <- genSimData(numBiclust, noise)
   } else {
     numBiclust <- "3_orig"
-    sim <- genSimData3(save = save)
+    sim <- genSimData3()
   }
   
-  evalEsaBcv.matrix(m, TRUE, maxPCs, numBiclust, save)
+  evalEsaBcv.matrix(sim, center, maxPCs, numBiclust, save)
 }
 
 evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = maxPCs, fileid = "", save = FALSE) {
@@ -47,10 +47,10 @@ evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = maxPCs, fileid = "", s
   par(old.par)
   if(save) {dev.off()}
   
-  ebTest <- esaBcv::EsaBcv(Y = m, r.limit = 3, nRepeat = NULL, svd.method = "fast")
-  k <- nrow(ebTest$result.list)
-  
-  res <- rcvs(m = m, maxPCs = maxPCs, holdoutRepeat = k^2, center = center)
+  niter = 1
+  ebTest <- esaBcv::EsaBcv(Y = m, center = center, niter = niter, r.limit = 2, nRepeat = NULL)
+  k <- min(nrow(ebTest$result.list), ncol(m), 10)
+  res <- rcvs(m = m, maxPCs = maxPCs, holdoutRepeat = k^2, center = center, niter = niter)
   
   if(save) { png(paste0("bcvPE", fileid, ".png")) }
   df <- data.frame(bcv.PredictionError = rep(as.numeric(colnames(res)), each = nrow(res)),
@@ -61,8 +61,11 @@ evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = maxPCs, fileid = "", s
   as.numeric(names(which.min(colMeans(res))))
 }
 
-evalEsaBcv.file <- function(center = TRUE, save = FALSE) {
+evalEsaBcv.file <- function(center = TRUE, save = TRUE) {
   data <- chooseFile()
-  
-  evalEsaBcv.matrix(data, TRUE, 10, "_simdata5", save)
+  # when I performed this 20 times on simdata5, the results were
+  # 16, 14, 11, 12, 9, 11, 13 and then crash
+  # I think it is a bug in esaBcv that when the variance condition isn't satisfied
+  # on the k = 2, the whole function crashes
+  evalEsaBcv.matrix(data, center, 20, "_simdata5", save)
 }
