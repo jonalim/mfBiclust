@@ -294,25 +294,27 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
             # Validate requested annotations and parse into a dataframe
             
             ordering <- match.arg(ordering)
+            silent = TRUE
             if (ordering == "input") {
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
                                        cluster_cols = FALSE, 
                                        show_colnames = colNames, 
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             } else if (ordering == "distance") {
               distance <- dist(as.matrix(obj), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE,
                                        clustering_distance_cols = distance,
                                        show_colnames = colNames,
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             } else {
               # FIXME this is not valid for loadings
               clusterDist <- dist(pred(getStrat(obj, strategy)), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
                                        clustering_distance_cols = clusterDist,
                                        show_colnames = colNames, 
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             }
+            ph
 }
 )
 
