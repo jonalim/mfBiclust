@@ -159,6 +159,7 @@ setMethod("plot", c(x = "BiclusterExperiment"),
             
             ordering <- match.arg(ordering)
             
+            # FIXME prevent shuffling of annotation colors
             if (ordering == "input") {
               cluster_rows <- FALSE
               cdist <- NULL
@@ -430,6 +431,8 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             data <- t(loading(bcs))[, bicluster]
             ordering <- match.arg(ordering)
           
+            # FIXME ADD ACCURACY, RECOVERY, etc. on
+            # PLOT. ALLOW TO HIGHLIGHT KNOWN FEATURES.
             # Plot
             if(ordering == "input") {
               plot(1:ncol(as.matrix(obj)), data,

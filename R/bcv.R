@@ -35,7 +35,7 @@ evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, noise 
   evalEsaBcv.matrix(sim, center, maxPCs, numBiclust, save)
 }
 
-evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = maxPCs, fileid = "", save = FALSE) {
+evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = 10, fileid = "", save = FALSE) {
   
   if(save) { png(paste0("clusters", fileid, ".png"))}
   #plot
@@ -68,4 +68,38 @@ evalEsaBcv.file <- function(center = TRUE, save = TRUE) {
   # I think it is a bug in esaBcv that when the variance condition isn't satisfied
   # on the k = 2, the whole function crashes
   evalEsaBcv.matrix(data, center, 20, "_simdata5", save)
+}
+
+
+testCenter <- function(input) {
+  genData3 <- genSimData(3,0.01)
+  simData3 <- genSimData3()
+  
+  uncentered <- sapply(1:1000, FUN = function(x) {
+    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    gd3 <- tryCatch(esaBcv::EsaBcv(genData3, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    i <- tryCatch(esaBcv::EsaBcv(input, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                  error = function(e) "error")
+    c(sd3, gd3, i)
+  })
+  
+  centered <- sapply(1:1000, FUN = function(x) {
+    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    gd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    i <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                  error = function(e) "error")
+    c(sd3, gd3, i)
+  })
+  
+  uncentered <- t(uncentered)
+  colnames(uncentered) <- c("simdata3", "gendata3", "simdata5")
+  apply(uncentered, MARGIN = 2, table)
+  
+  centered <- t(centered)
+  colnames(centered) <- c("simdata3", "gendata3", "simdata5")
+  apply(centered, MARGIN = 2, table)
 }
