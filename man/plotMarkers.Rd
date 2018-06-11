@@ -2,10 +2,16 @@
 % Please edit documentation in R/BiclusterExperiment.R
 \name{plotMarkers}
 \alias{plotMarkers}
+\alias{pca}
+\alias{plotMarkers}
 \title{Biomarker plot}
 \usage{
 plotMarkers(obj, thresholds = NULL, ...)
+
+pca(bce)
 }
 \description{
+Plot features with some measure of relevance on the y-axis
+
 Plot features with some measure of relevance on the y-axis
 }

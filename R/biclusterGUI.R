@@ -13,7 +13,6 @@ setGeneric("biclusterGUI", signature = "obj", function(obj) {
 
 # clusters must be a named list of matrices
 #' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
-#' @importFrom pheatmap print
 #' @importFrom shiny HTML actionButton animationOptions checkboxInput checkboxGroupInput column div downloadHandler downloadLink eventReactive fluidPage fluidRow h4 headerPanel htmlOutput need observe observeEvent p plotOutput reactiveValues renderPlot renderUI selectInput shinyApp sliderInput stopApp tabPanel tabsetPanel uiOutput updateSelectInput validate wellPanel withProgress conditionalPanel reactive outputOptions tags radioButtons downloadButton sidebarLayout sidebarPanel mainPanel
 setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
   ## define UI parameters
@@ -103,7 +102,8 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
               # Show sample names?
               conditionalPanel("input.main_panel != 'Stability' &&
                                  input.main_panel != 'Biomarkers'",
-                               checkboxInput("sampNames", "Show sample names")),
+                               checkboxInput("sampNames", "Show sample names",
+                                              value = TRUE)),
               # Show feature names?
               conditionalPanel("input.main_panel == 'Abundance' ||
 input.main_panel == 'Biomarkers'",
@@ -143,7 +143,7 @@ input.main_panel == 'Biomarkers'",
                        width = "100%"
             )
           ),
-          tabPanel("Stability", plotOutput("stability", width = "100%")),
+          # tabPanel("Stability", plotOutput("stability", width = "100%")),
           tabPanel("Bicluster members", uiOutput("uiScoreHeatmap"), 
                    plotOutput("score_threshold", 
                               width = "100%")
@@ -300,8 +300,7 @@ input.main_panel == 'Biomarkers'",
         if (length(input$main_panel) > 0) {
           if ("Abundance" == input$main_panel) {
             res <- HTML(
-              "ADD GUI BUTTONS FOR IMPORTING DATA, SWITCHING TO PCA, BIMAX, PLAID etc. 
-              Cause annotation colors to not get shuffled. Abundance shows a Z-score heatmap of the original matrix
+              "Abundance shows a Z-score heatmap of the original matrix
               of metabolite peaks. Default ordering is distance-based by
               cluster membership. Sidebar options allow reordering
               of rows to highlight samples that are members of the
@@ -309,34 +308,29 @@ input.main_panel == 'Biomarkers'",
               Currently the annotations 'species' and 'tissue' are fictitious."
             )
           }
-          if ("Stability" == input$main_panel) {
-            res <- HTML(
-              "Stability index shows how stable each cluster
-              is accross the selected range of <i>k</i>s.
-              The stability index varies between 0 and 1, where
-              1 means that the same cluster appears in every
-              solution for different <i>k</i>."
-            )
-          }
+          # if ("Stability" == input$main_panel) {
+          #   res <- HTML(
+          #     "Stability index shows how stable each cluster
+          #     is accross the selected range of <i>k</i>s.
+          #     The stability index varies between 0 and 1, where
+          #     1 means that the same cluster appears in every
+          #     solution for different <i>k</i>."
+          #   )
+          # }
           if ("Biomarkers" == input$main_panel) {
             res <- HTML(
               paste0(
-                "ADD ACCURACY, RECOVERY, etc. on
-                PLOT. ALLOW TO HIGHLIGHT KNOWN FEATURES. This is a plot of loading, a statistic that
+                "This is a plot of loading, a statistic that
                 quantifies the importance of each feature in distinguishing
-                samples that are members of this bicluster.
-                Biomarkers are contained in the generated msNMF object."
+                samples that are members of this bicluster."
               )
             )
           }
           if ("Bicluster members" == input$main_panel) {
             res <- HTML(
-              "ADD ACCURACY, RECOVERY, etc. on
-              PLOT. ALLOW TO HIGHLIGHT KNOWN SAMPLE GROUPS. This is a score thresholding plot, showing which
+              "This is a score thresholding plot, showing which
               samples are above the threshold. The user should be
-              told which thresholding method was used.
-              Currently the values on the y-axis are fictitious
-              score values for fictitious bicluster 1."
+              told which thresholding method was used."
             )
           }
           return(res)
