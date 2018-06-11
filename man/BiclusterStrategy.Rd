@@ -4,7 +4,7 @@
 \alias{BiclusterStrategy}
 \title{Construct a BiclusterStrategy}
 \usage{
-BiclusterStrategy(m, k, bicluster = c("snmf/l", "pca"),
+BiclusterStrategy(m, k, bicluster = c("als-nmf", "pca", "snmf"),
   scoreThresh = c("otsu"), loadingThresh = c("otsu"))
 }
 \arguments{

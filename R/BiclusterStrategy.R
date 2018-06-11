@@ -46,10 +46,11 @@ setClass("BiclusterStrategy",
 #' bicluster is "plaid" or "bimax"
 #'
 #' @export
-BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
+BiclusterStrategy <- function(m, k, bicluster = c("als-nmf", "pca", "snmf"),
                               scoreThresh = c("otsu"), 
                               loadingThresh = c("otsu")) {
 
+  bicluster = match.arg(bicluster)
   if (!"matrix" %in% class(m)) {
     warning(paste0("Argument \"m\" must be of type matrix. Attempting to",
                    "coerce m to matrix."))
@@ -64,13 +65,12 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   if (bicluster == "pca") {
     # use R pca.
     bc <- pcaWrapper(m, k)
-  } else if (bicluster == "snmf/l" || bicluster == "snmf" || bicluster == "nmf") {
+  } else if (bicluster == "als-nmf") {
     # Use NMF package
     tryCatch(
-      bc <- snmfWrapper(m, k),
+      bc <- als_nmf(m, k),
       error = function(c) {
-        warning(paste0("Sparse NMF failed, switching",
-                       " to PCA."))
+        warning("ALS-NMF failed, switching to PCA.")
         bc <<- pcaWrapper(m, k) # fallback to PCA
         bicluster <<- "pca"
       }
@@ -87,7 +87,6 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   ))
   colnames(bc@fit@W) <- biclustNames
   rownames(bc@fit@H) <- biclustNames
-  
   #### Thresholding ############################################################
   st <- matrix()
   lt <- matrix()
@@ -113,10 +112,7 @@ BiclusterStrategy <- function(m, k, bicluster = c("snmf/l", "pca"),
   
   #### Results #############################################################
   pred <- threshold(bc@fit@W, st[1])
-  colnames(pred) <- lapply(seq_len(ncol(pred)), function(x) {
-    paste0("Bicluster.", x)
-  }
-  )
+  colnames(pred) <- biclustNames
   
   bcs <- new("BiclusterStrategy",
              factors = bc, biclustAlgo = bicluster, scoreThresh = st,
@@ -208,6 +204,9 @@ setValidity("BiclusterStrategy", validBiclusterStrategy)
 setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
   if(length(bcs@name) > 0) {bcs@name}
   else {
+    if(bcs@biclustAlgo == "snmf/l") {
+      biclustAlgo <- "NMF"
+    }
     paste(bcs@biclustAlgo, 
           paste(bcs@scoreThreshAlgo, bcs@loadingThreshAlgo, sep = "/"),
           ncol(bcs@factors@fit@W), sep = " | ")

@@ -1,7 +1,7 @@
 Package: mfBiclust
 Type: Package
 Title: Toolbox for matrix-factorization-based biclustering
-Version: 0.0.0.9004
+Version: 0.0.0.9005
 Date: 2018-05-14
 Maintainer: Jonathan Lim <2329118L@student.gla.ac.uk>
 Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", role = "cre"),
@@ -16,6 +16,8 @@ License: GPL-3
 URL: https://github.com/jonalim/mfBiclust
 BugReports: https://github.com/jonalim/mfBiclust/issues
 biocViews:
+Depends:
+    pheatmap
 Imports: 
     Rcpp (>= 0.12.16),
     shiny (>= 1.0.5),
