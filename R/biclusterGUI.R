@@ -13,6 +13,7 @@ setGeneric("biclusterGUI", signature = "obj", function(obj) {
 
 # clusters must be a named list of matrices
 #' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
+#' @importFrom pheatmap print
 #' @importFrom shiny HTML actionButton animationOptions checkboxInput checkboxGroupInput column div downloadHandler downloadLink eventReactive fluidPage fluidRow h4 headerPanel htmlOutput need observe observeEvent p plotOutput reactiveValues renderPlot renderUI selectInput shinyApp sliderInput stopApp tabPanel tabsetPanel uiOutput updateSelectInput validate wellPanel withProgress conditionalPanel reactive outputOptions tags radioButtons downloadButton sidebarLayout sidebarPanel mainPanel
 setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
   ## define UI parameters
@@ -134,7 +135,8 @@ input.main_panel == 'Biomarkers'",
       # render the top tab panel
       output$mytabs <- renderUI({
         tabsetPanel(
-          tabPanel("Abundance", plotOutput("abundance", width = "100%")),
+          tabPanel("Summary", plotOutput("abundance", width = "100%"),
+                   plotOutput("pca", width = "100%")),
           tabPanel(
             "Sample distance",
             plotOutput("distance",
@@ -142,8 +144,7 @@ input.main_panel == 'Biomarkers'",
             )
           ),
           tabPanel("Stability", plotOutput("stability", width = "100%")),
-          tabPanel("Bicluster members", plotOutput("scoreHeatmap", 
-                                                   width = "100%"), 
+          tabPanel("Bicluster members", uiOutput("uiScoreHeatmap"), 
                    plotOutput("score_threshold", 
                               width = "100%")
                    
@@ -173,6 +174,7 @@ input.main_panel == 'Biomarkers'",
         reactive_abundance()
       }, height = function() {reactiveHeatmapHeight500()})
       
+      output$pca <- renderPlot({ pca(obj)})
       
       reactive_abundance <- reactive({
         withProgress(message = "Plotting...", value = 0, {
@@ -229,9 +231,16 @@ input.main_panel == 'Biomarkers'",
       })
       
       # heatmap of scores for all samples
+      output$uiScoreHeatmap <- renderUI({
+        height = reactiveHeatmapHeight300()
+        plotOutput("scoreHeatmap", height = height)
+        })
       output$scoreHeatmap <- renderPlot({
-        reactiveScoreHeatmap()
-      }, height = function() {reactiveHeatmapHeight300()})
+        r <- reactiveScoreHeatmap()
+        print(r)
+      }
+      , height = function() { reactiveHeatmapHeight300() }
+        )
       reactiveScoreHeatmap <- reactive({withProgress(
         message = "Plotting...",
         value = 0, {

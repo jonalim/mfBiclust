@@ -294,25 +294,27 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
             # Validate requested annotations and parse into a dataframe
             
             ordering <- match.arg(ordering)
+            silent = TRUE
             if (ordering == "input") {
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
                                        cluster_cols = FALSE, 
                                        show_colnames = colNames, 
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             } else if (ordering == "distance") {
               distance <- dist(as.matrix(obj), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE,
                                        clustering_distance_cols = distance,
                                        show_colnames = colNames,
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             } else {
               # FIXME this is not valid for loadings
               clusterDist <- dist(pred(getStrat(obj, strategy)), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
                                        clustering_distance_cols = clusterDist,
                                        show_colnames = colNames, 
-                                       annotation_col = annots)
+                                       annotation_col = annots, silent = silent)
             }
+            ph
 }
 )
 
@@ -453,3 +455,29 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             )
             }
 )
+
+#### PCA Plot ##################################################################
+#' Biomarker plot
+#'
+#' Plot features with some measure of relevance on the y-axis
+#'
+#' @rdname plotMarkers
+#' @aliases plotMarkers
+#' @export
+setGeneric("pca", signature = "bce", function(bce) {
+  standardGeneric("pca")
+})
+
+setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
+  m <- as.matrix(bce)
+  prcmp <- prcomp(m)
+  plot(prcmp$x[, 1], prcmp$x[, 2], pch = 16,
+       xlab = paste0("PC1: ", 
+                     round(prcmp$sdev[1]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     "% variance"),
+       ylab = paste0("PC2: ", 
+                     round(prcmp$sdev[2]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     "% variance"))
+})
+            
+            
