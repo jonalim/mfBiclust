@@ -455,3 +455,29 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             )
             }
 )
+
+#### PCA Plot ##################################################################
+#' Biomarker plot
+#'
+#' Plot features with some measure of relevance on the y-axis
+#'
+#' @rdname plotMarkers
+#' @aliases plotMarkers
+#' @export
+setGeneric("pca", signature = "bce", function(bce) {
+  standardGeneric("pca")
+})
+
+setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
+  m <- as.matrix(bce)
+  prcmp <- prcomp(m)
+  plot(prcmp$x[, 1], prcmp$x[, 2], pch = 16,
+       xlab = paste0("PC1: ", 
+                     round(prcmp$sdev[1]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     "% variance"),
+       ylab = paste0("PC2: ", 
+                     round(prcmp$sdev[2]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     "% variance"))
+})
+            
+            
