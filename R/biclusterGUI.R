@@ -135,7 +135,8 @@ input.main_panel == 'Biomarkers'",
       # render the top tab panel
       output$mytabs <- renderUI({
         tabsetPanel(
-          tabPanel("Abundance", plotOutput("abundance", width = "100%")),
+          tabPanel("Summary", plotOutput("abundance", width = "100%"),
+                   plotOutput("pca", width = "100%")),
           tabPanel(
             "Sample distance",
             plotOutput("distance",
@@ -173,6 +174,7 @@ input.main_panel == 'Biomarkers'",
         reactive_abundance()
       }, height = function() {reactiveHeatmapHeight500()})
       
+      output$pca <- renderPlot({ pca(obj)})
       
       reactive_abundance <- reactive({
         withProgress(message = "Plotting...", value = 0, {
