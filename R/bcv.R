@@ -72,99 +72,24 @@ evalEsaBcv.file <- function(center = TRUE, save = TRUE) {
 testCenter <- function(input) {
   genData3 <- genSimData(3, 0.01)
   simData3 <- genSimData3()
-<<<<<<< HEAD
 
-  uncentered <- sapply(1:1000, FUN = function(x) {
-    sd3 <- tryCatch(
-      esaBcv::EsaBcv(simData3, center = FALSE, niter = 1, r.limit = 6, 
-                     nRepeat = 2, only.r = TRUE)$best.r,
-||||||| merged common ancestors
-  
-  uncentered <- sapply(1:1000, FUN = function(x) {
-    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
-=======
-  
   iter1 <- sapply(1:1000, FUN = function(x) {
-    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
-                    error = function(e) "error")
-    gd3 <- tryCatch(
-      esaBcv::EsaBcv(genData3, center = FALSE, niter = 1, r.limit = 6, 
-                     nRepeat = 2, only.r = TRUE)$best.r,
-                    error = function(e) "error")
-<<<<<<< HEAD
-    i <- tryCatch(
-      esaBcv::EsaBcv(input, center = FALSE, niter = 1, r.limit = 6, 
-                     nRepeat = 2, only.r = TRUE)$best.r,
-                  error = function(e) "error")
-    c(sd3, gd3, i)
-||||||| merged common ancestors
-    i <- tryCatch(esaBcv::EsaBcv(input, center = FALSE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
-                  error = function(e) "error")
-    c(sd3, gd3, i)
-=======
-    c(sd3, gd3)
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
-  })
-<<<<<<< HEAD
-
-  centered <- sapply(1:1000, FUN = function(x) {
-    sd3 <- tryCatch(
-      esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, 
-                     nRepeat = 2, only.r = TRUE)$best.r,
-||||||| merged common ancestors
-  
-  centered <- sapply(1:1000, FUN = function(x) {
     sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
-=======
-  
-  iter3 <- sapply(1:1000, FUN = function(x) {
-    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = FALSE, niter = 3, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
                     error = function(e) "error")
-<<<<<<< HEAD
     gd3 <- tryCatch(
-      esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, 
+      esaBcv::EsaBcv(genData3, center = TRUE, niter = 1, r.limit = 6, 
                      nRepeat = 2, only.r = TRUE)$best.r,
-||||||| merged common ancestors
-    gd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
-=======
-    gd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = FALSE, niter = 3, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
                     error = function(e) "error")
-<<<<<<< HEAD
-    i <- tryCatch(
-      esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, 
-                     nRepeat = 2, only.r = TRUE)$best.r,
-                  error = function(e) "error")
-    c(sd3, gd3, i)
-||||||| merged common ancestors
-    i <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 1, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
-                  error = function(e) "error")
-    c(sd3, gd3, i)
-=======
     c(sd3, gd3)
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
   })
-<<<<<<< HEAD
 
-  uncentered <- t(uncentered)
-  colnames(uncentered) <- c("simdata3", "gendata3", "simdata5")
-  apply(uncentered, MARGIN = 2, table)
-
-  centered <- t(centered)
-  colnames(centered) <- c("simdata3", "gendata3", "simdata5")
-  apply(centered, MARGIN = 2, table)
-||||||| merged common ancestors
-  
-  uncentered <- t(uncentered)
-  colnames(uncentered) <- c("simdata3", "gendata3", "simdata5")
-  apply(uncentered, MARGIN = 2, table)
-  
-  centered <- t(centered)
-  colnames(centered) <- c("simdata3", "gendata3", "simdata5")
-  apply(centered, MARGIN = 2, table)
-=======
+  iter3 <- sapply(1:1000, FUN = function(x) {
+    sd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 3, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    gd3 <- tryCatch(esaBcv::EsaBcv(simData3, center = TRUE, niter = 3, r.limit = 6, nRepeat = 2, only.r = TRUE)$best.r,
+                    error = function(e) "error")
+    c(sd3, gd3)
+  })
   
   iter1 <- t(iter1)
   colnames(iter1) <- c("simdata3", "gendata3")
@@ -175,15 +100,69 @@ testCenter <- function(input) {
   apply(iter3, MARGIN = 2, table)
 }
 
-bcv <- function(Y, k.limit, nHoldout) {
-  ks <- rep(0, times = k.limit + 1)
-  names(k) <- as.character(0:k.limit + 1)
-  
+bcv <- function(Y, k_limit, niter = 3, holdouts = 10) {
   Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
-  gamma <- p / n
-  bar.gamma <- ((sqrt(gamma) + sqrt(1 / gamma)) / 2) ^ 2
-  sqrt.rho <- sqrt(2) / (sqrt(bar.gamma) + sqrt(bar.gamma + 3))
->>>>>>> 3c7a5f57824946019697b626a21568be80506f23
+  
+  k_limit <- min(k_limit, nrow(Y) - 1, ncol(Y) - 1)
+  
+  result.list <- bcvGivenKs(Y, seq_len(k_limit), holdouts)
+  names(result.list) <- seq_len(k_limit)
+  
+  result.list
+}
+
+bcvGivenKs <- function(Y, ks, holdouts = 10) {
+  p <- ncol(Y)
+  n <- nrow(Y)
+  
+  prcmp <- prcomp(Y, rank. = max(ks), retx = TRUE)
+  tM = prcmp$x
+  pM = t(prcmp$rotation)
+  var_k <- prcmp$sdev[seq_len(max(ks))] ^ 2
+  
+  nHoldoutInd <- (seq_len(n) %% holdouts) + 1
+  pHoldoutInd <- (seq_len(p) %% holdouts) + 1
+  
+  rcvs <- rep(0, length(ks))
+  names(rcvs) <- as.character(ks)
+  
+  sapply(seq_len(holdouts), function(x) {
+    # row holdout indices
+    rInd <- which(nHoldoutInd == x) 
+    
+    sapply(seq_len(holdouts), function(x) {
+      sInd <- which(pHoldoutInd == x)
+      
+      A <- Y[rInd, sInd]
+      D <- Y[-rInd, -sInd] # 1/(holdouts^2) of the matrix X
+      
+      prcmp <- prcomp(D, rank. = max(ks), retx = TRUE)
+      tcv <- prcmp$x
+      pcv <- t(prcmp$rotation)
+      
+      
+      sapply(seq_len(length(ks)), function(x) {
+        k <- ks[x]
+        estD_k <- MASS::ginv(tcv[, 1:k, drop = FALSE] %*% pcv[1:k, , drop = FALSE])
+        estD_kold <- tM[rInd, 1:k, drop = FALSE] %*% pM[1:k, sInd, drop = FALSE]
+        estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
+        
+        resid <- sum((A - estD_kold - estA) ^ 2)
+        rcvs[x] <<- rcvs[x] + sum(resid ^ 2)
+      })
+    })
+  })
+  
+  subtract <- c(0, cumsum(var_k[1:(length(var_k) - 1)]))
+  frob_square_x <- sum(Y ^ 2)
+  browser()
+  rcvVals <- mapply(function(rcv, subtract, var_k) {
+    rcv <- 100 * (1 - rcv / frob_square_x)
+    rcv <- rcv - subtract
+    min(rcv, var_k)
+  }, rcv = rcvs, subtract = subtract, var_k = var_k, SIMPLIFY = TRUE)
+  # FIXME rcvVals is really negative???
+  rcvVals
 }
