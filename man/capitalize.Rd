@@ -7,5 +7,5 @@
 capitalize(s)
 }
 \description{
-Capitalize names and abbreviations
+Use this function whenever names will be displayed in plots or gui
 }

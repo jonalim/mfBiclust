@@ -1,6 +1,9 @@
 
 
 #' Capitalize names and abbreviations
+#'
+#' Use this function whenever names will be displayed in plots or gui
+#' 
 capitalize <- Vectorize(function(s) {
   if (s == "als-nmf") { "ALS-NMF" }
   else { switch(s, snmf = "SNMF", pca = "PCA", otsu = "Otsu", 

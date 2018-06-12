@@ -21,5 +21,4 @@
 #'
 #' @references \href{https://doi.org/10.1016/j.ymeth.2018.02.004}{Bi-clustering
 #'   of metabolic data using matrix factorization tools}
-#' @import methods
 NULL

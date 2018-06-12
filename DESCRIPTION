@@ -1,6 +1,6 @@
 Package: mfBiclust
 Type: Package
-Title: Toolbox for matrix-factorization-based biclustering
+Title: Toolbox for Matrix-Factorization-Based Biclustering
 Version: 0.0.0.9005
 Date: 2018-05-14
 Maintainer: Jonathan Lim <2329118L@student.gla.ac.uk>

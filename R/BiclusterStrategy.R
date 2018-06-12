@@ -81,6 +81,16 @@ BiclusterStrategy <-
           bicluster <<- "pca"
         }
       )
+    } else if (bicluster == "snmf") {
+      # Use NMF package
+      tryCatch(
+        bc <- snmf(m, k),
+        error = function(c) {
+          warning("Sparse NMF failed, switching to PCA.")
+          bc <<- pcaWrapper(m, k) # fallback to PCA
+          bicluster <<- "pca"
+        }
+      )
     }
     
     else if (bicluster == "plaid" || bicluster == "bimax") {
