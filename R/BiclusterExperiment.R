@@ -382,7 +382,7 @@ setMethod(
            y = thresholds, color = cols[seq_along(thresholds)]
     )
     
-    legend("topright", legend = names(thresholds), col = cols[seq_along(names(thresholds))], lty = 1, 
+    legend("topright", legend = capitalize(names(thresholds)), col = cols[seq_along(names(thresholds))], lty = 1, 
            lwd = 2, cex = 0.8
     )
   }
@@ -401,6 +401,7 @@ setGeneric("plotMarkers", signature = "obj", function(obj, thresholds = NULL, ..
 })
 
 #' cluster must be numeric
+#' @export
 setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
           function(obj, thresholds, strategy = "", bicluster = "Bicluster.1", 
                    ordering = c("input", "cluster")) {
@@ -453,7 +454,7 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
                    y = thresholds, color = cols[seq_along(thresholds)]
             )
             
-            legend("topright", legend = names(thresholds), col = cols[seq_along(names(thresholds))], lty = 1, 
+            legend("topright", legend = capitalize(names(thresholds)), col = cols[seq_along(names(thresholds))], lty = 1, 
                    lwd = 2, cex = 0.8
             )
             }

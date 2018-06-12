@@ -1,4 +1,11 @@
-#### HELPER FUNCTIONS ##########################################################
+
+
+#' Capitalize names and abbreviations
+capitalize <- Vectorize(function(s) {
+  if (s == "als-nmf") { "ALS-NMF" }
+  else { switch(s, snmf = "SNMF", pca = "PCA", otsu = "Otsu", 
+                paste0(toupper(substring(s, 1,1)), substring(s, 2))) }
+})
 
 #' Create annotations dataframe for heatmaps
 #'
