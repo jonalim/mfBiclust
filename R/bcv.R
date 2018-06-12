@@ -95,3 +95,15 @@ testCenter <- function(input) {
   colnames(iter3) <- c("simdata3", "gendata3")
   apply(iter3, MARGIN = 2, table)
 }
+
+bcv <- function(Y, k.limit, nHoldout) {
+  ks <- rep(0, times = k.limit + 1)
+  names(k) <- as.character(0:k.limit + 1)
+  
+  Y <- as.matrix(Y)
+  p <- ncol(Y)
+  n <- nrow(Y)
+  gamma <- p / n
+  bar.gamma <- ((sqrt(gamma) + sqrt(1 / gamma)) / 2) ^ 2
+  sqrt.rho <- sqrt(2) / (sqrt(bar.gamma) + sqrt(bar.gamma + 3))
+}
