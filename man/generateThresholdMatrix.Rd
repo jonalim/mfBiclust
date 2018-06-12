@@ -16,15 +16,15 @@ vector}
 }
 \description{
 Thresholds may contain a vector of the names of desired threshold algorithms.
-Alternatively, a numeric-mode object may be supplied. A single numeric 
-will be applied to all clusters. A vector of numerics, if the same size as 
-k, will be assumed to have a 1:1 relation with k. A matrix of numerics, 
-if k x Y, will be assumed to be a matrix where each row k contains Y 
+Alternatively, a numeric-mode object may be supplied. A single numeric
+will be applied to all clusters. A vector of numerics, if the same size as
+k, will be assumed to have a 1:1 relation with k. A matrix of numerics,
+if k x Y, will be assumed to be a matrix where each row k contains Y
 thresholds to plot for bicluster k. This argument's dimensions will be
 checked for compatibility with the target matrix.
 }
 \details{
 A matrix where each column is a series of thresholds. Each column is
-named by the threshold algorithm, if specified. Each row is named by the 
+named by the threshold algorithm, if specified. Each row is named by the
 provided biclustNames.
 }

@@ -8,7 +8,7 @@
 \S4method{name}{BiclusterStrategy}(bcs)
 }
 \description{
-Get this BiclusterStrategy's name. If it does not have a name, computes a 
+Get this BiclusterStrategy's display-friendly name. If it does not have a name, computes a
 string containing the biclustering algorithm, thresholding algorithms, and
 number of biclusters in the given BiclusterStrategy.
 }
