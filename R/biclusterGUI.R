@@ -58,7 +58,7 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
               # abundance. We expect the user to be
               # responsible for homoscedascity,
               # normalization, etc.
-              conditionalPanel("input.main_panel == 'Abundance'",
+              conditionalPanel("input.main_panel == 'Summary'",
                                selectInput("logBase", "Log-transform",
                                            choices = list("None" = 0, 
                                                           "log[2]" = 2, 
@@ -105,7 +105,7 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
                                checkboxInput("sampNames", "Show sample names",
                                               value = TRUE)),
               # Show feature names?
-              conditionalPanel("input.main_panel == 'Abundance' ||
+              conditionalPanel("input.main_panel == 'Summary' ||
 input.main_panel == 'Biomarkers'",
                                checkboxInput("featNames", "Show feature names")),
               HTML("</font>")
@@ -135,7 +135,7 @@ input.main_panel == 'Biomarkers'",
       # render the top tab panel
       output$mytabs <- renderUI({
         tabsetPanel(
-          tabPanel("Summary", plotOutput("abundance", width = "100%"),
+          tabPanel("Summary", uiOutput("uiabundance", width = "100%"),
                    plotOutput("pca", width = "100%")),
           tabPanel(
             "Sample distance",
@@ -156,26 +156,32 @@ input.main_panel == 'Biomarkers'",
         )
       })
       #### REACTIVE PANELS #######################################################
+      # helper functions
+      reactiveHeatmapHeight500 <- reactive({ 
+        max(500, length(input$annots) * 33 +
+              sum(unlist(lapply(input$annots, function(annot) {
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
+                                    pred(getStrat(obj, input$strategy))
+                )[, annot]))
+              }))) * 22 - 106)})
+      
+      reactiveHeatmapHeight300 <- reactive({ 
+        max(300, length(input$annots) * 33 +
+              sum(unlist(lapply(input$annots, function(annot) {
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
+                                    pred(getStrat(obj, input$strategy))
+                )[, annot]))
+              }))) * 22 - 106)})
+      
       # plot abundance heatmap (original data)
-      reactiveHeatmapHeight500 <- reactive({ max(500, length(input$annots) * 33 +
-          sum(unlist(lapply(input$annots, function(annot) {
-            length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
-                                pred(getStrat(obj, input$strategy))
-            )[, annot]))
-          }))) * 22 - 106)})
-      
-      reactiveHeatmapHeight300 <- reactive({ max(300, length(input$annots) * 33 +
-                                                   sum(unlist(lapply(input$annots, function(annot) {
-                                                     length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
-                                                                         pred(getStrat(obj, input$strategy))
-                                                     )[, annot]))
-                                                   }))) * 22 - 106)})
+      output$uiabundance <- renderUI({
+        height = reactiveHeatmapHeight500()
+        plotOutput("abundance", height = height)
+      })
       output$abundance <- renderPlot({
-        reactive_abundance()
+        gt <- reactive_abundance()
+        print(gt) # printing ensures the returned gTable is drawn to Shiny
       }, height = function() {reactiveHeatmapHeight500()})
-      
-      output$pca <- renderPlot({ pca(obj)})
-      
       reactive_abundance <- reactive({
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
@@ -191,11 +197,14 @@ input.main_panel == 'Biomarkers'",
         })
       })
       
+      # Plot of samples along first two PCs
+      output$pca <- renderPlot({ pca(obj)})
+      
       # Euclidean Distance between samples (applied to raw data...might be good to scale first?)
       output$distance <- renderPlot({
-        reactiveDistance()
+        gt <- reactiveDistance()
+        print(gt)
       }, height = function() {reactiveHeatmapHeight500()})
-      
       reactiveDistance <- reactive({
         validate(need(
           all(input$annot.rows %in% colnames(phenoData(obj))),
@@ -220,9 +229,9 @@ input.main_panel == 'Biomarkers'",
       
       # plot cluster stability (not implemented yet)
       output$stability <- renderPlot({
-        reactiveStability()
+        gt <- reactiveStability()
+        print(gt)
       })
-      
       reactiveStability <- reactive({
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
@@ -231,16 +240,16 @@ input.main_panel == 'Biomarkers'",
       })
       
       # heatmap of scores for all samples
+      # using renderUI prevents overlapping plots
       output$uiScoreHeatmap <- renderUI({
         height = reactiveHeatmapHeight300()
         plotOutput("scoreHeatmap", height = height)
         })
       output$scoreHeatmap <- renderPlot({
-        r <- reactiveScoreHeatmap()
-        print(r)
-      }
-      , height = function() { reactiveHeatmapHeight300() }
-        )
+        gt <- reactiveScoreHeatmap()
+        print(gt)
+      }, 
+      height = function() { reactiveHeatmapHeight300() })
       reactiveScoreHeatmap <- reactive({withProgress(
         message = "Plotting...",
         value = 0, {
@@ -269,7 +278,8 @@ input.main_panel == 'Biomarkers'",
       
       # Heatmap of loadings for all features
       output$loadingHeatmap <- renderPlot({
-        reactiveLoadingHeatmap()
+        gt <- reactiveLoadingHeatmap()
+        print(gt)
       })
       reactiveLoadingHeatmap <- reactive({withProgress(
         message = "Plotting...",
