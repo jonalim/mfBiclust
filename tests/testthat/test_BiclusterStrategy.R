@@ -14,9 +14,7 @@ test_that("the BiclusterStrategy constructor is functional", {
 test_that("snmf handles weird matrices", {
   set.seed(1)
   m <- matrix(1:16, nrow = 4)
-  expect_warning({bcs <- BiclusterStrategy(m, k = 3, bicluster = "snmf/l",
-                                           scoreThresh = "otsu",
-                                           loadingThresh = "otsu")},
+  expect_warning({bcs <- BiclusterStrategy(m, k = 3, bicluster = "snmf")},
                  "Sparse NMF failed, switching to PCA.")
 })
 
