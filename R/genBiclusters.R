@@ -35,16 +35,17 @@ genSimData3 <- function(save = FALSE) {
 #' Optional noise parameter
 #'
 #' @export
-genSimData <- function(n, noise = 0) {
+genSimData <- function(n, noise = 0.01) {
   x <- round(rnorm(1, 20, 1) * n)
   y <- round(rnorm(1, 85, 5) * n)
+  
+  xCoords <- sort(sample(1:x, 2 * n, replace = FALSE)) 
   xCoords <- lapply(seq_len(n), function(i) {
-    coords <- sample(1:x, 2, replace = FALSE)
-    min(coords):max(coords)
+    xCoords[i*2-1]:xCoords[i*2]
   })
+  yCoords <- sort(sample(1:y, 2 * n, replace = FALSE)) 
   yCoords <- lapply(seq_len(n), function(i) {
-    coords <- sample(1:y, 2, replace = FALSE)
-    min(coords):max(coords)
+    yCoords[i*2-1]:yCoords[i*2]
   })
   
   genBiclusters(sizeX = x, sizeY = y, biclusterRows = xCoords,biclusterCols = yCoords, noise = noise)
