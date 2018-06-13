@@ -1,11 +1,21 @@
-genBiclusters <- function(sizeX, sizeY, biclusterRows, biclusterCols, noise = 0) {
+genBiclusters <- function(sizeX, sizeY, biclusterRows, biclusterCols, noise = 0, striped = "") {
   if (length(biclusterRows) != length(biclusterCols)) {
     stop("biclusterRows and biclusterCols must be the same length")
   }
   
   res <- matrix(0, nrow = sizeX, ncol = sizeY)
-  invisible(mapply(function(rowRange, colRange) { res[rowRange, colRange] <<- 1 },
-         rowRange = biclusterRows, colRange = biclusterCols))
+  
+  invisible(mapply(function(rowRange, colRange) { 
+    colStripe = rep(1, each = length(colRange))
+    if("cols" %in% striped) {
+      colStripe <- colStripe + sample(0:2, length(colStripe), replace = TRUE)
+    }
+    mapply(function(col, value) {
+      res[rowRange, col] <<- value 
+      },
+      col = colRange, value = colStripe)
+  },
+  rowRange = biclusterRows, colRange = biclusterCols))
   
   # multiply every column in res by a random integer in the set [1,5]
   k <- ceiling(runif(n = sizeY, min = 0, max = 5))
@@ -16,7 +26,7 @@ genBiclusters <- function(sizeX, sizeY, biclusterRows, biclusterCols, noise = 0)
   
   old.par <- par(no.readonly=T) 
   par(mar=c(0, 0, 0, 0))
-  image(res, useRaster=TRUE, axes=FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
+  image(t(apply(res, 2, rev)), useRaster=TRUE, axes=FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
   legend(grconvertX(0.5, "device"), grconvertY(1, "device"), c(min(res), round(max(res), digits = 3)),
          fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
   par(old.par)
@@ -35,18 +45,40 @@ genSimData3 <- function(save = FALSE) {
 #' Optional noise parameter
 #'
 #' @export
-genSimData <- function(n, noise = 0.01) {
+genSimData <- function(n, overlapped = FALSE, file = "", striped = c("cols", NULL), noise = 0.01) {
+  
+  striped = match.arg(striped)
+  if(is.null(striped)) striped <- ""
+  
   x <- round(rnorm(1, 20, 1) * n)
   y <- round(rnorm(1, 85, 5) * n)
   
-  xCoords <- sort(sample(1:x, 2 * n, replace = FALSE)) 
+  xCoords <- sample(1:x, 2 * n, replace = FALSE)
+  yCoords <- sample(1:y, 2 * n, replace = FALSE)
+  if(!overlapped) {
+    if(runif(1) > 0.5) { xCoords <- sort(xCoords) }
+    else {yCoords <- sort(yCoords)}
+  }
   xCoords <- lapply(seq_len(n), function(i) {
     xCoords[i*2-1]:xCoords[i*2]
   })
-  yCoords <- sort(sample(1:y, 2 * n, replace = FALSE)) 
   yCoords <- lapply(seq_len(n), function(i) {
     yCoords[i*2-1]:yCoords[i*2]
   })
   
-  genBiclusters(sizeX = x, sizeY = y, biclusterRows = xCoords,biclusterCols = yCoords, noise = noise)
+  res <- genBiclusters(sizeX = x, sizeY = y, biclusterRows = xCoords,biclusterCols = yCoords, striped = striped, noise = noise)
+  
+  if (nchar(file) > 0) { 
+    png(paste0(file, ".png"))
+    write.csv(res, file = paste0(file, ".csv")}
+  #plot
+  old.par <- par(no.readonly = T)
+  par(mar = c(0, 0, 0, 0))
+  image(t(apply(res, 2, rev)), useRaster = TRUE, axes = FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
+  legend(grconvertX(0.5, "device"), grconvertY(1, "device"),
+         c(min(res), round(max(res), digits = 3)),
+         fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
+  par(old.par)
+  if (nchar(file) > 0) { dev.off() }
+  
 }
