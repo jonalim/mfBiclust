@@ -350,7 +350,7 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
     i <- i + 1L
     
     # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
-    res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)));	  	  	
+    res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)))
     H = res[[1]]
     
     if ( any(rowSums(H)==0) ){

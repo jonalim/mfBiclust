@@ -11,11 +11,11 @@ test_that("the BiclusterStrategy constructor is functional", {
   expect_true(validObject(bcs_snmf))
 })
 
-test_that("snmf handles weird matrices", {
+test_that("als-nmf defers singular matrices to pca", {
   set.seed(1)
   m <- matrix(1:16, nrow = 4)
-  expect_warning({bcs <- BiclusterStrategy(m, k = 3, bicluster = "snmf")},
-                 "Sparse NMF failed, switching to PCA.")
+  expect_warning({bcs <- BiclusterStrategy(m, k = 3, bicluster = "als-nmf")},
+                 "ALS-NMF failed, switching to PCA.")
 })
 
 test_that("thresholding is accurate", {
