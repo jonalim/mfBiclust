@@ -1,25 +1,21 @@
-# Use holdoutRepeat = NULL to do as many folds as max(dim(m) ./ holdouts) aka
-# k-fold but with random (not indexed) fold sampling each time. Known from esaBcv v1.2.1 source code.
-rcvs <- function(m, maxPCs = 5, holdoutRepeat = 100, niter = 1, center = FALSE) {
-  
-}
-
-esabcvWrapper <- function(m, maxPCs, holdoutRep = 20, niter = 1, center = TRUE) {
-  res <- unlist(sapply(seq_len(repetition), function(x) {
-    # takes the argmin[index] of the colmeans of BCV prediction error
-    eb <- NULL
-    
-    while(is.null(eb)) {
-      try(
-        eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = holdoutRep, center = center, only.r = TRUE)
-      )
-    }
-    
-    as.numeric(names(which.min(eb$result.list[1, ])))
-  }))
-  
-  list(best = mean(res), results = res)
-}
+# 
+# 
+# esabcvWrapper <- function(m, maxPCs, holdoutRep = 20, niter = 1, center = TRUE) {
+#   res <- unlist(sapply(seq_len(repetition), function(x) {
+#     # takes the argmin[index] of the colmeans of BCV prediction error
+#     eb <- NULL
+#     
+#     while(is.null(eb)) {
+#       try(
+#         eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = holdoutRep, center = center, only.r = TRUE)
+#       )
+#     }
+#     
+#     as.numeric(names(which.min(eb$result.list[1, ])))
+#   }))
+#   
+#   list(best = mean(res), results = res)
+# }
 # 
 # evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, 
 #                            noise = 0.25, save = FALSE) {
@@ -94,67 +90,144 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10) {
   res
 }
 
-eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
-  results <- sapply(seq_len(repeats), function(x) {bcv(simdata3, k_limit = k_limit)})
-  k.best <- mean(apply(results, MARGIN = 2, FUN = function(col) { which.min(col) }))
-  list(k.best = k.best, results = results)
-}
+# eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
+#   results <- sapply(seq_len(repeats), function(x) {bcv(simdata3, k_limit = k_limit)})
+#   k.best <- mean(apply(results, MARGIN = 2, FUN = function(col) { which.min(col) }))
+#   list(k.best = k.best, results = results)
+# }
 
-bcv <- function(Y, k_limit, holdouts = 10) {
+#' Perform bcv until convergence
+#'
+#' Performs BCV until the the distribution of results has converged. Often this
+#' requires less than 50 iterations.
+#'
+#' The returned number of biclusters is the median of the results from
+#' \code{maxIter} iterations.
+#'
+#' @section Deciding the maximum k To tune kLimit, it might be helpful to run
+#'   with \code{maxIter} around 10 and \code{bestOnly = TRUE} to determine if
+#'   there is an obvious upper bound on the results.
+#'
+#' @param Y the input matrix
+#' @param kLimit the maximum number of biclusters to consider
+#' @param maxIter maximum number of iterations
+#' @param tol tolerance used to determine convergence
+#' @param bestOnly if FALSE, both the predicted number of biclusters and a table
+#'   of result counts is returned
+#'
+#' @export
+auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE) {
+  distr <- rep(1, each = kLimit)
+  distrOld <- distr
+  change <- 1
+  i <- 0
+  dold <- 0
+  converged <- FALSE
+  while(!converged && i < maxIter) {
+    bcvRes <- which.min(bcv(Y, kLimit))
+    distr[bcvRes] <- distr[bcvRes] + 1
+    # all -> 340
+    # sqrt(.Machine$double.eps) -> 230
+
+    resid <- unlist(mapply(function(d, dOld) {
+      (d / sum(distr) - dOld / sum(distrOld)) ^ 2
+    }, d = distr, dOld = distrOld))
+    #resid <- cumprod(resid)[length(resid)] ^ (1 / length(resid))
+    print(resid)
+    converged <- all(resid < tol)
+    
+    distrOld <- distr
+    i <- i + 1
+    
+    if(i %% 10 == 0) { 
+      print(paste("Iteration", i)) 
+      print(paste("Highest residual was", max(resid)))
+      }
+  }
+  if(i == maxIter) {
+    warning("BCV results did not converge after", maxIter, "iterations")
+  }
+  
+  med <- min(which(cumsum(distr) > (sum(distr) / 2)))
+  if(bestOnly) { med }
+  else { list(best = med, counts = distr) }
+}
+  
+#' Perform bi-cross-validation
+#'
+#' The number of biclusters yielding the lowest BCV value is the predicted best.
+#' It is recommended to use auto_bcv to perform several replications of
+#' bi-cross-validation, and use the median of the results as the predicted
+#' number of biclusters.
+#'
+#' A named vector of BCV values corresponding to the various numbers of
+#' biclusters evaluated.
+#'
+#' @param Y the input matrix
+#' @param kLimit the maximum number of biclusters to evaluate
+#' @param holdouts the number of holdouts to perform along each dimension of
+#'   matrix \code{Y}
+#'
+#' @export
+bcv <- function(Y, kLimit, holdouts = 10) {
   Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   
-  k_limit <- min(k_limit, nrow(Y) - 1, ncol(Y) - 1)
+  kLimit <- min(kLimit, nrow(Y) - 1, ncol(Y) - 1)
   
-  result.list <- bcvGivenKs(Y, seq_len(k_limit), holdouts)
-  names(result.list) <- seq_len(k_limit)
+  result.list <- bcvGivenKs(Y, seq_len(kLimit), holdouts)
+  names(result.list) <- seq_len(kLimit)
   
   result.list
 }
 
+# Helper function
 bcvGivenKs <- function(Y, ks, holdouts = 10) {
+  # initialize...
   p <- ncol(Y)
   n <- nrow(Y)
   
+  rcvs <- rep(0, length(ks))
+  names(rcvs) <- as.character(ks)
+  
+  # Set up bi-cross-validation folds
+  nHoldoutInd <- (seq_len(n) %% holdouts) + 1
+  nHoldoutInd <- sample(nHoldoutInd, size = n)
+  
+  pHoldoutInd <- (seq_len(p) %% holdouts) + 1
+  pHoldoutInd <- sample(pHoldoutInd, size = p)
+
+  # Perform PCA on the whole matrix
   prcmp <- prcomp(Y, rank. = max(ks), retx = TRUE)
   tM = prcmp$x
   pM = t(prcmp$rotation)
   var_k <- prcmp$sdev[seq_len(max(ks))] ^ 2
   
-  nHoldoutInd <- (seq_len(n) %% holdouts) + 1
-  pHoldoutInd <- (seq_len(p) %% holdouts) + 1
-  
-  nHoldoutInd <- sample(nHoldoutInd, size = n)
-  pHoldoutInd <- sample(pHoldoutInd, size = p)
-  
-  rcvs <- rep(0, length(ks))
-  names(rcvs) <- as.character(ks)
-  
   sapply(seq_len(holdouts), function(x) {
-    # row holdout indices
-    rInd <- which(nHoldoutInd == x) 
+    rInd <- which(nHoldoutInd == x) # row holdout indices
     
     sapply(seq_len(holdouts), function(x) {
-      sInd <- which(pHoldoutInd == x)
+      sInd <- which(pHoldoutInd == x) # column holdout indices
       
-      A <- Y[rInd, sInd]
-      D <- Y[-rInd, -sInd] # 1/(holdouts^2) of the matrix X
+      A <- Y[rInd, sInd] # "holdout quadrant"
+      D <- Y[-rInd, -sInd] # "holdin quadrant"
       
+      # PCA to factor the holdin quadrant
       prcmp <- prcomp(D, rank. = max(ks), retx = TRUE)
       tcv <- prcmp$x
       pcv <- t(prcmp$rotation)
       
-      
       sapply(seq_len(length(ks)), function(x) {
         k <- ks[x]
+        # PCA-based approximation of the hold-in quadrant
         estD_k <- MASS::ginv(tcv[, 1:k, drop = FALSE] %*% pcv[1:k, , drop = FALSE])
-        # estD_kold <- tM[rInd, 1:k, drop = FALSE] %*% pM[1:k, sInd, drop = FALSE]
+        
+        # Approximation of the hold-out quadrant
         estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
         
-        # resid <- A - estD_kold - estA
-        resid <- A - estA
-        rcvs[x] <<- rcvs[x] + sum(resid ^ 2)
+        resid <- A - estA # residual holdout matrix
+        rcvs[x] <<- rcvs[x] + sum(resid ^ 2) # squared Frobenius norm
       })
     })
   })
