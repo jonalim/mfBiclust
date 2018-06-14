@@ -4,14 +4,14 @@ rcvs <- function(m, maxPCs = 5, holdoutRepeat = 100, niter = 1, center = FALSE) 
   
 }
 
-esabcvWrapper <- function(m, maxPCs, holdoutRep = 20, niter = 1, center = TRUE) {
-  res <- unlist(sapply(seq_len(repetition), function(x) {
+esabcvWrapper <- function(m, maxPCs, holdoutRep = 2, niter = 3, center = TRUE) {
+  res <- unlist(sapply(seq_len(holdoutRep), function(x) {
     # takes the argmin[index] of the colmeans of BCV prediction error
     eb <- NULL
     
     while(is.null(eb)) {
       try(
-        eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = holdoutRep, center = center, only.r = TRUE)
+        eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = 2, center = center, only.r = TRUE)
       )
     }
     
@@ -20,85 +20,61 @@ esabcvWrapper <- function(m, maxPCs, holdoutRep = 20, niter = 1, center = TRUE) 
   
   list(best = mean(res), results = res)
 }
-# 
-# evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, 
-#                            noise = 0.25, save = FALSE) {
-#   if (!is.null(numBiclust)) {
-#     sim <- genSimData(numBiclust, noise)
-#   } else {
-#     numBiclust <- "3_orig"
-#     sim <- genSimData3()
-#   }
-# 
-#   evalEsaBcv.matrix(sim, center, maxPCs, numBiclust, save)
-# }
 
-# evalEsaBcv.matrix <- function(m, center = FALSE, maxPCs = 10, fileid = "", 
-#                               save = FALSE) {
-# 
-#   if (save) { png(paste0("clusters", fileid, ".png"))}
-#   #plot
-#   old.par <- par(no.readonly = T)
-#   par(mar = c(0, 0, 0, 0))
-#   image(t(apply(m, 2, rev)), useRaster = TRUE, axes = FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
-#   legend(grconvertX(0.5, "device"), grconvertY(1, "device"), 
-#          c(min(m), round(max(m), digits = 3)),
-#          fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
-#   par(old.par)
-#   if (save) { dev.off() }
-# 
-#   niter <-  1
-#   ebTest <- esaBcv::EsaBcv(Y = m, center = center, niter = niter, r.limit = 2, 
-#                            nRepeat = NULL)
-#   k <- min(nrow(ebTest$result.list), ncol(m), 10)
-#   res <- rcvs(m = m, maxPCs = maxPCs, holdoutRepeat = k ^ 2, center = center, 
-#               niter = niter)
-# 
-#   if (save) { png(paste0("bcvPE", fileid, ".png")) }
-#   df <- data.frame(bcv.PredictionError = rep(as.numeric(colnames(res)), 
-#                                              each = nrow(res)),
-#                    k = as.vector(res))
-#   boxplot(k ~ bcv.PredictionError, data = df)
-#   if (save) { dev.off() }
-#   
-#   as.numeric(names(which.min(colMeans(res))))
-# }
-# 
-# evalEsaBcv.file <- function(center = TRUE, save = TRUE) {
-#   data <- chooseFile()
-#   evalEsaBcv.matrix(data, center, 20, "_simdata5", save)
-# }
+analyzeTest <- function(test_res, k_limit = 10, iter = 10) {
+  lapply(test_res, FUN = function(l) {
+    esaBcvRes <- l[[1]]
+    as.numeric(names(which.min(colMeans(esaBcvRes, na.rm = TRUE))))
+    try(plot(rep(0:k_limit, times = iter), as.vector(esaBcvRes)))
+    
+    browser()
+    
+    bcvRes <- l[[2]]
+    mean(bcvRes)
+    plot(rep(1, iter), bcvRes)
+    browser()
 
+  })
+  
+}
 
 testBcvNewOld <- function(directory, k_limit = 10, iter = 10) {
   res <- lapply(list.files(directory), function(file) {
     path <- file.path(directory, file)
     
     input <- read.csv(file = path)
-    res <- sapply(1:iter, FUN = function(x) {
+    esaRes <- sapply(1:iter, FUN = function(x) {
       
-      esabcv <- tryCatch(esaBcv::EsaBcv(input, center = TRUE, niter = 3, r.limit = k_limit, nRepeat = 2, only.r = TRUE)$best.r,
-                         error = function(e) "error")
-      mybcv <- tryCatch({
-        res <- bcv(input, k_limit)
-        which.min(res)
+      esabcv <- tryCatch({
+        eb <- esaBcv::EsaBcv(input, center = TRUE, niter = 3, r.limit = k_limit, nRepeat = 2, only.r = TRUE)$result.list[1, ]
+        if(length(eb) < k_limit + 1) { 
+          eb <- c(eb, rep(0, each = k_limit + 1 - length(eb))) 
+        }
+        eb
       },
-      error = function(e) "error")
-      c(esabcv, mybcv)
+      error = function(e) rep(NA, each = 11))
+      esabcv
     })
-    rownames(res) <- c("eb", "b")
+    esaRes <- t(esaRes)
+    # returns table of test statistic itself
+    
+    bcvRes <- sapply(1:iter, FUN = function(x) {
+      which.min(bcv(input, k_limit))
+    })
+    # returns just a vector of the results
+    res <- list(esaRes, bcvRes)
+    names(res) <- c("eb", "b")
     res
   })
-  
   names(res) <- list.files(directory)
   res
 }
-
-eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
-  results <- sapply(seq_len(repeats), function(x) {bcv(simdata3, k_limit = k_limit)})
-  k.best <- mean(apply(results, MARGIN = 2, FUN = function(col) { which.min(col) }))
-  list(k.best = k.best, results = results)
-}
+# 
+# eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
+#   results <- sapply(seq_len(repeats), function(x) {bcv(simdata3, k_limit = k_limit)})
+#   k.best <- mean(apply(results, MARGIN = 2, FUN = function(col) { which.min(col) }))
+#   list(k.best = k.best, results = results)
+# }
 
 bcv <- function(Y, k_limit, holdouts = 10) {
   Y <- as.matrix(Y)
