@@ -100,6 +100,25 @@ eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
   list(k.best = k.best, results = results)
 }
 
+auto_bcv <- function(Y, k_limit) {
+  distr <- k_limit / 2
+  distrOld <- distr
+  change <- 1
+  counter <- 1
+  while(change > sqrt(.Machine$double.eps) && counter < 1000) {
+    bcvRes <- which.min(bcv(Y, 10))
+    distr <- c(distr, bcvRes)
+    change <- abs(mean(distr) - mean(distrOld))
+    distrOld <- distr
+    print( counter)
+    print(change)
+    counter <- counter + 1
+  }
+  browser()
+  which.max(distr) 
+}
+  
+
 bcv <- function(Y, k_limit, holdouts = 10) {
   Y <- as.matrix(Y)
   p <- ncol(Y)
