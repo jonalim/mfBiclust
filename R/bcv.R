@@ -104,9 +104,10 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10) {
 #' The returned number of biclusters is the median of the results from
 #' \code{maxIter} iterations.
 #'
-#' @section Deciding the maximum k To tune kLimit, it might be helpful to run
-#'   with \code{maxIter} around 10 and \code{bestOnly = TRUE} to determine if
-#'   there is an obvious upper bound on the results.
+#' @section Deciding the maximum k:
+#' To tune kLimit, it might be helpful to run with \code{maxIter} around 10 and
+#' \code{bestOnly = TRUE} to determine if there is an obvious upper bound on the
+#' results.
 #'
 #' @param Y the input matrix
 #' @param kLimit the maximum number of biclusters to consider
