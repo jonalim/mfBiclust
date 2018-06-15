@@ -37,6 +37,7 @@ Collate:
     'RcppExports.R'
     'bcv.R'
     'biclusterGUI.R'
+    'evaluate.R'
     'genBiclusters.R'
     'helperClasses.R'
     'mfBiclust.R'

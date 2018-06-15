@@ -23,6 +23,26 @@ setClass("BiclusterExperiment", slots = list(
   ### FIXME: Change to similarity matrix? Use cor(t(as.matrix(x)), method = "pearson") to get similarity. Use "clustering_distance_rows = "correlation" in pheatmap calls.
 ), contains = "eSet")
 
+setAs("ExpressionSet", "BiclusterExperiment", function(from) {
+  ad <- Biobase::exprs(from)
+  
+  # remove genes with any NA
+  naIndex <- which(rowSums(is.na(ad)) > 0)
+  from <- from[-naIndex, ]
+  ad <- Biobase::exprs(from)
+  
+  d <- dist(t(Biobase::exprs(from)), method = "euclidean")
+  
+  # Add "abund" matrix and remove "exprs" matrix from the assayData object
+  from <- Biobase::assayDataElementReplace(from, "abund", ad, validate = FALSE)
+  from <- Biobase::assayDataElementReplace(from, "exprs", NULL)
+  bce <- new("BiclusterExperiment", assayData = Biobase::assayData(from), 
+             phenoData = Biobase::phenoData(from), 
+             featureData = Biobase::featureData(from), strategies = list(), 
+             distance = d)
+  if(validObject(bce, test = FALSE)) bce
+})
+
 #### CONSTRUCTOR ###############################################################
 #' Perform multiple biclustering runs
 #'
@@ -64,7 +84,7 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phen
   }
   
   ad <- Biobase::assayDataNew(storage.mode = "list")
-  ad[[1]] <- t(m)
+  ad$abund <- t(m)
   
   if(inherits(bcs, "list")) {
     names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
@@ -84,6 +104,9 @@ validBiclusterExperiment <- function( object ) {
   if(!inherits(object, "BiclusterExperiment")) {
     msg <- c(msg, paste("Cannot validate a", class(object), 
                         "as BiclusterExperiment"))
+  }
+  if(!"abund" %in% Biobase::assayDataElementNames(object)) {
+    msg <- c(msg, "The assayData slot must contain a matrix named 'abund'")
   }
 
   if(inherits(object@strategies, "list")) {
@@ -112,11 +135,16 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' @export
 setGeneric("addStrat", signature = "bce", function(bce, bcs) {standardGeneric("addStrat")})
 setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
-  bce@strategies <- list(bce@strategies, bcs)
+  name <- name(bcs)
+  bce@strategies[[name]] <- bcs
+  bce
 })
 
+# FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed
 #' @export
-setMethod("as.matrix", "BiclusterExperiment", function(x) t(assayData(x)[[1]]))
+setMethod("as.matrix", "BiclusterExperiment", function(x) {
+  Biobase::assayData(x)[["abund"]]
+  })
 
 setMethod("distMat", c(bce = "BiclusterExperiment"), function(bce) {
   as.matrix(bce@distance)
@@ -364,18 +392,18 @@ setMethod(
     ordering <- match.arg(ordering)
     # Plot
     if(ordering == "input") {
-      plot(1:nrow(as.matrix(obj)), data,
+      plot(1:nrow(t(as.matrix(obj))), data,
            xlab = "Sample", ylab = "Score", main = bicluster)
     } else if (ordering == "distance") {
       ord <- hclust(obj@distance)$order
-      plot(1:nrow(as.matrix(obj)), data[ord],
+      plot(1:nrow(t(as.matrix(obj))), data[ord],
            xlab = "Sample", ylab = "Score", xaxt = "n", main= bicluster)
-      axis(1, at = 1:nrow(as.matrix(obj)), labels = as.character(ord))
+      axis(1, at = 1:nrow(t(as.matrix(obj))), labels = as.character(ord))
     } else if (ordering == "cluster") {
       ord <- order(data, decreasing = TRUE)
-      plot(1:nrow(as.matrix(obj)), data[ord],
+      plot(1:nrow(t(as.matrix(obj))), data[ord],
            xlab = "Sample", ylab = "Score", xaxt = "n", main= bicluster)
-      axis(1, at = 1:nrow(as.matrix(obj)), labels = as.character(ord))
+      axis(1, at = 1:nrow(t(as.matrix(obj))), labels = as.character(ord))
     }
 
     mapply(function(y, color) {abline(h = y, col = color, lwd = 2)},
@@ -436,16 +464,16 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             # PLOT. ALLOW TO HIGHLIGHT KNOWN FEATURES.
             # Plot
             if(ordering == "input") {
-              plot(1:ncol(as.matrix(obj)), data,
+              plot(1:ncol(t(as.matrix(obj))), data,
                    xlab = "Feature", ylab = "Loading", main = bicluster)
             } else if (ordering == "distance") {
               ord <- hclust(dist(t(as.matrix(obj)), method = "euclidean"))$order
-              plot(1:ncol(as.matrix(obj)), data[ord],
+              plot(1:ncol(t(as.matrix(obj))), data[ord],
                    xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster)
-              axis(1, at = 1:ncol(as.matrix(obj)), labels = as.character(ord))
+              axis(1, at = 1:ncol(t(as.matrix(obj))), labels = as.character(ord))
             } else if (ordering == "cluster") {
               ord <- order(data, decreasing = TRUE)
-              plot(1:ncol(as.matrix(obj)), data[ord],
+              plot(1:ncol(t(as.matrix(obj))), data[ord],
                    xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster)
               axis(1, at = 1:ncol(as.matrix(obj)), labels = as.character(ord))
             }

@@ -123,7 +123,6 @@ BiclusterStrategy <-
     
     #### Results #############################################################
     pred <- threshold(bc@fit@W, st[1])
-    colnames(pred) <- biclustNames
     
     bcs <- new(
       "BiclusterStrategy",
