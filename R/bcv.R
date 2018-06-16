@@ -38,14 +38,14 @@ analyzeTest <- function(test_res, k_limit = 10, iter = 10) {
     median(esaBcvRes)
     png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[esa].png"))
     try(barplot(height = table(factor(esaBcvRes, levels = as.character(0:10))),  main = name,
-             xlab = "# biclusters", ylab = "BCV[ESA] Outcome Frequency (100 holdouts)"))
+             xlab = "# biclusters", ylab = "BCV[ESA] Outcome Frequency (n = 40)"))
     dev.off()
     
     browser()
     
     png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[pca].png"))
     barplot(height = table(factor(l[[2]], levels = as.character(0:10))), main = name, xlab = "# biclusters",
-            ylab = "BCV[PCA] Outcome Frequency (10x10 holdouts)")
+            ylab = "BCV[PCA] Outcome Frequency (n = 40)")
     dev.off()
     
     bcvRes <- l[[2]]
