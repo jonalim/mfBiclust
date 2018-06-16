@@ -2,6 +2,8 @@
 
 export(BiclusterStrategy)
 export(addStrat)
+export(auto_bcv)
+export(bcv)
 export(biclusterGUI)
 export(chooseFile)
 export(distMat)
