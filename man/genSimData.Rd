@@ -4,7 +4,8 @@
 \alias{genSimData}
 \title{Simulate a matrix with n biclusters}
 \usage{
-genSimData(n, noise = 0)
+genSimData(n, overlapped = FALSE, file = "", striped = c("cols", NULL),
+  noise = 0.01)
 }
 \description{
 Optional noise parameter

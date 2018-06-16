@@ -71,6 +71,7 @@ genSimData <- function(n, overlapped = FALSE, file = "", striped = c("cols", NUL
   if (nchar(file) > 0) { 
     png(paste0(file, ".png"))
     write.csv(res, row.names = FALSE, file = paste0(file, ".csv"))}
+  
   #plot
   old.par <- par(no.readonly = T)
   par(mar = c(0, 0, 0, 0))

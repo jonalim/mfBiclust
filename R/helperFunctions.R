@@ -1,10 +1,5 @@
-
-
-#' Capitalize names and abbreviations
-#'
-#' Use this function whenever names will be displayed in plots or gui
-#' 
 capitalize <- Vectorize(function(s) {
+  # Use this function whenever names will be displayed in plots or gui
   if (s == "als-nmf") { "ALS-NMF" }
   else { switch(s, snmf = "SNMF", pca = "PCA", otsu = "Otsu", 
                 paste0(toupper(substring(s, 1,1)), substring(s, 2))) }
@@ -144,11 +139,16 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE) {
   )
 }
 
-# Apply threshold to a score or loading matrix
+#### threshold ####
 setGeneric("threshold", signature = "m", function(m, ...) {standardGeneric("threshold")})
+#' Apply threshold to a score or loading matrix
+#'
+#' Returns a binary matrix of the same size as \code{m} where all elements over
+#' the threshold are 1.
+#'
 #' @export
 setMethod("threshold", c(m = "matrix"), function(m, th) {
-  mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m))
+  mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
   mat[m < th] <- FALSE
   mat
 }
@@ -267,7 +267,6 @@ validateStratName <- function(stratName, bce) {
 # Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe. (2018)
 # https://cran.r-project.org/web/packages/NMF/
 # http://renozao.github.io/NMF
-#'
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps_conv=1e-4, verbose=FALSE){
   #nmfsh_comb <- function(A, k, param, verbose=FALSE, bi_conv=c(0, 10), eps_conv=1e-4, version=c('R', 'L')){
@@ -350,7 +349,7 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
     i <- i + 1L
     
     # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
-    res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)));	  	  	
+    res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)))
     H = res[[1]]
     
     if ( any(rowSums(H)==0) ){
