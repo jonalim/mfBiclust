@@ -22,48 +22,60 @@ esabcvWrapper <- function(m, maxPCs, holdoutRep = 2, niter = 3, center = TRUE) {
 }
 
 analyzeTest <- function(test_res, k_limit = 10, iter = 10) {
-  lapply(test_res, FUN = function(l) {
+  
+  lapply(seq_len(length(test_res)), FUN = function(i) {
+    l <- test_res[[i]]
+    name <- names(test_res)[i]
     esaBcvRes <- l[[1]]
-    as.numeric(names(which.min(colMeans(esaBcvRes, na.rm = TRUE))))
-    try(plot(rep(0:k_limit, times = iter), as.vector(esaBcvRes)))
+    median(esaBcvRes)
+    png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[esa].png"))
+    try(barplot(height = table(factor(esaBcvRes, levels = as.character(0:10))),  main = name,
+             xlab = "# biclusters", ylab = "BCV[ESA] Outcome Frequency (100 holdouts)"))
+    dev.off()
     
     browser()
     
+    png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[pca].png"))
+    barplot(height = table(factor(l[[2]], levels = as.character(0:10))), main = name, xlab = "# biclusters",
+            ylab = "BCV[PCA] Outcome Frequency (10x10 holdouts)")
+    dev.off()
+    
     bcvRes <- l[[2]]
-    mean(bcvRes)
-    plot(rep(1, iter), bcvRes)
+    median(bcvRes)
     browser()
 
   })
   
 }
 
-testBcvNewOld <- function(directory, k_limit = 10, iter = 10) {
+testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
   res <- lapply(list.files(directory), function(file) {
     path <- file.path(directory, file)
     
     input <- read.csv(file = path)
     esaRes <- sapply(1:iter, FUN = function(x) {
-      
-      esabcv <- tryCatch({
+      esabcv <- sapply(1:(holdouts ^ 2), function(x) {
+        tryCatch({
         eb <- esaBcv::EsaBcv(input, center = TRUE, niter = 3, r.limit = k_limit, nRepeat = 2, only.r = TRUE)$result.list[1, ]
         if(length(eb) < k_limit + 1) { 
           eb <- c(eb, rep(0, each = k_limit + 1 - length(eb))) 
         }
         eb
-      },
-      error = function(e) rep(NA, each = 11))
-      esabcv
+        },
+        error = function(e) rep(NA, each = 11))
+      })
+      # Create one prediction error from the 100 random holdouts
+      mean_pe <- colMeans(t(esabcv))
+      as.numeric(names(which.min(mean_pe)))
     })
-    esaRes <- t(esaRes)
-    # returns table of test statistic itself
     
     bcvRes <- sapply(1:iter, FUN = function(x) {
-      which.min(bcv(input, k_limit))
+      which.min(bcv(input, k_limit, holdouts = holdouts))
     })
     # returns just a vector of the results
     res <- list(esaRes, bcvRes)
     names(res) <- c("eb", "b")
+    browser()
     res
   })
   names(res) <- list.files(directory)
