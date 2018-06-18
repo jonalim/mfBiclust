@@ -1,8 +1,58 @@
+#### capitalize ####
 capitalize <- Vectorize(function(s) {
   # Use this function whenever names will be displayed in plots or gui
   if (s == "als-nmf") { "ALS-NMF" }
+  if (s == "nipals-pca") { "NIPALS-PCA" }
+  if (s == "svd-pca") { "SVD-PCA" }
   else { switch(s, snmf = "SNMF", pca = "PCA", otsu = "Otsu", 
                 paste0(toupper(substring(s, 1,1)), substring(s, 2))) }
+})
+
+#### clean ####
+#' @export
+setGeneric("clean", function(object, maxNa, ...) {
+  standardGeneric("clean")
+})
+setMethod("clean", c(object = "matrix"), function(object, maxNa, matrixOnly = TRUE) {
+  # browser()
+  
+  object <- as.matrix(object)
+  # cmeans <- colMeans(x, na.rm = TRUE)
+  # x <- sweep(x, 2, cmeans, "-")
+  # badCols <- apply(x, MARGIN = 2, function(col) (sum(is.na(col)) + sum(col == 0, na.rm = TRUE)) == nrow(x))
+  # badRows <- apply(x, MARGIN = 1, function(row) (sum(is.na(row)) + sum(row == 0, na.rm = TRUE)) == ncol(x))
+  # 
+  # x <- x[!badRows, !badCols]
+  x.miss <- is.na(object)
+  goodCols <- apply(object, MARGIN = 2, function(col) sum(is.na(col)) < round(maxNa * nrow(object)))
+  iter <- 1
+  # 
+  # zeroes <- sapply(seq_len(ncol(x)), function(col) {
+  #   xcol <- x[, col]
+  #   xcol[is.na(xcol)] <- 1
+  #   do.call(paste0, args = as.list(unlist(as.numeric(xcol == 0))))
+  # })
+  # names(zeroes) <- zeroes
+  # browser()
+  # 
+  # badCols <- sapply(seq_len(ncol(x)), function(col, zeroes) {
+  #   naComplement <- do.call(paste0, args = as.list(as.numeric(!is.na(x[, col]))))
+  #   if(col == 75) {browser()}
+  #   if(!is.na(zeroes[naComplement])) {
+  #     TRUE} else {FALSE}
+  # }, zeroes = zeroes)
+  # browser()
+  # badCols <- unlist(apply(x, MARGIN = 2, function(th) {
+  #   T2 <- matrix(th * th, nrow = nrow(x), ncol = ncol(x))
+  #   T2[x.miss] <- 0
+  #   which(colSums(T2) == 0)
+  #   print(iter)
+  #   iter <<- iter + 1
+  # }))
+  # browser()
+  if(matrixOnly) {
+    object[, goodCols]
+  } else { list(matrix = object[, goodCols], indexRemaining = goodCols) }
 })
 
 #' Create annotations dataframe for heatmaps
@@ -74,6 +124,26 @@ is.wholenumber <-
     abs(x - round(x)) < tol
   }
 
+nipals_pca <- function(m, k) {
+  np <- tryCatch({
+    nipals::nipals(x = m, ncomp = k, center = TRUE, scale = TRUE, 
+                   tol = 1e-6)
+  },
+  error = function(e) {
+    if(grepl(pattern = paste0("loadings[, h] <- ph : replacement has ",
+                              "length zero"), x = e)) {
+      stop(paste("NIPALS was not able to run. Try running clean() on your",
+                 "input matrix or BiclusterExperiment object."))
+    } else {
+      stop(e)
+    }
+  })
+  new("genericFit", fit = new("genericFactorization",
+                              W = np$scores,
+                              H = t(np$loadings)),
+      method = "nipals-pca")
+}
+
 #' Wrapper for prcomp
 #'
 #' Returns a \code{\link{genericFit}} object.
@@ -81,7 +151,7 @@ is.wholenumber <-
 #' @param m the target matrix
 #' @param k the number of principal components
 #' @export
-pcaWrapper <- function(m, k) {
+svd_pca <- function(m, k) {
   prcmp <- prcomp(m, rank. = k, retx = TRUE)
   new(
     "genericFit",
@@ -90,7 +160,7 @@ pcaWrapper <- function(m, k) {
       W = prcmp$x,
       H = t(prcmp$rotation)
     ),
-    method = "pca"
+    method = "svd-pca"
   )
 }
 

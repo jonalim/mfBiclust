@@ -10,7 +10,6 @@ setClass(
   "BiclusterStrategy",
   slots = list(
     factors = "ANY",
-    biclustAlgo = "character",
     scoreThresh = "matrix",
     loadingThresh = "matrix",
     scoreThreshAlgo = "character",
@@ -51,10 +50,10 @@ setClass(
 BiclusterStrategy <-
   function(m,
            k,
-           bicluster = c("als-nmf", "pca", "snmf"),
+           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca"),
            scoreThresh = c("otsu"),
            loadingThresh = c("otsu")) {
-    bicluster = match.arg(bicluster)
+    method = match.arg(method)
     if (!"matrix" %in% class(m)) {
       warning(paste0(
         "Argument \"m\" must be of type matrix. Attempting to",
@@ -68,32 +67,36 @@ BiclusterStrategy <-
     #### Matrix factorization ###################################################
     bc <- NULL
     
-    if (bicluster == "pca") {
+    if (method == "svd-pca") {
       # use R pca.
-      bc <- pcaWrapper(m, k)
-    } else if (bicluster == "als-nmf") {
+      bc <- svd_pca(m, k)
+    } else if (method == "als-nmf") {
       # Use NMF package
       tryCatch(
         bc <- als_nmf(m, k),
         error = function(c) {
           warning("ALS-NMF failed, switching to PCA.")
-          bc <<- pcaWrapper(m, k) # fallback to PCA
-          bicluster <<- "pca"
+          bc <<- svd_pca(m, k) # fallback to PCA
+          method <<- "svd-pca"
+          return(NULL)
         }
       )
-    } else if (bicluster == "snmf") {
+    } else if (method == "snmf") {
       # Use NMF package
       tryCatch(
         bc <- snmf(m, k),
         error = function(c) {
           warning("Sparse NMF failed, switching to PCA.")
-          bc <<- pcaWrapper(m, k) # fallback to PCA
-          bicluster <<- "pca"
+          bc <<- svd_pca(m, k) # fallback to PCA
+          method <<- "svd-pca"
+          return(NULL)
         }
       )
+    } else if (method == "nipals-pca") {
+      bc <- nipals_pca(m, k)
     }
     
-    else if (bicluster == "plaid" || bicluster == "bimax") {
+    else if (method == "plaid" || method == "bimax") {
       # FIXME use Biclust algorithms
     }
     
@@ -127,7 +130,6 @@ BiclusterStrategy <-
     bcs <- new(
       "BiclusterStrategy",
       factors = bc,
-      biclustAlgo = bicluster,
       scoreThresh = st,
       loadingThresh = lt,
       scoreThreshAlgo = sta,
@@ -156,10 +158,7 @@ validBiclusterStrategy <- function(object) {
       msg <- c(msg, val)
     }
   }
-  if (!inherits(object@biclustAlgo, "character")) {
-    msg <- c(msg, "The biclustAlgo slot must be a character string")
-  }
-  
+
   sThresh <- scoreThresh(object)
   if (!(inherits(sThresh, "matrix") &&
         mode(sThresh) == "numeric")) {
@@ -256,6 +255,13 @@ validBiclusterStrategy <- function(object) {
 }
 setValidity("BiclusterStrategy", validBiclusterStrategy)
 
+setGeneric("method", signature = "bcs", function(bcs) {
+  standardGeneric("method")
+})
+setMethod("method", "BiclusterStrategy", function(bcs) {
+  bcs@factors@method
+})
+
 #' Name of a BiclusterStrategy
 #'
 #' Get this BiclusterStrategy's display-friendly name. If it does not have a name, computes a
@@ -270,7 +276,7 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
   else {
     # Capitalize 
     # als-nmf is not a valid name for a switch case
-    bca <- capitalize(bcs@biclustAlgo)
+    bca <- capitalize(method(bcs))
     sta <- capitalize(bcs@scoreThreshAlgo)
     lta <- capitalize(bcs@loadingThreshAlgo)
     paste(

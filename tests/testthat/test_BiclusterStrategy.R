@@ -5,16 +5,16 @@ set.seed(12345)
 test_that("the BiclusterStrategy constructor is functional", {
   m <- matrix(c(25, 49, 20, 72, 38, 44, 43, 39, 26, 61, 1, 7, 53, 64, 34),
               nrow = 3, ncol = 5)
-  bcs_snmf <- BiclusterStrategy(m, k = 2, bicluster = "pca",
+  bcs_pca <- BiclusterStrategy(m, k = 2, method = "svd-pca",
                                 scoreThresh = "otsu",
                                 loadingThresh = "otsu")
-  expect_true(validObject(bcs_snmf))
+  expect_true(validObject(bcs_pca))
 })
 
 test_that("als-nmf defers singular matrices to pca", {
   set.seed(1)
   m <- matrix(1:16, nrow = 4)
-  expect_warning({bcs <- BiclusterStrategy(m, k = 3, bicluster = "als-nmf")},
+  expect_warning({bcs <- BiclusterStrategy(m, k = 3, method = "als-nmf")},
                  "ALS-NMF failed, switching to PCA.")
 })
 
