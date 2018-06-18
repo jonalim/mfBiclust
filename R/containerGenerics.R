@@ -5,10 +5,13 @@ setGeneric("as.matrix")
 #' Returns distance matrix as a class "matrix" object
 #' 
 #' @export
-setGeneric("distMat", signature = "bce", function(bce, ...) {standardGeneric("distMat")})
+setGeneric("distance", signature = "bce", function(bce, ...) {standardGeneric("distance")})
 
+#' @param bce A BiclusterExperiment to access
+#' @param id Either the integer index or the name of the BiclusterStrategy to 
+#'   get
 #' @export
-setGeneric("getStrat", signature = "bce", function(bce, ...) {standardGeneric("getStrat")})
+setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
 
 #' @export
 setGeneric("name", signature = "bcs", function(bcs) {standardGeneric("name")})

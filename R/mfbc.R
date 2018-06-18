@@ -35,7 +35,7 @@ setMethod(
   "mfbc",
   c(m = "matrix"),
   function(m, annotations = NULL, ks = 2:5, 
-           bicluster = c("als-nmf", "pca", "snmf/l"), 
+           bicluster = c("als-nmf", "svd-pca", "nipals-pca", "snmf/l"), 
            scoreThresh = c("otsu"),
            loadingThresh = c("otsu"), 
            bcv = FALSE, nogui = FALSE) {

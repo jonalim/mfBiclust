@@ -1,15 +1,16 @@
 # example usage
-# gds <- "GDS181" # 3/4 of genes have at least one NA
-# dir.create(paste0("data/", gds))
-# gds <- GEOquery::getGEO(gds, destdir = paste0("data/", gds))
-# GEOquery::Meta(gds)$platform
-# GEOquery::Table(gds)[1:10, 1:6]
-# eSet <- GEOquery::GDS2eSet(gds)
-# rm(gds)
-# bce <- as(eSet, "BiclusterExperiment")
-# 
-# bce <- addStrat(bce, bcs = BiclusterStrategy(m = t(as.matrix(bce)), k = 2))
-
+f <- function() {
+  gds <- "GDS181" # 3/4 of genes have at least one NA
+  dir.create(paste0("data/", gds))
+  gds <- GEOquery::getGEO(gds, destdir = paste0("data/", gds))
+  GEOquery::Meta(gds)$platform
+  GEOquery::Table(gds)[1:10, 1:6]
+  eSet <- GEOquery::GDS2eSet(gds)
+  rm(gds)
+  bce <- as(eSet, "BiclusterExperiment")
+  bce <- clean(bce, 0.5) # Make sure to warn the user that their biclusterstrategies will be invalidated.
+  bce <- addStrat(bce, bcs = BiclusterStrategy(m = t(as.matrix(bce)), k = 4, method = "nipals"))
+}
 # 
 
 

@@ -25,11 +25,11 @@ setClass("BiclusterExperiment", slots = list(
 
 setAs("ExpressionSet", "BiclusterExperiment", function(from) {
   ad <- Biobase::exprs(from)
-  
+
   # remove genes with any NA
-  naIndex <- which(rowSums(is.na(ad)) > 0)
-  from <- from[-naIndex, ]
-  ad <- Biobase::exprs(from)
+  # naIndex <- which(rowSums(is.na(ad)) > 0)
+  # from <- from[-naIndex, ]
+  # ad <- Biobase::exprs(from)
   
   d <- dist(t(Biobase::exprs(from)), method = "euclidean")
   
@@ -68,12 +68,12 @@ setGeneric("BiclusterExperiment", function(m, ...) {
 #' Careful, for m, rows are samples and columns are features
 #' eSet objects store assayData transposed: rows are features and columns are samples.
 #' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
-setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE) {
+setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE, maxNa = 0.5) {
   if (bcv == TRUE) {
     warning("Bi-cross-validation is still under development. msNMF
                       cannot predict the optimal clustering strategy.")
   }
-  
+  m <- clean(m, maxNa)
   d <- dist(m, method = "euclidean")
 
   if(!inherits(phenoData, "AnnotatedDataFrame")) {
@@ -143,21 +143,59 @@ setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
 # FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
-  Biobase::assayData(x)[["abund"]]
+  Biobase::assayDataElement(x, "abund")
   })
 
-setMethod("distMat", c(bce = "BiclusterExperiment"), function(bce) {
+setMethod("clean", c(object = "BiclusterExperiment"), function(object, maxNa) {
+  results <- clean(t(as.matrix(object)), maxNa, FALSE)
+  # [[2]] contains a vector of indexes of the remaining columns
+  # [[1]] contains the cleaned matrix itself
+  bce <- object[which(results[[2]]), ]
+  distance(bce) <- dist(results[[1]], method = "euclidean")
+  strategies(bce) <- list()
+  
+  if(validObject(bce, test = FALSE)) bce
+})
+
+setMethod("distance", c(bce = "BiclusterExperiment"), function(bce) {
   as.matrix(bce@distance)
 }
 )
+setGeneric("distance<-", function(object, value) standardGeneric("distance<-"))
+setReplaceMethod("distance", signature(object = "BiclusterExperiment",
+                                       value = "dist"),
+                 function(object, value) { object@distance <- value 
+                 return(object)}
+)
 
-setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, stratName) {
-  bce@strategies[[stratName]]
+setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
+  # if (inherits(id, "character")) { 
+  bce@strategies[[id]] 
+  # }
+  # else {bce@strategies[idL]}
 })
 
 #' Names of BiclusterStrategies in this BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
+
+#' @export
+setGeneric("strategies", signature = "bce", function(bce) {
+  standardGeneric("strategies")
+})
+setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
+  bce@strategies
+})
+
+setGeneric("strategies<-", function(object, value) standardGeneric("strategies<-"))
+setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
+                                       value = "list"),
+                 function(object, value) { 
+                   object@strategies <- value 
+                   if(validObject(object, test = FALSE)) {
+                     object }
+                 }
+)
 
 #### Abundance heatmap #########################################################
 #' Abundance heatmap
@@ -173,15 +211,16 @@ setMethod("plot", c(x = "BiclusterExperiment"),
           function(x, logBase = 0, phenoLabels = c(), biclustLabels = c(), 
                    ordering = c("input", "distance", "cluster"), strategy = "", 
                    rowNames = FALSE, colNames = FALSE) {
-            
-            data <- as.matrix(x)
+            data <- t(as.matrix(x))
             if(logBase != 0) {
               signs <- sign(data)
               data <- log(abs(data), logBase) * signs
               data[is.nan(data)] <- 0
             }
+            
             # pheatmap throws cryptic error without rownames
-            row.names(data) <- seq_len(nrow(data))
+            if(is.null(row.names(data))) row.names(data) <- seq_len(nrow(data))
+            
             # Validate requested annotations and parse into a dataframe
             annots <- createAnnots(x, rownames(data), strategy, phenoLabels, biclustLabels)
             
@@ -231,7 +270,7 @@ setMethod("plotDist", signature(x = "BiclusterExperiment"),
           function(x, distType = c("euclidean", "pearson"), phenoLabels = c(), biclustLabels = c(), 
                    ordering = c("input", "distance", "cluster"), strategy = "", 
                    rowColNames = FALSE) {
-            if(distType == "euclidean") { data <- distMat(x) }
+            if(distType == "euclidean") { data <- distance(x) }
             else {data <- 1 - cor(t(as.matrix(x)), method = "pearson")}
             # pheatmap throws cryptic error without rownames
             row.names(data) <- seq_len(nrow(data))
@@ -348,8 +387,10 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
 )
 
 #### Score plot ################################################################
+#' @param thresholds A single numeric, vector, or matrix of thresholds. See 
+#'   documentation
 #' @export
-setGeneric("plotSamples", signature = "obj", function(obj, thresholds = NULL, ...) {
+setGeneric("plotSamples", signature = "obj", function(obj, thresholds = NULL, strategy, bicluster, ordering) {
   standardGeneric("plotSamples")
 })
 
@@ -499,16 +540,32 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
 setGeneric("pca", signature = "bce", function(bce) {
   standardGeneric("pca")
 })
-
 setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
-  m <- as.matrix(bce)
-  prcmp <- prcomp(m)
-  plot(prcmp$x[, 1], prcmp$x[, 2], pch = 16,
+  pcaStrats <- unlist(lapply(strategies(bce), function(strat) {
+    (method(strat) == "nipals-pca" || method(strat) == "svd-pca")
+  }))
+  if(any(pcaStrats)) {
+    # PCA has already been performed
+    strat <- getStrat(bce, min(which(pcaStrats))) # A PCA-encapsulating strategy
+    var <- nrow(as.matrix(bce))
+    xs <- strat@factors@fit@W[, 1]
+    var1 <- round(sd(xs) ^ 2 / var, 1)
+    ys <- strat@factors@fit@W[, 2]
+    var2 <- round(sd(ys) ^ 2 / var, 1)
+  } else {
+    m <- as.matrix(bce)
+    prcmp <- prcomp(m)
+    xs <- prcmp$x[, 1]
+    var1 <- round(prcmp$sdev[1]^2 / sum(prcmp$sdev^2) * 100, 1)
+    ys <- prcmp$x[, 2]
+    var2 <- round(prcmp$sdev[2]^2 / sum(prcmp$sdev^2) * 100, 1)
+  }
+  plot(xs, ys, pch = 16,
        xlab = paste0("PC1: ", 
-                     round(prcmp$sdev[1]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     var1, 
                      "% variance"),
        ylab = paste0("PC2: ", 
-                     round(prcmp$sdev[2]^2 / sum(prcmp$sdev^2) * 100, 1), 
+                     var2, 
                      "% variance"))
 })
             

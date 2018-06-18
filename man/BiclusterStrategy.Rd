@@ -4,17 +4,17 @@
 \alias{BiclusterStrategy}
 \title{Construct a BiclusterStrategy}
 \usage{
-BiclusterStrategy(m, k, bicluster = c("als-nmf", "pca", "snmf"),
-  scoreThresh = c("otsu"), loadingThresh = c("otsu"))
+BiclusterStrategy(m, k, biclustAlgo = c("als-nmf", "svd-pca", "snmf",
+  "nipals-pca"), scoreThresh = c("otsu"), loadingThresh = c("otsu"))
 }
 \arguments{
-\item{bicluster}{the biclustering algorithm to use}
-
 \item{scoreThresh}{the score thresholding algorithm to use. Ignored if
 bicluster is "plaid" or "bimax"}
 
 \item{loadingThresh}{the loading thresholding algorithm to use. Ignored if
 bicluster is "plaid" or "bimax"}
+
+\item{bicluster}{the biclustering algorithm to use}
 }
 \description{
 This class encapsulates bicluster results for one biclustering algorithm, one
