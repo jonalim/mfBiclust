@@ -116,7 +116,8 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
 #'   of result counts is returned
 #'
 #' @export
-auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE) {
+auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
+                     verbose = TRUE) {
   distr <- rep(1, each = kLimit)
   distrOld <- distr
   change <- 1
@@ -132,8 +133,7 @@ auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE)
     resid <- unlist(mapply(function(d, dOld) {
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
-    #resid <- cumprod(resid)[length(resid)] ^ (1 / length(resid))
-    print(resid)
+    if(verbose) print(resid)
     converged <- all(resid < tol)
     
     distrOld <- distr
