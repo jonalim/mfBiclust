@@ -14,18 +14,21 @@ setGeneric("clean", function(object, maxNa, ...) {
   standardGeneric("clean")
 })
 setMethod("clean", c(object = "matrix"), function(object, maxNa, matrixOnly = TRUE) {
-  # browser()
-  
   object <- as.matrix(object)
-  # cmeans <- colMeans(x, na.rm = TRUE)
-  # x <- sweep(x, 2, cmeans, "-")
-  # badCols <- apply(x, MARGIN = 2, function(col) (sum(is.na(col)) + sum(col == 0, na.rm = TRUE)) == nrow(x))
-  # badRows <- apply(x, MARGIN = 1, function(row) (sum(is.na(row)) + sum(row == 0, na.rm = TRUE)) == ncol(x))
-  # 
-  # x <- x[!badRows, !badCols]
+
+  badCols <- apply(object, MARGIN = 2, function(col) (sum(is.na(col)) + sum(col == 0, na.rm = TRUE)) == nrow(object))
+  badRows <- apply(object, MARGIN = 1, function(row) (sum(is.na(row)) + sum(row == 0, na.rm = TRUE)) == ncol(object))
+  # Row checking not yet implemented; not necessary so far?
   x.miss <- is.na(object)
-  goodCols <- apply(object, MARGIN = 2, function(col) sum(is.na(col)) < round(maxNa * nrow(object)))
-  iter <- 1
+  goodCols <- rep(TRUE, ncol(object))
+  if(maxNa > 0) {
+    goodCols <- apply(object, MARGIN = 2, function(col) {
+      sum(is.na(col)) < round(maxNa * nrow(object))
+      }
+      )
+  }
+  goodCols[badCols] <- FALSE
+  
   # 
   # zeroes <- sapply(seq_len(ncol(x)), function(col) {
   #   xcol <- x[, col]
@@ -124,14 +127,28 @@ is.wholenumber <-
     abs(x - round(x)) < tol
   }
 
+autoNipals <- function(m, k, cleanParam = 0) {
+  m <- clean(m, cleanParam)
+  
+  tryCatch({
+    nipals_pca(m, k)
+  }, error = function(e) {
+    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
+      cleanParam <- cleanParam + (1 - cleanParam) / 2
+      message(paste("Too many NA in the data. Cleaning with maxNAs at", 
+                    cleanParam))
+      autoNipals(m, k, cleanParam)
+    } else { stop(e) }
+  })
+}
+
 nipals_pca <- function(m, k) {
   np <- tryCatch({
-    nipals::nipals(x = m, ncomp = k, center = TRUE, scale = TRUE, 
+    nipals::nipals(x = m, ncomp = k, center = FALSE, scale = FALSE, 
                    tol = 1e-6)
   },
   error = function(e) {
-    if(grepl(pattern = paste0("loadings[, h] <- ph : replacement has ",
-                              "length zero"), x = e)) {
+    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
       stop(paste("NIPALS was not able to run. Try running clean() on your",
                  "input matrix or BiclusterExperiment object."))
     } else {
@@ -152,7 +169,7 @@ nipals_pca <- function(m, k) {
 #' @param k the number of principal components
 #' @export
 svd_pca <- function(m, k) {
-  prcmp <- prcomp(m, rank. = k, retx = TRUE)
+  prcmp <- prcomp(m, rank. = k, retx = TRUE, center = FALSE)
   new(
     "genericFit",
     fit = new(
