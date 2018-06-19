@@ -4,15 +4,15 @@
 \alias{bcv}
 \title{Perform bi-cross-validation}
 \usage{
-bcv(Y, kLimit, holdouts = 10)
+bcv(Y, ks, holdouts = 10)
 }
 \arguments{
 \item{Y}{the input matrix}
 
-\item{kLimit}{the maximum number of biclusters to evaluate}
-
 \item{holdouts}{the number of holdouts to perform along each dimension of
 matrix \code{Y}}
+
+\item{kLimit}{the maximum number of biclusters to evaluate}
 }
 \description{
 The number of biclusters yielding the lowest BCV value is the predicted best.

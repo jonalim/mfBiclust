@@ -62,7 +62,13 @@ BiclusterStrategy <-
       m <- as.matrix(m)
     }
     # k must be whole number, smaller than both dimensions of m
-    k <- validateKM(k, m)
+    tryCatch(k <- validateKM(k, m),
+             error = function(e) {
+               warning(paste("Initializing k to the size of the smaller matrix",
+                             "dimension."))
+               k <<- min(nrow(m), ncol(m))
+             }
+             )
     
     #### Matrix factorization ###################################################
     bc <- NULL

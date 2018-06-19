@@ -1,34 +1,3 @@
-# 
-# 
-# esabcvWrapper <- function(m, maxPCs, holdoutRep = 20, niter = 1, center = TRUE) {
-#   res <- unlist(sapply(seq_len(repetition), function(x) {
-#     # takes the argmin[index] of the colmeans of BCV prediction error
-#     eb <- NULL
-#     
-#     while(is.null(eb)) {
-#       try(
-#         eb <- esaBcv::EsaBcv(Y = m, niter = niter, r.limit = maxPCs, nRepeat = holdoutRep, center = center, only.r = TRUE)
-#       )
-#     }
-#     
-#     as.numeric(names(which.min(eb$result.list[1, ])))
-#   }))
-#   
-#   list(best = mean(res), results = res)
-# }
-# 
-# evalEsaBcv.sim <- function(numBiclust = NULL, maxPCs = 10, center = TRUE, 
-#                            noise = 0.25, save = FALSE) {
-#   if (!is.null(numBiclust)) {
-#     sim <- genSimData(numBiclust, noise)
-#   } else {
-#     numBiclust <- "3_orig"
-#     sim <- genSimData3()
-#   }
-# 
-#   evalEsaBcv.matrix(sim, center, maxPCs, numBiclust, save)
-# }
-
 analyzeTest <- function(test_res, k_limit = 10, iter = 10) {
   
   lapply(seq_len(length(test_res)), FUN = function(i) {
@@ -89,12 +58,6 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
   res
 }
 
-# eval_bcv <- function(Y, k_limit, repeats = 20, holdouts = 10) {
-#   results <- sapply(seq_len(repeats), function(x) {bcv(simdata3, k_limit = k_limit)})
-#   k.best <- mean(apply(results, MARGIN = 2, FUN = function(col) { which.min(col) }))
-#   list(k.best = k.best, results = results)
-# }
-
 #' Perform bcv until convergence
 #'
 #' Performs BCV until the the distribution of results has converged. Often this
@@ -116,16 +79,17 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
 #'   of result counts is returned
 #'
 #' @export
-auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
+auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
                      verbose = TRUE) {
-  distr <- rep(1, each = kLimit)
+  distr <- rep(1, each = length(ks))
+  names(distr) <- as.character(ks)
   distrOld <- distr
   change <- 1
   i <- 0
   dold <- 0
   converged <- FALSE
   while(!converged && i < maxIter) {
-    bcvRes <- which.min(bcv(Y, kLimit))
+    bcvRes <- which.min(bcv(Y, ks))
     distr[bcvRes] <- distr[bcvRes] + 1
     # all -> 340
     # sqrt(.Machine$double.eps) -> 230
@@ -169,15 +133,15 @@ auto_bcv <- function(Y, kLimit, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
 #'   matrix \code{Y}
 #'
 #' @export
-bcv <- function(Y, kLimit, holdouts = 10) {
+bcv <- function(Y, ks, holdouts = 10) {
   Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   
-  kLimit <- min(kLimit, nrow(Y) - 1, ncol(Y) - 1)
+  ks <- ks[ks < min(nrow(Y) - 1, ncol(Y) - 1)]
   
-  result.list <- bcvGivenKs(Y, seq_len(kLimit), holdouts)
-  names(result.list) <- seq_len(kLimit)
+  result.list <- bcvGivenKs(Y, ks, holdouts)
+  names(result.list) <- as.character(ks)
   
   result.list
 }
@@ -187,10 +151,7 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
   # initialize...
   p <- ncol(Y)
   n <- nrow(Y)
-  
-  rcvs <- rep(0, length(ks))
-  names(rcvs) <- as.character(ks)
-  
+
   # Set up bi-cross-validation folds
   nHoldoutInd <- (seq_len(n) %% holdouts) + 1
   nHoldoutInd <- sample(nHoldoutInd, size = n)
@@ -198,28 +159,37 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
   pHoldoutInd <- (seq_len(p) %% holdouts) + 1
   pHoldoutInd <- sample(pHoldoutInd, size = p)
 
-  # Perform PCA on the whole matrix
-  prcmp <- prcomp(Y, rank. = max(ks), retx = TRUE)
-  tM = prcmp$x
-  pM = t(prcmp$rotation)
-  var_k <- prcmp$sdev[seq_len(max(ks))] ^ 2
+  # Try NIPALS-PCA if any NA values
+  if(any(is.na(Y))) {
+    pca <- function(Y, k) { nipals_pca(Y, k)$fit }
+  } else {
+    pca <- function(Y, k) { prcomp(Y, rank. = k, retx = TRUE, center = FALSE) }
+  }
   
-  sapply(seq_len(holdouts), function(x) {
+  # Perform PCA on the whole matrix
+  pcares <- pca(Y, max(ks))
+  tM = pcares$scores
+  pM = pcares$loadings
+  # var_k <- prcmp$sdev[seq_len(max(ks))] ^ 2
+  
+  # Returns an array, ks by holdouts. Need to take row sums again.
+  rowHoldoutResults <- sapply(seq_len(holdouts), function(x) {
     rInd <- which(nHoldoutInd == x) # row holdout indices
     
-    sapply(seq_len(holdouts), function(x) {
+    # Returns an array, ks by holdouts. Need to take row sums.
+    colHoldoutResults <- sapply(seq_len(holdouts), function(x) {
       sInd <- which(pHoldoutInd == x) # column holdout indices
       
       A <- Y[rInd, sInd] # "holdout quadrant"
       D <- Y[-rInd, -sInd] # "holdin quadrant"
       
       # PCA to factor the holdin quadrant
-      prcmp <- prcomp(D, rank. = max(ks), retx = TRUE)
-      tcv <- prcmp$x
-      pcv <- t(prcmp$rotation)
+      pcares11 <- pca(D, max(ks))
+      tcv <- pcares11$scores
+      pcv <- pcares11$loadings
       
-      sapply(seq_len(length(ks)), function(x) {
-        k <- ks[x]
+      # Returns k norms. Must sum these up to obtain rcvs
+      holdoutRes <- sapply(ks, function(k) {
         # PCA-based approximation of the hold-in quadrant
         estD_k <- MASS::ginv(tcv[, 1:k, drop = FALSE] %*% pcv[1:k, , drop = FALSE])
         
@@ -227,10 +197,16 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
         estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
         
         resid <- A - estA # residual holdout matrix
-        rcvs[x] <<- rcvs[x] + sum(resid ^ 2) # squared Frobenius norm
+        sum(resid ^ 2) # squared Frobenius norm
       })
+      holdoutRes
     })
+    
+    rowSums(colHoldoutResults)
   })
+  rcvs <- rowSums(rowHoldoutResults)
+  names(rcvs) <- as.character(ks)
+  
   rcvVals <- rcvs / holdouts / holdouts # normalize for the number of holdouts
   
   # subtract <- c(0, cumsum(var_k[1:(length(var_k) - 1)]))
