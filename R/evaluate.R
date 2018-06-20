@@ -1,4 +1,29 @@
 # example usage
+
+evaluateGDS <- function() {
+  # define list of files and known number biclusters
+  gds <- c("GSE1", "GSE2223")
+  gds <- "GSE3933"
+  gds <- "GSE68907"
+  #data/GSE1/GPL7.soft # grep "melanoma", others in source_name_ch1 # 19, 19
+  # data/GSE2223/GPL1833.soft # grep case-sensitive BRAIN GBM O others in source_name_ch2 # 5, 31, 14, 5
+  # data/GSE17025/GSE17025_series_matrix.txt.gz # grep EE, PS, and NL in sourece_name_ch1
+  # data/GSE3726/GSE3726_series_matrix.txt.gz # grep B, C in title # 62, 42
+  # "data/GSE4045/GSE4045_series_matrix.txt.gz" # grep serrated in description # 8, 29
+  # data/GSE82009/GPL8300.soft # characteristics_ch1 can be read as factor # 	14,7,14,15
+  # Ramaswamy multicancer # get labels 1:14 from labels files # tab-delimited
+  # data/GSE68895/GPL80.soft # 2 biclusters. either grep follicular in source_name_ch1 or -- in characteristics_ch1.2
+  
+  # GSE3398 needs individual samples assembled (Garber adenocarcinomas)
+  # "data/GSE3933/GSE3933-GPL3044_series_matrix.txt.gz" 43008 features (not processed into genes)
+
+  # 
+  oracle <- 
+  # inside loop: fetch file.
+    # perform biclustering
+  #evaluate
+  
+}
 geo2Bce <- function(gds = "gds181") {
   # 3/4 of genes have at least one NA
   dir.create(paste0("data/", gds))
@@ -10,8 +35,8 @@ geo2Bce <- function(gds = "gds181") {
 }
 
 #' @export
-biclusterTranscriptomics <- function(bce, maxK = 500) {
-  biclusterTranscriptomicsHelper(bce, maxK, 0)
+biclusterGDS <- function(bce, k = 5) {
+  biclusterTranscriptomicsHelper(bce, k, 0)
 }
 
 biclusterTranscriptomicsHelper <- function(bce, maxK, cleanParam = 0) {
