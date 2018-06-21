@@ -1,14 +1,51 @@
+#' @include helperFunctions.R
 # example usage
 
-evaluateGDS <- function() {
+#' @importFrom Biobase pData
+testMicroarrays <- function() {
   # define list of files and known number biclusters
-  gds <- c("GSE1", "GSE2223")
-  gds <- "GSE3933"
-  gds <- "GSE68907"
+  
   #data/GSE1/GPL7.soft # grep "melanoma", others in source_name_ch1 # 19, 19
-  # data/GSE2223/GPL1833.soft # grep case-sensitive BRAIN GBM O others in source_name_ch2 # 5, 31, 14, 5
+  gse1 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE1/GSE1_series_matrix.txt.gz")
+  whichClustered <- read.csv(file = "data/annotated_microarrays/GSE1/which_clustered.csv", stringsAsFactors = FALSE)
+  gse1.labels <- rep("unclustered", nrow(pData(gse2223)))
+  gse1.labels[which(sapply(pData(gse1)$title, function(x) {
+    s <- substring(text = x, first = 7, last = 30)
+    stringi::stri_replace_first(s, ".", regex = "-")
+    }) %in% whichClustered[, 1])] <- "clustered"
+  
+  # data/GSE2223/GPL1833.soft # grep case-sensitive BRAIN GBM O others in source_name_ch2 # 4, 31, 14, 6
+  gse2223 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE2223/GSE2223_series_matrix.txt.gz")
+  gse2223.labels <- rep("Other", nrow(pData(gse2223)))
+  gse2223.labels[grep(pattern = "BRAIN", x = pData(gse2223)$source_name_ch2, 
+                     ignore.case = FALSE)] <- "BRAIN"
+  gse2223.labels[grep(pattern = "GBM", x = pData(gse2223)$source_name_ch2, 
+                     ignore.case = TRUE)] <- "GBM"
+  gse2223.labels[grep(pattern = "GNN", x = pData(gse2223)$source_name_ch2, 
+                      ignore.case = TRUE)] <- "GBM"
+  gse2223.labels[grep(pattern = "O", x = pData(gse2223)$source_name_ch2, 
+                      ignore.case = FALSE)] <- "O"
+  
   # data/GSE17025/GSE17025_series_matrix.txt.gz # grep EE, PS, and NL in sourece_name_ch1
-  # data/GSE3726/GSE3726_series_matrix.txt.gz # grep B, C in title # 62, 42
+  # 79, 12, 12
+  gse17025 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE17025/GSE17025_series_matrix.txt.gz")
+  gse17025.labels <- rep(0, nrow(pData(gse17025)))
+  gse17025.labels[grep(pattern = "EE", x = pData(gse17025)$source_name_ch1, 
+                      ignore.case = FALSE)] <- "EE"
+  gse17025.labels[grep(pattern = "PS", x = pData(gse17025)$source_name_ch1, 
+                      ignore.case = TRUE)] <- "PS"
+  gse17025.labels[grep(pattern = "NL", x = pData(gse17025)$source_name_ch1, 
+                      ignore.case = TRUE)] <- "NL"
+  
+  exprSets <- list(gse1, gse17025, gse2223)
+  labels <- list(gse1.labels, gse17025.labels, gse2223.labels)
+  mapply(function(es, labels) {
+    bce <- as(es, "BiclusterExperiment")
+    k.oracle <- length(labels)
+    addStrat(bce, BiclusterStrategy(t(as.matrix(bce)), k.oracle, method = "nipals"))
+    },
+    es = exprSets, labels = labels)
+  # data1/GSE3726/GSE3726_series_matrix.txt.gz # grep B, C in title # 62, 42
   # "data/GSE4045/GSE4045_series_matrix.txt.gz" # grep serrated in description # 8, 29
   # data/GSE82009/GPL8300.soft # characteristics_ch1 can be read as factor # 	14,7,14,15
   # Ramaswamy multicancer # get labels 1:14 from labels files # tab-delimited
@@ -18,28 +55,37 @@ evaluateGDS <- function() {
   # "data/GSE3933/GSE3933-GPL3044_series_matrix.txt.gz" 43008 features (not processed into genes)
 
   # 
-  oracle <- 
   # inside loop: fetch file.
     # perform biclustering
   #evaluate
   
 }
+
+#' Perform biclustering on microarray data
+#' 
+#' Returns a BiclusterExperiment object with Bicluster.X fields in phenoData.
+#' Optionally, also a list containing bicluster assignments
+#' @export
+biclusterGDS <- function(bce, k = 5) {
+  autoNipals() # FIXME
+}
+
 geo2Bce <- function(gds = "gds181") {
   # 3/4 of genes have at least one NA
   dir.create(paste0("data/", gds))
   gds <- GEOquery::getGEO(gds, destdir = paste0("data/", gds))
   GEOquery::Meta(gds)$platform
-  GEOquery::Table(gds)[1:10, 1:6]
-  eSet <- GEOquery::GDS2eSet(gds)
-  bce <- as(eSet, "BiclusterExperiment")
+  GEOquery::Table(gse1)[1:10, 1:6]
+  eSet <- GEOquery::GDS2eSet(gse1)
+  bce <- as(gse1, "BiclusterExperiment")
 }
 
+#' Automatically create a BiclusterStrategy for an existing 
+#'
+#' speed up by setting cleanParam to 0.5
+#' 
 #' @export
-biclusterGDS <- function(bce, k = 5) {
-  biclusterTranscriptomicsHelper(bce, k, 0)
-}
-
-biclusterTranscriptomicsHelper <- function(bce, maxK, cleanParam = 0) {
+auto_bcs <- function(bce, k, cleanParam = 0) {
   if(cleanParam > 0) { bce <- clean(bce, cleanParam) }
   
   tryCatch({

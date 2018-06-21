@@ -132,12 +132,78 @@ validBiclusterExperiment <- function( object ) {
 }
 setValidity("BiclusterExperiment", validBiclusterExperiment)
 
+#' Add a BiclusterStrategy to a BiclusterExperiment
+#' 
+#' Due to requirements of various biclustering methods, this function may warn
+#' that the chosen biclustering method was overridden.
+#' 
+#' Also, if any matrix elements of abund(BiclusterExperiment) are missing, then
+#' the BiclusterExperiment returned is not guaranteed to have the same number of
+#' samples and features.
+#' 
 #' @export
-setGeneric("addStrat", signature = "bce", function(bce, bcs) {standardGeneric("addStrat")})
-setMethod("addStrat", c(bce = "BiclusterExperiment"), function(bce, bcs) {
+setGeneric("addStrat", signature = "bce", function(bce, k, 
+                                                   method = c("als-nmf", 
+                                                              "svd-pca", "snmf", 
+                                                                 "nipals-pca"),
+                                                   maxNa = 1) {
+  if(!is.wholenumber(k)) {
+    stop("Arg \"k\" must be a whole number.")
+  }
+  
+  # k must be whole number, smaller than both dimensions of m
+  m <- t(as.matrix(bce))
+  tryCatch(k <- validateKM(k, m),
+           error = function(e) {
+             warning(paste("Initializing k to the size of the smaller matrix",
+                           "dimension."))
+             k <<- min(nrow(m), ncol(m))
+           }
+  )
+  
+  if(!(maxNa <= 1 && maxNa >= 0)) {
+    stop("Arg \"maxNa\" must be in the range of 0 to 1.")
+  }
+  
+  standardGeneric("addStrat")
+  })
+
+setMethod("addStrat", c(bce = "BiclusterExperiment"), 
+          function(bce, k, method = c("als-nmf", "svd-pca", "snmf", 
+                                      "nipals-pca"), maxNa) {
+            browser()
+  bce <- clean(bce, maxNa)
+  silent <- FALSE
+  method.orig <- method
+  if(is.null(method)) {
+    method <- "als-nmf"
+    silent <- TRUE # User does not need any warnings regarding algorithm choice
+    # (suppressing warnings is possible only because the BiclusterStrategy
+    # constructor does not return any user-informative warnings.
+  }
+  method <- match.arg(method)
+  
+  tryCatch({
+    if(silent) {
+      bcs <- suppressWarnings(BiclusterStrategy(m = t(as.matrix(bce)), 
+                                                    k = maxK, method = method))
+    } else {
+      bcs <- BiclusterStrategy(m = t(as.matrix(bce)), k = maxK, method = method)
+    }
+  }, error = function(e) {
+    maxNa <- maxNa - (maxNa / 2)
+    message(paste("Cleaning with maxNAs at", maxNa))
+    
+    # Call recursively until success.
+    addStrat(bce, k, method.orig, maxNa)
+  })
+
   name <- name(bcs)
   bce@strategies[[name]] <- bcs
-  bce
+  if(validObject(bce)) {
+    message(paste("Added BiclusterStrategy named", name))
+    bce
+  }
 })
 
 # FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed
@@ -147,10 +213,10 @@ setMethod("as.matrix", "BiclusterExperiment", function(x) {
   })
 
 setMethod("clean", c(object = "BiclusterExperiment"), function(object, maxNa) {
-  results <- clean(t(as.matrix(object)), maxNa, FALSE)
+  results <- clean(t(as.matrix(object)), maxNa, TRUE)
   # [[2]] contains a vector of indexes of the remaining columns
   # [[1]] contains the cleaned matrix itself
-  bce <- object[which(results[[2]]), ]
+  bce <- object[results[[2]][[2]], results[[2]][[1]]]
   distance(bce) <- dist(results[[1]], method = "euclidean")
   strategies(bce) <- list()
   

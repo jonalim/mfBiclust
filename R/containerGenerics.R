@@ -1,5 +1,34 @@
 setGeneric("as.matrix")
 
+#### clean ####
+#' Cleans a matrix or BiclusterExperiment
+#'
+#' @export
+setGeneric("clean", function(object, maxNa = 0, dimsRemain = FALSE) {
+  if(!(maxNa <= 1 && maxNa >= 0)) {
+    stop("Arg \"maxNa\" must be in the range of 0 to 1.")
+  }
+  standardGeneric("clean")
+})
+setMethod("clean", c(object = "matrix"), function(object, maxNa, dimsRemain) {
+  maxNaPerRow <- round(maxNa * ncol(object))
+  maxNaPerCol <- round(maxNa * nrow(object))
+  
+  # Both 0s and NAs can foul up NIPALS
+  goodRows <- apply(object, MARGIN = 1, function(row) 
+    (sum(is.na(row)) + sum(row == 0, na.rm = TRUE)) < maxNaPerRow)
+  goodCols <- apply(object, MARGIN = 2, function(col) 
+    (sum(is.na(col)) + sum(col == 0, na.rm = TRUE)) < maxNaPerCol)
+  
+  object <- object[goodRows, goodCols]
+  
+  if(dimsRemain) {
+    list(obj = object, dimsRemain = list(goodRows, goodCols))
+  } else { object }
+  
+})
+
+
 #' Distance matrix accessor
 #' 
 #' Returns distance matrix as a class "matrix" object

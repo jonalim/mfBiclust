@@ -35,6 +35,9 @@ of thresholds, where each row k contains multiple thresholds to plot for
 bicluster k. The first threshold will be applied to determine bicluster
 members.
 
+Careful! Use of NIPALS-PCA is not allowed when data is not missing. (NIPALS
+is very slow.)
+
 To be added: factorize: sparsenmf, plaid, bimax.
 To be added: threshold: ita, fcm
 }

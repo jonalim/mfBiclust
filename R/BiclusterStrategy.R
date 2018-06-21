@@ -36,6 +36,9 @@ setClass(
 #' of thresholds, where each row k contains multiple thresholds to plot for
 #' bicluster k. The first threshold will be applied to determine bicluster
 #' members.
+#' 
+#' Careful! Use of NIPALS-PCA is not allowed when data is not missing. (NIPALS
+#' is very slow.)
 #'
 #' To be added: factorize: sparsenmf, plaid, bimax.
 #' To be added: threshold: ita, fcm
@@ -45,8 +48,6 @@ setClass(
 #' bicluster is "plaid" or "bimax"
 #' @param loadingThresh the loading thresholding algorithm to use. Ignored if
 #' bicluster is "plaid" or "bimax"
-#'
-#' @export
 BiclusterStrategy <-
   function(m,
            k,
@@ -61,49 +62,46 @@ BiclusterStrategy <-
       ))
       m <- as.matrix(m)
     }
-    # k must be whole number, smaller than both dimensions of m
-    tryCatch(k <- validateKM(k, m),
-             error = function(e) {
-               warning(paste("Initializing k to the size of the smaller matrix",
-                             "dimension."))
-               k <<- min(nrow(m), ncol(m))
-             }
-             )
     
     #### Matrix factorization ###################################################
     bc <- NULL
     
-    if (method == "svd-pca") {
-      # use R pca.
-      bc <- svd_pca(m, k)
-    } else if (method == "als-nmf") {
-      # Use NMF package
-      tryCatch(
-        bc <- als_nmf(m, k),
-        error = function(c) {
-          warning("ALS-NMF failed, switching to PCA.")
-          bc <<- svd_pca(m, k) # fallback to PCA
-          method <<- "svd-pca"
-          return(NULL)
-        }
-      )
-    } else if (method == "snmf") {
-      # Use NMF package
-      tryCatch(
-        bc <- snmf(m, k),
-        error = function(c) {
-          warning("Sparse NMF failed, switching to PCA.")
-          bc <<- svd_pca(m, k) # fallback to PCA
-          method <<- "svd-pca"
-          return(NULL)
-        }
-      )
-    } else if (method == "nipals-pca") {
+    if(!any(is.na(m))) {
+      
+      # These three are only valid when m is complete
+      if (method == "svd-pca") {
+        # use R pca.
+        bc <- svd_pca(m, k)
+      } else if (method == "als-nmf") {
+        # Use NMF package
+        tryCatch(
+          bc <- als_nmf(m, k),
+          error = function(c) {
+            warning("ALS-NMF failed, switching to PCA.")
+            bc <<- svd_pca(m, k) # fallback to PCA
+            method <<- "svd-pca"
+            return(NULL)
+          }
+        )
+      } else if (method == "snmf") {
+        # Use NMF package
+        tryCatch(
+          bc <- snmf(m, k),
+          error = function(c) {
+            warning("Sparse NMF failed, switching to PCA.")
+            bc <<- svd_pca(m, k) # fallback to PCA
+            method <<- "svd-pca"
+            return(NULL)
+          }
+        )
+      }
+    } else {
+      if (method != "nipals-pca") {
+        warning(paste("Switching to the NIPALS-PCA method because the input",
+                      "matrix has missing data"))
+        method <- "nipals-pca"
+      }
       bc <- nipals_pca(m, k)
-    }
-    
-    else if (method == "plaid" || method == "bimax") {
-      # FIXME use Biclust algorithms
     }
     
     biclustNames <- unlist(sapply(seq_len(k), function(x) {

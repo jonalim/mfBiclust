@@ -8,56 +8,6 @@ capitalize <- Vectorize(function(s) {
                 paste0(toupper(substring(s, 1,1)), substring(s, 2))) }
 })
 
-#### clean ####
-#' @export
-setGeneric("clean", function(object, maxNa, ...) {
-  standardGeneric("clean")
-})
-setMethod("clean", c(object = "matrix"), function(object, maxNa, matrixOnly = TRUE) {
-  object <- as.matrix(object)
-
-  badCols <- apply(object, MARGIN = 2, function(col) (sum(is.na(col)) + sum(col == 0, na.rm = TRUE)) == nrow(object))
-  badRows <- apply(object, MARGIN = 1, function(row) (sum(is.na(row)) + sum(row == 0, na.rm = TRUE)) == ncol(object))
-  # Row checking not yet implemented; not necessary so far?
-  x.miss <- is.na(object)
-  goodCols <- rep(TRUE, ncol(object))
-  if(maxNa > 0) {
-    goodCols <- apply(object, MARGIN = 2, function(col) {
-      sum(is.na(col)) < round(maxNa * nrow(object))
-      }
-      )
-  }
-  goodCols[badCols] <- FALSE
-  
-  # 
-  # zeroes <- sapply(seq_len(ncol(x)), function(col) {
-  #   xcol <- x[, col]
-  #   xcol[is.na(xcol)] <- 1
-  #   do.call(paste0, args = as.list(unlist(as.numeric(xcol == 0))))
-  # })
-  # names(zeroes) <- zeroes
-  # browser()
-  # 
-  # badCols <- sapply(seq_len(ncol(x)), function(col, zeroes) {
-  #   naComplement <- do.call(paste0, args = as.list(as.numeric(!is.na(x[, col]))))
-  #   if(col == 75) {browser()}
-  #   if(!is.na(zeroes[naComplement])) {
-  #     TRUE} else {FALSE}
-  # }, zeroes = zeroes)
-  # browser()
-  # badCols <- unlist(apply(x, MARGIN = 2, function(th) {
-  #   T2 <- matrix(th * th, nrow = nrow(x), ncol = ncol(x))
-  #   T2[x.miss] <- 0
-  #   which(colSums(T2) == 0)
-  #   print(iter)
-  #   iter <<- iter + 1
-  # }))
-  # browser()
-  if(matrixOnly) {
-    object[, goodCols]
-  } else { list(matrix = object[, goodCols], indexRemaining = goodCols) }
-})
-
 #' Create annotations dataframe for heatmaps
 #'
 #' Checks phenoLabels and biclustLabels for validity and then joins the
@@ -126,21 +76,24 @@ is.wholenumber <-
   function(x, tol = sqrt(.Machine$double.eps)) {
     abs(x - round(x)) < tol
   }
-
-autoNipals <- function(m, k, cleanParam = 0) {
-  m <- clean(m, cleanParam)
-  
-  tryCatch({
-    nipals_pca(m, k)
-  }, error = function(e) {
-    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
-      cleanParam <- cleanParam + (1 - cleanParam) / 2
-      message(paste("Too many NA in the data. Cleaning with maxNAs at", 
-                    cleanParam))
-      autoNipals(m, k, cleanParam)
-    } else { stop(e) }
-  })
-}
+# 
+# autoNipals <- function(m, k, cleanParam = 0) {
+#   cleanRes <- clean(m, cleanParam, index = TRUE)
+#   mClean <- cleanRes$obj
+#   indexRem <- cleanRes$indexRemaining
+#   
+#   tryCatch({
+#     list(m = mClean, nipals_pca(mClean, k), indexRemaining = indexRem)
+#   }, error = function(e) {
+#     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
+#       cleanParam <- cleanParam + (1 - cleanParam) / 2
+#       message(paste("Too many NA in the data. Cleaning with maxNAs at", 
+#                     cleanParam))
+#       # pass the original m so indexRemaining is valid for the user's matrix
+#       autoNipals(m, k, cleanParam)
+#     } else { stop(e) }
+#   })
+# }
 
 nipals_pca <- function(m, k) {
   np <- tryCatch({
