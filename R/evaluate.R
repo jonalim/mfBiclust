@@ -8,7 +8,7 @@ testMicroarrays <- function() {
   #data/GSE1/GPL7.soft # grep "melanoma", others in source_name_ch1 # 19, 19
   gse1 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE1/GSE1_series_matrix.txt.gz")
   whichClustered <- read.csv(file = "data/annotated_microarrays/GSE1/which_clustered.csv", stringsAsFactors = FALSE)
-  gse1.labels <- rep("unclustered", nrow(pData(gse2223)))
+  gse1.labels <- rep("unclustered", nrow(pData(gse1)))
   gse1.labels[which(sapply(pData(gse1)$title, function(x) {
     s <- substring(text = x, first = 7, last = 30)
     stringi::stri_replace_first(s, ".", regex = "-")
@@ -39,10 +39,12 @@ testMicroarrays <- function() {
   
   exprSets <- list(gse1, gse17025, gse2223)
   labels <- list(gse1.labels, gse17025.labels, gse2223.labels)
+  # do this for all of the 2-group microarrays...maybe even the 4-group ones?
   mapply(function(es, labels) {
     bce <- as(es, "BiclusterExperiment")
     k.oracle <- length(labels)
     addStrat(bce, BiclusterStrategy(t(as.matrix(bce)), k.oracle, method = "nipals"))
+    adjustedRandIndex(gse1.labels, getStrat(bce, 1)@pred[, 1])
     },
     es = exprSets, labels = labels)
   # data1/GSE3726/GSE3726_series_matrix.txt.gz # grep B, C in title # 62, 42
@@ -79,6 +81,8 @@ geo2Bce <- function(gds = "gds181") {
   eSet <- GEOquery::GDS2eSet(gse1)
   bce <- as(gse1, "BiclusterExperiment")
 }
+
+setGeneric("performance", function(x) standardGeneric("performance"))
 
 #' Automatically create a BiclusterStrategy for an existing 
 #'

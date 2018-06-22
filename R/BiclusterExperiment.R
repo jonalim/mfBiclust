@@ -175,7 +175,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment"),
   bce <- clean(bce, maxNa)
   silent <- FALSE
   method.orig <- method
-  if(is.null(method)) {
+  if(length(method) > 1) {
     method <- "als-nmf"
     silent <- TRUE # User does not need any warnings regarding algorithm choice
     # (suppressing warnings is possible only because the BiclusterStrategy
@@ -186,9 +186,9 @@ setMethod("addStrat", c(bce = "BiclusterExperiment"),
   tryCatch({
     if(silent) {
       bcs <- suppressWarnings(BiclusterStrategy(m = t(as.matrix(bce)), 
-                                                    k = maxK, method = method))
+                                                    k = k, method = method))
     } else {
-      bcs <- BiclusterStrategy(m = t(as.matrix(bce)), k = maxK, method = method)
+      bcs <- BiclusterStrategy(m = t(as.matrix(bce)), k = k, method = method)
     }
   }, error = function(e) {
     maxNa <- maxNa - (maxNa / 2)
