@@ -382,6 +382,12 @@ Source: CRAN
 Version: 1.2.0
 Hash: 381e42baedecc633c0e547a0c7ca9de7
 
+Package: golubEsets
+Source: Bioconductor
+Version: 1.20.0
+Hash: 6ad25f40a790888a21a362bee3cf194a
+Requires: Biobase
+
 Package: gridBase
 Source: CRAN
 Version: 0.4-7
@@ -514,6 +520,11 @@ Source: CRAN
 Version: 0.8
 Hash: 045d7c594d503b41f1c28946d076c8aa
 Requires: mime
+
+Package: mclust
+Source: CRAN
+Version: 5.4
+Hash: 1a9178a14010144db0d8d3dd40eca3f2
 
 Package: memoise
 Source: CRAN

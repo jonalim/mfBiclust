@@ -4,7 +4,7 @@
 \alias{clean}
 \title{Cleans a matrix or BiclusterExperiment}
 \usage{
-clean(object, maxNa, dimsRemain)
+clean(object, maxNa = 0, dimsRemain = FALSE)
 }
 \description{
 Cleans a matrix or BiclusterExperiment
