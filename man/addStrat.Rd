@@ -5,7 +5,7 @@
 \title{Add a BiclusterStrategy to a BiclusterExperiment}
 \usage{
 addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca"),
-  cleanParam = 0)
+  maxNa = 1)
 }
 \description{
 Due to requirements of various biclustering methods, this function may warn
