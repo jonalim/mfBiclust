@@ -6,6 +6,10 @@
 \usage{
 BiclusterExperiment(m, ...)
 }
+\arguments{
+\item{m}{the data matrix defining this BiclusterExperiment. Should have rows
+as samples and features as columns}
+}
 \value{
 an instance of BiclusterExperiment-class
   containing the following slots, accessed with @: 

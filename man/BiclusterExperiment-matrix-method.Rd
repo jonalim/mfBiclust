@@ -8,7 +8,7 @@ eSet objects store assayData transposed: rows are features and columns are sampl
 For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.}
 \usage{
 \S4method{BiclusterExperiment}{matrix}(m, bcs = list(),
-  phenoData = annotatedDataFrameFrom(m, byrow = TRUE),
+  phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE),
   featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE,
   maxNa = 0.5)
 }

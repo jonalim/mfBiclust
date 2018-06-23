@@ -25,7 +25,7 @@ setClass("BiclusterExperiment", slots = list(
 
 setAs("ExpressionSet", "BiclusterExperiment", function(from) {
   ad <- Biobase::exprs(from)
-
+  
   # remove genes with any NA
   # naIndex <- which(rowSums(is.na(ad)) > 0)
   # from <- from[-naIndex, ]
@@ -54,6 +54,8 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 #' For comparing results from the same pipeline with differing values of
 #' \code{k}, \code{\link{mfbc()}} is recommended.
 #' 
+#' @param m the data matrix defining this BiclusterExperiment. Should have rows
+#'   as samples and features as columns
 #' @return an instance of BiclusterExperiment-class
 #'   containing the following slots, accessed with @@: 
 #'   data: Object of class \code{\link{matrix}}. The original data. 
@@ -68,14 +70,14 @@ setGeneric("BiclusterExperiment", function(m, ...) {
 #' Careful, for m, rows are samples and columns are features
 #' eSet objects store assayData transposed: rows are features and columns are samples.
 #' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
-setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE, maxNa = 0.5) {
+setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE, maxNa = 0.5) {
   if (bcv == TRUE) {
     warning("Bi-cross-validation is still under development. msNMF
                       cannot predict the optimal clustering strategy.")
   }
   m <- clean(m, maxNa)
   d <- dist(m, method = "euclidean")
-
+  
   if(!inherits(phenoData, "AnnotatedDataFrame")) {
     phenoData <- AnnotatedDataFrame(phenoData)
   }
@@ -108,11 +110,11 @@ validBiclusterExperiment <- function( object ) {
   if(!"abund" %in% Biobase::assayDataElementNames(object)) {
     msg <- c(msg, "The assayData slot must contain a matrix named 'abund'")
   }
-
+  
   if(inherits(object@strategies, "list")) {
     validBcs <- unlist(sapply(names(object), function(bcs) {
       inherits(getStrat(object, bcs), "BiclusterStrategy")
-      }))
+    }))
     if (!all(validBcs)) {
       msg <- c(msg, "All strategies must be BiclusterStrategy objects.")
     } else {
@@ -132,6 +134,7 @@ validBiclusterExperiment <- function( object ) {
 }
 setValidity("BiclusterExperiment", validBiclusterExperiment)
 
+#### addStrat ####
 #' Add a BiclusterStrategy to a BiclusterExperiment
 #' 
 #' Due to requirements of various biclustering methods, this function may warn
@@ -142,75 +145,75 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' samples and features.
 #' 
 #' @export
-setGeneric("addStrat", signature = "bce", function(bce, k, 
-                                                   method = c("als-nmf", 
-                                                              "svd-pca", "snmf", 
-                                                                 "nipals-pca"),
-                                                   maxNa = 1) {
-  if(!is.wholenumber(k)) {
-    stop("Arg \"k\" must be a whole number.")
-  }
-  
-  # k must be whole number, smaller than both dimensions of m
-  m <- t(as.matrix(bce))
-  tryCatch(k <- validateKM(k, m),
-           error = function(e) {
-             warning(paste("Initializing k to the size of the smaller matrix",
-                           "dimension."))
-             k <<- min(nrow(m), ncol(m))
-           }
-  )
-  
-  if(!(maxNa <= 1 && maxNa >= 0)) {
-    stop("Arg \"maxNa\" must be in the range of 0 to 1.")
-  }
-  
+setGeneric("addStrat", function(bce, k, 
+                                method,
+                                maxNa = 1) {
   standardGeneric("addStrat")
-  })
-
-setMethod("addStrat", c(bce = "BiclusterExperiment"), 
-          function(bce, k, method = c("als-nmf", "svd-pca", "snmf", 
-                                      "nipals-pca"), maxNa) {
-            browser()
-  bce <- clean(bce, maxNa)
-  silent <- FALSE
-  method.orig <- method
-  if(length(method) > 1) {
-    method <- "als-nmf"
-    silent <- TRUE # User does not need any warnings regarding algorithm choice
-    # (suppressing warnings is possible only because the BiclusterStrategy
-    # constructor does not return any user-informative warnings.
-  }
-  method <- match.arg(method)
-  
-  tryCatch({
-    if(silent) {
-      bcs <- suppressWarnings(BiclusterStrategy(m = t(as.matrix(bce)), 
-                                                    k = k, method = method))
-    } else {
-      bcs <- BiclusterStrategy(m = t(as.matrix(bce)), k = k, method = method)
-    }
-  }, error = function(e) {
-    maxNa <- maxNa - (maxNa / 2)
-    message(paste("Cleaning with maxNAs at", maxNa))
-    
-    # Call recursively until success.
-    addStrat(bce, k, method.orig, maxNa)
-  })
-
-  name <- name(bcs)
-  bce@strategies[[name]] <- bcs
-  if(validObject(bce)) {
-    message(paste("Added BiclusterStrategy named", name))
-    bce
-  }
 })
+
+setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric", 
+                        method = "character"), 
+          function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
+                                      "nipals-pca", "plaid"), maxNa) {
+            # Validate parameters
+            if(!is.wholenumber(k)) {
+              stop("Arg \"k\" must be a whole number.")
+            }
+            
+            # k must be whole number, smaller than both dimensions of m
+            m <- t(as.matrix(bce))
+            tryCatch(k <- validateKM(k, m),
+                     error = function(e) {
+                       warning(paste("Initializing k to the size of the smaller matrix",
+                                     "dimension."))
+                       k <<- min(nrow(m), ncol(m))
+                     }
+            )
+            
+            if(!(maxNa <= 1 && maxNa >= 0)) {
+              stop("Arg \"maxNa\" must be in the range of 0 to 1.")
+            }
+            
+            bce <- clean(bce, maxNa)
+            silent <- FALSE
+            method.orig <- method
+            if(length(method) > 1) {
+              method <- "als-nmf"
+              silent <- TRUE # User does not need any warnings regarding algorithm choice
+              # (suppressing warnings is possible only because the BiclusterStrategy
+              # constructor does not return any user-informative warnings.
+            }
+            method <- match.arg(method)
+            
+            tryCatch({
+              mat <- t(as.matrix(bce))
+              if(silent) {
+                bcs <- suppressWarnings(BiclusterStrategy(m = mat, 
+                                                          k = k, method = method))
+              } else {
+                bcs <- BiclusterStrategy(m = mat, k = k, method = method)
+              }
+            }, error = function(e) {
+              maxNa <- maxNa - (maxNa / 2)
+              message(paste("Cleaning with maxNAs at", maxNa))
+              
+              # Call recursively until success.
+              addStrat(bce, k, method.orig, maxNa)
+            })
+            
+            name <- name(bcs)
+            bce@strategies[[name]] <- bcs
+            if(validObject(bce)) {
+              message(paste("Added BiclusterStrategy named", name))
+              bce
+            }
+          })
 
 # FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
-  })
+})
 
 setMethod("clean", c(object = "BiclusterExperiment"), function(object, maxNa) {
   results <- clean(t(as.matrix(object)), maxNa, TRUE)
@@ -255,7 +258,7 @@ setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
 
 setGeneric("strategies<-", function(object, value) standardGeneric("strategies<-"))
 setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
-                                       value = "list"),
+                                         value = "list"),
                  function(object, value) { 
                    object@strategies <- value 
                    if(validObject(object, test = FALSE)) {
@@ -297,7 +300,7 @@ setMethod("plot", c(x = "BiclusterExperiment"),
               cluster_rows <- FALSE
               cdist <- NULL
               # ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, cluster_cols = FALSE,
-                                       # show_rownames = rowNames, show_colnames = colNames, annotation_row = annots, legend = legend)
+              # show_rownames = rowNames, show_colnames = colNames, annotation_row = annots, legend = legend)
             } else if (ordering == "distance") {
               cluster_rows <- TRUE
               cdist <- x@distance
@@ -306,11 +309,11 @@ setMethod("plot", c(x = "BiclusterExperiment"),
               cluster_rows <- TRUE
               cdist <- dist(pred(getStrat(x, strategy)), method = "euclidean")
               # ph <- pheatmap::pheatmap(data, cluster_rows = TRUE, 
-                                       # clustering_distance_rows = clusterDist,
-                                       # cluster_cols = FALSE, 
-                                       # show_rownames = rowNames, 
-                                       # show_colnames = colNames, 
-                                       # annotation_row = annots, legend = legend)
+              # clustering_distance_rows = clusterDist,
+              # cluster_cols = FALSE, 
+              # show_rownames = rowNames, 
+              # show_colnames = colNames, 
+              # annotation_row = annots, legend = legend)
             }
             
             ph <- pheatmap::pheatmap(data, cluster_rows = cluster_rows, 
@@ -449,7 +452,7 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
                                        annotation_col = annots, silent = silent)
             }
             ph
-}
+          }
 )
 
 #### Score plot ################################################################
@@ -512,7 +515,7 @@ setMethod(
            xlab = "Sample", ylab = "Score", xaxt = "n", main= bicluster)
       axis(1, at = 1:nrow(t(as.matrix(obj))), labels = as.character(ord))
     }
-
+    
     mapply(function(y, color) {abline(h = y, col = color, lwd = 2)},
            y = thresholds, color = cols[seq_along(thresholds)]
     )
@@ -566,7 +569,7 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             
             data <- t(loading(bcs))[, bicluster]
             ordering <- match.arg(ordering)
-          
+            
             # FIXME ADD ACCURACY, RECOVERY, etc. on
             # PLOT. ALLOW TO HIGHLIGHT KNOWN FEATURES.
             # Plot
@@ -592,7 +595,7 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             legend("topright", legend = capitalize(names(thresholds)), col = cols[seq_along(names(thresholds))], lty = 1, 
                    lwd = 2, cex = 0.8
             )
-            }
+          }
 )
 
 #### PCA Plot ##################################################################
@@ -634,5 +637,4 @@ setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
                      var2, 
                      "% variance"))
 })
-            
-            
+
