@@ -51,7 +51,7 @@ setClass(
 BiclusterStrategy <-
   function(m,
            k,
-           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca"),
+           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid"),
            scoreThresh = c("otsu"),
            loadingThresh = c("otsu")) {
     method = match.arg(method)
@@ -94,6 +94,8 @@ BiclusterStrategy <-
             return(NULL)
           }
         )
+      } else if (method == "plaid") {
+        bc <- plaid(m, k)
       }
     } else {
       if (method != "nipals-pca") {

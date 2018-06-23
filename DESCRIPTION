@@ -26,7 +26,8 @@ Imports:
     NMF,
     EBImage,
     Biobase,
-    Matrix
+    Matrix,
+    mclust
 LinkingTo: Rcpp
 RoxygenNote: 6.0.1
 Collate: 

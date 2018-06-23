@@ -1,6 +1,34 @@
 #' @include helperFunctions.R
 # example usage
 
+testSinglePca <- function() {
+  datasets.all <- sapply(X = list.files(path = "data/cancer_benchmark/"), 
+                         function(x) {
+                           tab <- read.table(file = paste0("data/cancer_benchmark/", x), sep = "\t",
+                                                header = FALSE, stringsAsFactors = FALSE)
+                           labels <- factor(as.character(tab[1, 2:ncol(tab)]))
+                           tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
+                           if(length(levels(labels)) == 2) { list(data = tab,
+                                                                  labels = labels)
+                             }
+                           else { NULL }
+                           }
+                         )
+  twoClass <- datasets.all[sapply(datasets.all, function(X) !is.null(X))]
+  rm(datasets.all)
+  bces <- sapply(twoClass, function(l) {
+    bce <- BiclusterExperiment(t(as.matrix(l$data)))
+    addStrat(bce, k = 1, method = "als-nmf")
+    addStrat(bce, k = 0, method = "plaid")
+  }
+  )
+  aris.als_nmf <- mapply(function(bce, labels) {
+    labels <- labels$labels
+    mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
+  }, bce = bces, labels = twoClass
+  )
+}
+
 #' @importFrom Biobase pData
 testMicroarrays <- function() {
   # define list of files and known number biclusters

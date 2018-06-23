@@ -114,6 +114,15 @@ nipals_pca <- function(m, k) {
       method = "nipals-pca")
 }
 
+plaid <- function(m, k) {
+  browser()
+  bc <- biclust::biclust(m, method= biclust::BCPlaid(), row.release = 0.3, col.release = 0.3)
+  # write function to filter
+  # use biclust::isoverlapp res$Overlapping will be TRUe or FALSe
+  # if FALSE, get the two largest biclusters
+  # else, get the alrgest, then get the largest bicluster with <0.25 overlap
+}
+
 #' Wrapper for prcomp
 #'
 #' Returns a \code{\link{genericFit}} object.
