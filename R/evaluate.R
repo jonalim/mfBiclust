@@ -16,17 +16,58 @@ testSinglePca <- function() {
                          )
   twoClass <- datasets.all[sapply(datasets.all, function(X) !is.null(X))]
   rm(datasets.all)
-  bces <- sapply(twoClass, function(l) {
+  bces.als_nmf <- sapply(twoClass, function(l) {
     bce <- BiclusterExperiment(t(as.matrix(l$data)))
-    addStrat(bce, k = 1, method = "als-nmf")
-    addStrat(bce, k = 0, method = "plaid")
+    bce <- addStrat(bce, k = 1, method = "als-nmf")
   }
   )
   aris.als_nmf <- mapply(function(bce, labels) {
     labels <- labels$labels
-    mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
-  }, bce = bces, labels = twoClass
+    if(method(getStrat(bce, 1)) == "als-nmf") {
+      mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
+    } else { 0 }
+  }, bce = bces.als_nmf, labels = twoClass
   )
+  
+  bces.svd_pca <- sapply(twoClass, function(l) {
+    bce <- BiclusterExperiment(t(as.matrix(l$data)))
+    bce <- addStrat(bce, k = 1, method = "svd-pca")
+  }
+  )
+  aris.svd_pca <- mapply(function(bce, labels) {
+    labels <- labels$labels
+    mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
+  }, bce = bces.svd_pca, labels = twoClass
+  )
+  # Since plaid is nondeterministic, for each dataset, take the mean ARI from 30
+  # replicate runs. N.B. that each of the 30 might have a different release
+  # parameter; each run, the parameter is eased down from 0.7 to 0 in steps of
+  # 0.1 until enough biclusters are found. Then the first two biclusters 
+  # ("layers") are reported.
+  dataset <- NULL
+  aris.plaid <- sapply(seq_len(30), function(i) {
+    dataset <<- 0
+    aris.plaid <- sapply(twoClass, FUN = function(l) {
+      dataset <<- dataset + 1
+      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      ari.plaid <- NULL
+      while(!is.numeric(ari.plaid)) {
+        ari.plaid <- try({
+          print(paste(i, dataset))
+          dummy <- capture.output(bce <- addStrat(bce, k = 2, method = "plaid"))
+          mclust::adjustedRandIndex(l$labels, getStrat(bce, 1)@pred[, 1])
+        }
+        )
+      }
+      ari.plaid
+    })
+  })
+  aris.plaid <- rowMeans(aris.plaid)
+  
+  barplot(height = rbind(aris.als_nmf, aris.svd_pca, aris.plaid), beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
+          ylab = "Adjusted Rand Index")
+  save(aris.als_nmf, aris.svd_pca, aris.plaid, file = "plots/two-group-cancer-benchmark/results.rda")
+  
 }
 
 #' @importFrom Biobase pData

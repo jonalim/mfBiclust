@@ -115,9 +115,34 @@ nipals_pca <- function(m, k) {
 }
 
 plaid <- function(m, k) {
-  browser()
-  bc <- biclust::biclust(m, method= biclust::BCPlaid(), row.release = 0.3, col.release = 0.3)
-  # write function to filter
+  number <- 0
+  release <- 0.7
+  while(number < k && release > 0) {
+    dummy <- capture.output({
+      bc <- biclust::biclust(m, method = biclust::BCPlaid(), 
+                             row.release = release, col.release = release)
+    })
+    number <- bc@Number
+    release <- release - 0.1
+  }
+  
+  scores <- sapply(seq_len(k), function(i, biclusters) {
+    bicluster <- biclusters[[i]]
+    s <- rep(0, nrow(m))
+    s[bicluster$Rows] <- 1
+    s
+  }, biclusters = biclust::biclusternumber(bc))
+  
+  loadings <- do.call(rbind, lapply(seq_len(k), function(i, biclusters) {
+    bicluster <- biclusters[[i]]
+    l <- rep(0, ncol(m))
+    l[bicluster$Cols] <- 1
+    l
+  }, biclusters = biclust::biclusternumber(bc)))
+
+  new("genericFit", fit = new("genericFactorization",
+                              W = scores, H = loadings), method = "plaid")
+  # write function to filter?
   # use biclust::isoverlapp res$Overlapping will be TRUe or FALSe
   # if FALSE, get the two largest biclusters
   # else, get the alrgest, then get the largest bicluster with <0.25 overlap

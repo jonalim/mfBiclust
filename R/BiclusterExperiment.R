@@ -174,7 +174,10 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               stop("Arg \"maxNa\" must be in the range of 0 to 1.")
             }
             
-            bce <- clean(bce, maxNa)
+            if(method == "nipals-pca") {
+              # to my knowledge, this is the only method so far that needs cleaning
+              bce <- clean(bce, maxNa)
+            }
             silent <- FALSE
             method.orig <- method
             if(length(method) > 1) {
@@ -184,21 +187,23 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               # constructor does not return any user-informative warnings.
             }
             method <- match.arg(method)
-            
-            tryCatch({
+            bcs <- tryCatch({
               mat <- t(as.matrix(bce))
               if(silent) {
-                bcs <- suppressWarnings(BiclusterStrategy(m = mat, 
+                suppressWarnings(BiclusterStrategy(m = mat, 
                                                           k = k, method = method))
               } else {
-                bcs <- BiclusterStrategy(m = mat, k = k, method = method)
+                BiclusterStrategy(m = mat, k = k, method = method)
               }
             }, error = function(e) {
+              if(method == "nipals-pca") {
+                
               maxNa <- maxNa - (maxNa / 2)
               message(paste("Cleaning with maxNAs at", maxNa))
               
               # Call recursively until success.
               addStrat(bce, k, method.orig, maxNa)
+              } else { stop(e) }
             })
             
             name <- name(bcs)
