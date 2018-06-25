@@ -62,17 +62,17 @@ testMultiBiclustering <- function() {
   )
   agris.svd_pca <- mapply(function(bce, labels) {
     labels <- labels$labels
-
+    
     prediction <- pred(getStrat(bce, 1))
     prediction <- apply(prediction, 2, as.numeric)
     gri$grand_index(t(labels), t(prediction), adjusted=TRUE)  
-
+    
   }, bce = bces.svd_pca, labels = datasets.all
   )
   
   agris.plaid <- sapply(seq_len(30), function(i) {
     dataset <<- 0
-    agris.plaid <- sapply(datasets.all[26], FUN = function(l) {
+    agris.plaid <- sapply(datasets.all, FUN = function(l) {
       dataset <<- dataset + 1
       bce <- BiclusterExperiment(t(as.matrix(l$data)))
       agri.plaid <- NULL
@@ -92,6 +92,7 @@ testMultiBiclustering <- function() {
   
   
   
+  save(agris.als_nmf, agris.svd_pca, agris.plaid, file = "plots/multigroup-cancer-benchmark/results.rda")
   
 }
 
