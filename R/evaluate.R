@@ -173,7 +173,7 @@ testSinglePca <- function() {
   
   barplot(height = rbind(aris.als_nmf, aris.svd_pca, aris.plaid), beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
           ylab = "Adjusted Rand Index")
-  save(aris.als_nmf, aris.svd_pca, aris.plaid, file = "plots/two-group-cancer-benchmark/results.rda")
+  save(aris.als_nmf, aris.svd_pca, aris.plaid, aris.spectral, file = "plots/two-group-cancer-benchmark/results.rda")
   
 }
 
