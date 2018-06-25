@@ -1,6 +1,100 @@
 #' @include helperFunctions.R
 # example usage
 
+testMultiBiclustering <- function() {
+  # Use 13AGRI to compare possibilistic clustering solutions with the reference,
+  # which happens to be exclusive hard clustering
+  
+  # Configure loading 13AGRI from Python module 
+  # https://github.com/padilha/gri
+  
+  reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
+  reticulate::py_config()
+  gri <- reticulate::import("gri")
+  # installed by running python setup.py install, then placing the .egg and gri.py at
+  # anaconda3/Lib/site-packages
+  
+  # set this to any python2.7 installation
+  
+  # Load cancer benchmark
+  datasets.all <- lapply(
+    X = list.files(path = "data/cancer_benchmark/"), 
+    function(x) {
+      tab <- read.table(file = paste0("data/cancer_benchmark/", x), sep = "\t",
+                        header = FALSE, stringsAsFactors = FALSE)
+      labels <- factor(as.character(tab[1, 2:ncol(tab)]))
+      tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
+      
+      # convert labels to classification matrix
+      classes <- levels(labels)
+      labels <- do.call(rbind, lapply(labels, function(lab) {
+        vec <- rep(0, length(classes))
+        names(vec) <- classes
+        vec[lab] <- 1
+        vec
+      }))
+      
+      list(data = tab, labels = labels)
+    }
+  )
+  
+  # Find and evaluate als-nmf solutions for datasets
+  agris.als_nmf <- sapply(seq_len(30), function(i) {
+    agris.als_nmf <- sapply(datasets.all, function(dataset) {
+      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- addStrat(bce, k = length(unique(colnames(dataset$labels))), method = "als-nmf")
+      labels <- dataset$labels
+      if(method(getStrat(bce, 1)) == "als-nmf") {
+        prediction <- pred(getStrat(bce, 1))
+        prediction <- apply(prediction, 2, as.numeric)
+        gri$grand_index(t(labels), t(prediction), adjusted=TRUE)  
+      } else { 0 }
+    }
+    )
+    agris.als_nmf
+  })
+  
+  # Find and evaluate SVD-PCA solutions for datasets
+  bces.svd_pca <- sapply(datasets.all, function(l) {
+    bce <- BiclusterExperiment(t(as.matrix(l$data)))
+    bce <- addStrat(bce, k = length(unique(colnames(l$labels))), method = "svd-pca")
+  }
+  )
+  agris.svd_pca <- mapply(function(bce, labels) {
+    labels <- labels$labels
+
+    prediction <- pred(getStrat(bce, 1))
+    prediction <- apply(prediction, 2, as.numeric)
+    gri$grand_index(t(labels), t(prediction), adjusted=TRUE)  
+
+  }, bce = bces.svd_pca, labels = datasets.all
+  )
+  
+  agris.plaid <- sapply(seq_len(30), function(i) {
+    dataset <<- 0
+    agris.plaid <- sapply(datasets.all[26], FUN = function(l) {
+      dataset <<- dataset + 1
+      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      agri.plaid <- NULL
+      while(!is.numeric(agri.plaid)) {
+        agri.plaid <- try({
+          print(paste(i, dataset))
+          bce <- addStrat(bce, k = length(unique(colnames(l$labels))), method = "plaid")
+          prediction <- pred(getStrat(bce, 1))
+          prediction <- apply(prediction, 2, as.numeric)
+          gri$grand_index(t(l$labels), t(prediction), adjusted = TRUE)
+        }
+        )
+      }
+      agri.plaid
+    })
+  })
+  
+  
+  
+  
+}
+
 testSinglePca <- function() {
   datasets.all <- sapply(X = list.files(path = "data/cancer_benchmark/"), 
                          function(x) {
@@ -16,18 +110,16 @@ testSinglePca <- function() {
                          )
   twoClass <- datasets.all[sapply(datasets.all, function(X) !is.null(X))]
   rm(datasets.all)
-  bces.als_nmf <- sapply(twoClass, function(l) {
-    bce <- BiclusterExperiment(t(as.matrix(l$data)))
-    bce <- addStrat(bce, k = 1, method = "als-nmf")
-  }
-  )
-  aris.als_nmf <- mapply(function(bce, labels) {
-    labels <- labels$labels
-    if(method(getStrat(bce, 1)) == "als-nmf") {
-      mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
-    } else { 0 }
-  }, bce = bces.als_nmf, labels = twoClass
-  )
+  
+  aris.als_nmf <- sapply(twoClass, function(dataset) {
+      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- addStrat(bce, k = 1, method = "als-nmf")
+      
+      labels <- dataset$labels
+      if(method(getStrat(bce, 1)) == "als-nmf") {
+        mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
+      } else { 0 }
+    })
   
   bces.svd_pca <- sapply(twoClass, function(l) {
     bce <- BiclusterExperiment(t(as.matrix(l$data)))
@@ -42,8 +134,8 @@ testSinglePca <- function() {
   # Since plaid is nondeterministic, for each dataset, take the mean ARI from 30
   # replicate runs. N.B. that each of the 30 might have a different release
   # parameter; each run, the parameter is eased down from 0.7 to 0 in steps of
-  # 0.1 until enough biclusters are found. Then the first two biclusters 
-  # ("layers") are reported.
+  # 0.1 until enough biclusters are found. Then the first k biclusters are
+  # reported. Here, k = 1, and the two groups are bicluster and non-bicluster.
   dataset <- NULL
   aris.plaid <- sapply(seq_len(30), function(i) {
     dataset <<- 0
@@ -54,7 +146,7 @@ testSinglePca <- function() {
       while(!is.numeric(ari.plaid)) {
         ari.plaid <- try({
           print(paste(i, dataset))
-          dummy <- capture.output(bce <- addStrat(bce, k = 2, method = "plaid"))
+          dummy <- capture.output(bce <- addStrat(bce, k = 1, method = "plaid"))
           mclust::adjustedRandIndex(l$labels, getStrat(bce, 1)@pred[, 1])
         }
         )
@@ -62,7 +154,22 @@ testSinglePca <- function() {
       ari.plaid
     })
   })
-  aris.plaid <- rowMeans(aris.plaid)
+  # aris.plaid <- rowMeans(aris.plaid)
+  
+  aris.spectral <- sapply(seq_len(30), function(i) {
+    aris.spectral <- sapply(twoClass, FUN = function(l) {
+      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      ari.spectral <- NULL
+      while(!is.numeric(ari.spectral)) {
+        ari.spectral <- try({
+          dummy <- capture.output(bce <- addStrat(bce, k = 2, method = "spectral"))
+          mclust::adjustedRandIndex(l$labels, getStrat(bce, 1)@pred[, 1])
+        }
+        )
+      }
+      ari.spectral
+    })
+  })
   
   barplot(height = rbind(aris.als_nmf, aris.svd_pca, aris.plaid), beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
           ylab = "Adjusted Rand Index")

@@ -4,7 +4,10 @@
 \alias{BiclusterExperiment}
 \title{Perform multiple biclustering runs}
 \usage{
-BiclusterExperiment(m, ...)
+BiclusterExperiment(m, bcs = list(),
+  phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE),
+  featureData = annotatedDataFrameFrom(m, byrow = FALSE), pp = FALSE,
+  maxNa = 0.5)
 }
 \arguments{
 \item{m}{the data matrix defining this BiclusterExperiment. Should have rows

@@ -51,7 +51,7 @@ setClass(
 BiclusterStrategy <-
   function(m,
            k,
-           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid"),
+           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid", "spectral"),
            scoreThresh = c("otsu"),
            loadingThresh = c("otsu")) {
     method = match.arg(method)
@@ -74,6 +74,12 @@ BiclusterStrategy <-
         bc <- svd_pca(m, k)
       } else if (method == "als-nmf") {
         # Use NMF package
+        if(any(m < 0)) {
+          warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
+                        "this BiclusterStrategy because",
+                        "negative values are not allowed."))
+          m <- m + abs(min(m))
+        }
         tryCatch(
           bc <- als_nmf(m, k),
           error = function(c) {
@@ -96,6 +102,8 @@ BiclusterStrategy <-
         )
       } else if (method == "plaid") {
         bc <- plaid(m, k)
+      } else if (method == "spectral") {
+        bc <- spectral(m, k)
       }
     } else {
       if (method != "nipals-pca") {
@@ -105,7 +113,9 @@ BiclusterStrategy <-
       }
       bc <- nipals_pca(m, k)
     }
-    
+
+    k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
+    # k biclusters
     biclustNames <- unlist(sapply(seq_len(k), function(x) {
       paste0("Bicluster.", x)
     }))
@@ -261,6 +271,8 @@ validBiclusterStrategy <- function(object) {
 }
 setValidity("BiclusterStrategy", validBiclusterStrategy)
 
+#### method ####
+#' @export
 setGeneric("method", signature = "bcs", function(bcs) {
   standardGeneric("method")
 })

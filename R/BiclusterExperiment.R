@@ -63,19 +63,18 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 #'   strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
 #'   distance: Object of class \code{\link{matrix}}. Pairwise distances
 #'     between the rows of \code{data}
-setGeneric("BiclusterExperiment", function(m, ...) {
+#' @export
+setGeneric("BiclusterExperiment", function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), pp = FALSE, maxNa = 0.5) {
   standardGeneric("BiclusterExperiment")
 })
 
 #' Careful, for m, rows are samples and columns are features
 #' eSet objects store assayData transposed: rows are features and columns are samples.
 #' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
-setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE, maxNa = 0.5) {
-  if (bcv == TRUE) {
-    warning("Bi-cross-validation is still under development. msNMF
-                      cannot predict the optimal clustering strategy.")
+setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, featureData, pp, maxNa) {
+  if(pp) {
+    m <- clean(m, maxNa)
   }
-  m <- clean(m, maxNa)
   d <- dist(m, method = "euclidean")
   
   if(!inherits(phenoData, "AnnotatedDataFrame")) {
@@ -147,14 +146,15 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' @export
 setGeneric("addStrat", function(bce, k, 
                                 method,
-                                maxNa = 1) {
+                                maxNa = 1, ...) {
   standardGeneric("addStrat")
 })
 
 setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric", 
                         method = "character"), 
           function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
-                                      "nipals-pca", "plaid"), maxNa) {
+                                      "nipals-pca", "plaid", "spectral"), maxNa, 
+                   silent = FALSE) {
             # Validate parameters
             if(!is.wholenumber(k)) {
               stop("Arg \"k\" must be a whole number.")
@@ -178,33 +178,43 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               # to my knowledge, this is the only method so far that needs cleaning
               bce <- clean(bce, maxNa)
             }
-            silent <- FALSE
+            
+            mat <- t(as.matrix(bce))
+            
+            # do this so that the recursive calls with a NULL method are also silent
             method.orig <- method
+            
+            
             if(length(method) > 1) {
               method <- "als-nmf"
-              silent <- TRUE # User does not need any warnings regarding algorithm choice
-              # (suppressing warnings is possible only because the BiclusterStrategy
+              bcs <- suppressWarnings(BiclusterStrategy(m = mat, 
+                                                        k = k, method = method))
+              # User does not need any warnings regarding algorithm choice
+              # (suppressing warnings is sensible only because the BiclusterStrategy
               # constructor does not return any user-informative warnings.
-            }
-            method <- match.arg(method)
-            bcs <- tryCatch({
-              mat <- t(as.matrix(bce))
-              if(silent) {
-                suppressWarnings(BiclusterStrategy(m = mat, 
-                                                          k = k, method = method))
-              } else {
-                BiclusterStrategy(m = mat, k = k, method = method)
-              }
-            }, error = function(e) {
-              if(method == "nipals-pca") {
-                
-              maxNa <- maxNa - (maxNa / 2)
-              message(paste("Cleaning with maxNAs at", maxNa))
+            } else {
+              method <- match.arg(method)
               
-              # Call recursively until success.
-              addStrat(bce, k, method.orig, maxNa)
-              } else { stop(e) }
-            })
+              if (method == "nipals-pca") {
+                # Careful! because we're in tryCatch, warnings won't be printed.
+                
+                bcs <- tryCatch({
+                  BiclusterStrategy(m = mat, k = k, method = method)
+                }, error = function(e) {
+                  if(method == "nipals-pca") {
+                    
+                    maxNa <- maxNa - (maxNa / 2)
+                    message(paste("Cleaning with maxNAs at", maxNa))
+                    
+                    # Call recursively until success.
+                    addStrat(bce, k, method.orig, maxNa)
+                  } else { stop(e) }
+                })
+              } else {
+                # Here, warnings and errors are thrown, not handled
+                bcs <- BiclusterStrategy(m = mat, k = k, method = method)
+              }
+            }
             
             name <- name(bcs)
             bce@strategies[[name]] <- bcs

@@ -9,7 +9,7 @@ For this reason I wrote a getter that returns a matrix with rows as samples, col
 \usage{
 \S4method{BiclusterExperiment}{matrix}(m, bcs = list(),
   phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE),
-  featureData = annotatedDataFrameFrom(m, byrow = FALSE), bcv = FALSE,
+  featureData = annotatedDataFrameFrom(m, byrow = FALSE), pp = FALSE,
   maxNa = 0.5)
 }
 \description{

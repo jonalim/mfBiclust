@@ -72,6 +72,23 @@ createAnnots <-
     annots
   }
 
+
+# Function adapted from James Holland Jones, 2009.
+# http://monkeysuncle.stanford.edu/?p=485
+#' Error bars
+#' 
+#' @param x the result of a call to barplot()
+#' @param y the ys provided to barplot()
+#' @param upper vector of lengths of upper error bars
+#' @param lower vector of lengths of lower error bars; by default, same as 
+#'   upper
+#' 
+error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
+  if(length(x) != length(y) | length(y) !=length(lower) | length(lower) != length(upper))
+    stop("vectors must be same length")
+  arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...)
+}
+
 is.wholenumber <-
   function(x, tol = sqrt(.Machine$double.eps)) {
     abs(x - round(x)) < tol
@@ -114,16 +131,25 @@ nipals_pca <- function(m, k) {
       method = "nipals-pca")
 }
 
-plaid <- function(m, k) {
+spectral <- function(m, k) {
   number <- 0
-  release <- 0.7
-  while(number < k && release > 0) {
-    dummy <- capture.output({
-      bc <- biclust::biclust(m, method = biclust::BCPlaid(), 
-                             row.release = release, col.release = release)
-    })
-    number <- bc@Number
-    release <- release - 0.1
+  v <- nrow(m)
+  best <- NULL
+  while(number < k && v <= 3L * nrow(m)) {
+    # dummy <- capture.output({
+      bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "bistochastization",
+                             withinVar= v)
+    # })
+    if(bc@Number > number) {
+      number <- bc@Number
+      best <- bc
+    }
+    v <- v + nrow(m)
+  }
+  
+  if(k > number) {
+    k <- number
+    warning(paste("Spectral could only find", k, "biclusters"))
   }
   
   scores <- sapply(seq_len(k), function(i, biclusters) {
@@ -131,14 +157,53 @@ plaid <- function(m, k) {
     s <- rep(0, nrow(m))
     s[bicluster$Rows] <- 1
     s
-  }, biclusters = biclust::biclusternumber(bc))
+  }, biclusters = biclust::biclusternumber(best))
   
   loadings <- do.call(rbind, lapply(seq_len(k), function(i, biclusters) {
     bicluster <- biclusters[[i]]
     l <- rep(0, ncol(m))
     l[bicluster$Cols] <- 1
     l
-  }, biclusters = biclust::biclusternumber(bc)))
+  }, biclusters = biclust::biclusternumber(best)))
+  
+  new("genericFit", fit = new("genericFactorization",
+                              W = scores, H = loadings), method = "spectral")
+}
+
+plaid <- function(m, k) {
+  number <- 0
+  release <- 0.7
+  best <- NULL
+  while(number < k && release > 0) {
+    dummy <- capture.output({
+      bc <- biclust::biclust(m, method = biclust::BCPlaid(), 
+                             row.release = release, col.release = release)
+    })
+    if(bc@Number > number) {
+      number <- bc@Number
+      best <- bc
+    }
+    release <- release - 0.1
+  }
+
+  if(k > number) {
+    k <- number
+    warning(paste("Plaid could only find", k, "biclusters"))
+  }
+  
+  scores <- sapply(seq_len(k), function(i, biclusters) {
+    bicluster <- biclusters[[i]]
+    s <- rep(0, nrow(m))
+    s[bicluster$Rows] <- 1
+    s
+  }, biclusters = biclust::biclusternumber(best))
+  
+  loadings <- do.call(rbind, lapply(seq_len(k), function(i, biclusters) {
+    bicluster <- biclusters[[i]]
+    l <- rep(0, ncol(m))
+    l[bicluster$Cols] <- 1
+    l
+  }, biclusters = biclust::biclusternumber(best)))
 
   new("genericFit", fit = new("genericFactorization",
                               W = scores, H = loadings), method = "plaid")
