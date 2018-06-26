@@ -135,7 +135,7 @@ spectral <- function(m, k) {
   number <- 0
   v <- nrow(m)
   best <- NULL
-  while(number < k && v <= 3L * nrow(m)) {
+  while(number < k && v <= 10L * nrow(m)) {
     # dummy <- capture.output({
       bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "bistochastization",
                              withinVar= v)

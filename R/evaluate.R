@@ -175,16 +175,15 @@ testSinglePca <- function() {
   # aris.plaid <- rowMeans(aris.plaid)
   
   aris.spectral <- sapply(seq_len(30), function(i) {
-    aris.spectral <- sapply(twoClass, FUN = function(l) {
+    dataset <- 0
+    aris.spectral <- sapply(twoClass[7:15], FUN = function(l) {
       bce <- BiclusterExperiment(t(as.matrix(l$data)))
       ari.spectral <- NULL
       while(!is.numeric(ari.spectral)) {
-        ari.spectral <- try({
-          dummy <- capture.output(bce <- addStrat(bce, k = 2, method = "spectral"))
+        bce <- addStrat(bce, k = 2, method = "spectral")
           mclust::adjustedRandIndex(l$labels, getStrat(bce, 1)@pred[, 1])
-        }
-        )
       }
+      dataset <<- dataset + 1
       ari.spectral
     })
   })
