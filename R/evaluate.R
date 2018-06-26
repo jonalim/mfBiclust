@@ -10,8 +10,8 @@ testMultiBiclustering <- function() {
   # Configure loading 13AGRI from Python module 
   # https://github.com/padilha/gri
   
-  #reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
-  reticulate::use_python("C:\\Users\\Jonathan\\Anaconda3\\envs\\pattern27\\python.exe")
+  reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
+  # reticulate::use_python("C:\\Users\\Jonathan\\Anaconda3\\envs\\pattern27\\python.exe")
   reticulate::py_config()
   gri <- reticulate::import("gri")
   # installed by running python setup.py install, then placing the .egg and gri.py at
