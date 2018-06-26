@@ -2,6 +2,8 @@
 # example usage
 
 testMultiBiclustering <- function() {
+  load(file = "plots/multigroup-cancer-benchmark/results.rda")
+  
   # Use 13AGRI to compare possibilistic clustering solutions with the reference,
   # which happens to be exclusive hard clustering
   
@@ -108,12 +110,25 @@ testMultiBiclustering <- function() {
     })
   })
   
+  save(agris.als_nmf, agris.svd_pca, agris.plaid, file = "plots/multigroup-cancer-benchmark/results.rda")
   
-   save(agris.als_nmf, agris.svd_pca, agris.plaid, file = "plots/multigroup-cancer-benchmark/results.rda")
-  
+  agris.als_nmf.means <- rowMeans(agris.als_nmf)
+  agris.plaid.means <- rowMeans(agris.plaid)
+  ys <- rbind(agris.als_nmf.means, agris.svd_pca, agris.plaid.means)
+  agris.als_nmf.se2 <- 2 * apply(agris.als_nmf, 1, sd)
+  agris.plaid.se2 <- 2 * apply(agris.plaid, 1, sd)
+  agris.svd_pca.se2 <- rep(0, length(agris.svd_pca))
+  se2 <- rbind(agris.als_nmf.se2, agris.svd_pca.se2, agris.plaid.se2)
+  bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
+                ylab = "'13 Adjusted Grand Rand Index", col = RColorBrewer::brewer.pal(3, "Dark2"),
+                ylim = c(0, .6))
+  error.bar(bp, ys, se2, length = 0.01)
 }
 
 testSinglePca <- function() {
+  try(load("plots/two-group-cancer-benchmark/results.rda"))
+  # Load previously stored data now (so we don't overwrite new results)
+  
   datasets.all <- sapply(X = list.files(path = "data/cancer_benchmark/"), 
                          function(x) {
                            tab <- read.table(file = paste0("data/cancer_benchmark/", x), sep = "\t",
@@ -128,6 +143,8 @@ testSinglePca <- function() {
                          )
   twoClass <- datasets.all[sapply(datasets.all, function(X) !is.null(X))]
   rm(datasets.all)
+  
+  minRowClusterFraction <- min(sapply(twoClass, function(x) table(x$labels) / length(x$labels)))
   
   aris.als_nmf <- sapply(twoClass, function(dataset) {
       bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
@@ -176,22 +193,38 @@ testSinglePca <- function() {
   
   aris.spectral <- sapply(seq_len(30), function(i) {
     dataset <- 0
-    aris.spectral <- sapply(twoClass[7:15], FUN = function(l) {
+    aris.spectral <- sapply(twoClass, FUN = function(l) {
+      dataset <<- dataset + 1
+      print(dataset)
       bce <- BiclusterExperiment(t(as.matrix(l$data)))
       ari.spectral <- NULL
-      while(!is.numeric(ari.spectral)) {
-        bce <- addStrat(bce, k = 2, method = "spectral")
-          mclust::adjustedRandIndex(l$labels, getStrat(bce, 1)@pred[, 1])
-      }
-      dataset <<- dataset + 1
-      ari.spectral
+      
+        bce <- addStrat(bce, k = 2, method = "spectral", min = minRowClusterFraction)
+        predictions <- pred(getStrat(bce, 1))[, 1]
+        ari.spectral <- mclust::adjustedRandIndex(l$labels, predictions)
+      
+      if(is.numeric(ari.spectral)) ari.spectral
+      else 0 # N.B. My Spectral wrapper tries withinVar at 1:10 * nrow(m)
     })
   })
   
-  barplot(height = rbind(aris.als_nmf, aris.svd_pca, aris.plaid), beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
-          ylab = "Adjusted Rand Index")
   save(aris.als_nmf, aris.svd_pca, aris.plaid, aris.spectral, file = "plots/two-group-cancer-benchmark/results.rda")
+
+  aris.spectral.means <- rowMeans(aris.spectral)
+  aris.plaid.means <- rowMeans(aris.plaid)
+  ys <- rbind(aris.als_nmf, aris.svd_pca, aris.plaid.means, aris.spectral.means)
+  colnames(ys) <- unlist(sapply(colnames(ys), function(x) substr(x, 1, nchar(x) - 13)))
   
+  aris.spectral.se2 <- 2 * apply(aris.spectral, 1, sd)
+  aris.plaid.se2 <- 2 * apply(aris.plaid, 1, sd)
+  aris.svd_pca.se2 <- rep(0, length(aris.svd_pca))
+  aris.als_nmf.se2 <- rep(0, length(aris.als_nmf))
+  se2 <- rbind(aris.als_nmf.se2, aris.svd_pca.se2, aris.plaid.se2, aris.spectral.se2)
+  
+  bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid", "Spectral"), args.legend = c(x = "topleft"),
+                ylab = "Adjusted Rand Index", col = RColorBrewer::brewer.pal(4, "Dark2"),
+                ylim = c(0, 1), xaxt = "n")
+  error.bar(bp, ys, se2, length = 0.01)
 }
 
 #' @importFrom Biobase pData

@@ -38,7 +38,7 @@ setClass(
 #' members.
 #' 
 #' Careful! Use of NIPALS-PCA is not allowed when data is not missing. (NIPALS
-#' is very slow.)
+#' is very slow.) Note: when Spectral, can provide minR as the minimum fraction of rows/columns that can constitute a cluster.
 #'
 #' To be added: factorize: sparsenmf, plaid, bimax.
 #' To be added: threshold: ita, fcm
@@ -53,7 +53,7 @@ BiclusterStrategy <-
            k,
            method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid", "spectral"),
            scoreThresh = c("otsu"),
-           loadingThresh = c("otsu")) {
+           loadingThresh = c("otsu"), ...) {
     method = match.arg(method)
     if (!"matrix" %in% class(m)) {
       warning(paste0(
@@ -103,7 +103,7 @@ BiclusterStrategy <-
       } else if (method == "plaid") {
         bc <- plaid(m, k)
       } else if (method == "spectral") {
-        bc <- spectral(m, k)
+        bc <- spectral(m, k, ...)
       }
     } else {
       if (method != "nipals-pca") {

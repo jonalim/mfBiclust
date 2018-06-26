@@ -154,7 +154,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                         method = "character"), 
           function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
                                       "nipals-pca", "plaid", "spectral"), maxNa, 
-                   silent = FALSE) {
+                   silent = FALSE, ...) {
             # Validate parameters
             if(!is.wholenumber(k)) {
               stop("Arg \"k\" must be a whole number.")
@@ -188,7 +188,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
             if(length(method) > 1) {
               method <- "als-nmf"
               bcs <- suppressWarnings(BiclusterStrategy(m = mat, 
-                                                        k = k, method = method))
+                                                        k = k, method = method, ...))
               # User does not need any warnings regarding algorithm choice
               # (suppressing warnings is sensible only because the BiclusterStrategy
               # constructor does not return any user-informative warnings.
@@ -199,7 +199,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                 # Careful! because we're in tryCatch, warnings won't be printed.
                 
                 bcs <- tryCatch({
-                  BiclusterStrategy(m = mat, k = k, method = method)
+                  BiclusterStrategy(m = mat, k = k, method = method, ...)
                 }, error = function(e) {
                   if(method == "nipals-pca") {
                     
@@ -207,12 +207,12 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                     message(paste("Cleaning with maxNAs at", maxNa))
                     
                     # Call recursively until success.
-                    addStrat(bce, k, method.orig, maxNa)
+                    addStrat(bce, k, method.orig, maxNa, ...)
                   } else { stop(e) }
                 })
               } else {
                 # Here, warnings and errors are thrown, not handled
-                bcs <- BiclusterStrategy(m = mat, k = k, method = method)
+                bcs <- BiclusterStrategy(m = mat, k = k, method = method, ...)
               }
             }
             

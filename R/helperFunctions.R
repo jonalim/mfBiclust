@@ -86,7 +86,7 @@ createAnnots <-
 error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
   if(length(x) != length(y) | length(y) !=length(lower) | length(lower) != length(upper))
     stop("vectors must be same length")
-  arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...)
+  suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
 is.wholenumber <-
@@ -131,14 +131,14 @@ nipals_pca <- function(m, k) {
       method = "nipals-pca")
 }
 
-spectral <- function(m, k) {
+spectral <- function(m, k, minSize = 0) {
   number <- 0
   v <- nrow(m)
   best <- NULL
   while(number < k && v <= 10L * nrow(m)) {
     # dummy <- capture.output({
-      bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "bistochastization",
-                             withinVar= v)
+      bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "log",
+                             withinVar= v, minr = floor(nrow(m) * minSize), minc = floor(ncol(m) * minSize))
     # })
     if(bc@Number > number) {
       number <- bc@Number
@@ -146,27 +146,13 @@ spectral <- function(m, k) {
     }
     v <- v + nrow(m)
   }
-  
   if(k > number) {
     k <- number
     warning(paste("Spectral could only find", k, "biclusters"))
   }
 
-  sizes <- sapply(biclust::biclusternumber(best), function(x) {
-    length(x$Rows) * length(x$Cols)
-  })
-  largest <- which.max(sizes)
-  bicluster1 <- biclust::biclusternumber(best, largest)
+  biclusters <- biclust::biclusternumber(best)
   
-  notOverlapped <- mapply(function(bicluster2, size) {
-    overlap <- length(intersect(bicluster1$Rows, bicluster2$rows)) * length(intersect(bicluster1$Cols, bicluster2$Cols))
-    if(overlap < size * 0.25) TRUE
-    else FALSE
-  }, bicluster2 = biclust::biclusternumber(best)[-largest], size = sizes[-largest])
-  bicluster2 <- biclust::biclusternumber(best, which.max(sizes[-largest][notOverlapped]))
-  
-  biclusters <- c(bicluster1, bicluster2)
-
   scores <- sapply(seq_len(k), function(i, biclusters) {
     bicluster <- biclusters[[i]]
     s <- rep(0, nrow(m))
