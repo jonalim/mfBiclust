@@ -151,20 +151,35 @@ spectral <- function(m, k) {
     k <- number
     warning(paste("Spectral could only find", k, "biclusters"))
   }
+
+  sizes <- sapply(biclust::biclusternumber(best), function(x) {
+    length(x$Rows) * length(x$Cols)
+  })
+  largest <- which.max(sizes)
+  bicluster1 <- biclust::biclusternumber(best, largest)
   
+  notOverlapped <- mapply(function(bicluster2, size) {
+    overlap <- length(intersect(bicluster1$Rows, bicluster2$rows)) * length(intersect(bicluster1$Cols, bicluster2$Cols))
+    if(overlap < size * 0.25) TRUE
+    else FALSE
+  }, bicluster2 = biclust::biclusternumber(best)[-largest], size = sizes[-largest])
+  bicluster2 <- biclust::biclusternumber(best, which.max(sizes[-largest][notOverlapped]))
+  
+  biclusters <- c(bicluster1, bicluster2)
+
   scores <- sapply(seq_len(k), function(i, biclusters) {
     bicluster <- biclusters[[i]]
     s <- rep(0, nrow(m))
     s[bicluster$Rows] <- 1
     s
-  }, biclusters = biclust::biclusternumber(best))
+  }, biclusters = biclusters)
   
   loadings <- do.call(rbind, lapply(seq_len(k), function(i, biclusters) {
     bicluster <- biclusters[[i]]
     l <- rep(0, ncol(m))
     l[bicluster$Cols] <- 1
     l
-  }, biclusters = biclust::biclusternumber(best)))
+  }, biclusters = biclusters))
   
   new("genericFit", fit = new("genericFactorization",
                               W = scores, H = loadings), method = "spectral")

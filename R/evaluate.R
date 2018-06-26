@@ -8,7 +8,8 @@ testMultiBiclustering <- function() {
   # Configure loading 13AGRI from Python module 
   # https://github.com/padilha/gri
   
-  reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
+  #reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
+  reticulate::use_python("C:\\Users\\Jonathan\\Anaconda3\\envs\\pattern27\\python.exe")
   reticulate::py_config()
   gri <- reticulate::import("gri")
   # installed by running python setup.py install, then placing the .egg and gri.py at
@@ -90,9 +91,25 @@ testMultiBiclustering <- function() {
     })
   })
   
+  agris.spectral <- sapply(seq_len(30), function(i) {
+    agris.spectral <- sapply(datasets.all, FUN = function(dataset) {
+      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      agri.spectral <- NULL
+      while(!is.numeric(agri.spectral)) {
+        agri.spectral <- try({
+          dummy <- capture.output(bce <- addStrat(bce, k = 2, method = "spectral"))
+          prediction <- pred(getStrat(bce, 1))
+          prediction <- apply(prediction, 2, as.numeric)
+          gri$grand_index(t(dataset$labels), t(prediction), adjusted = TRUE)
+        }
+        )
+      }
+      agri.spectral
+    })
+  })
   
   
-  save(agris.als_nmf, agris.svd_pca, agris.plaid, file = "plots/multigroup-cancer-benchmark/results.rda")
+   save(agris.als_nmf, agris.svd_pca, agris.plaid, file = "plots/multigroup-cancer-benchmark/results.rda")
   
 }
 
