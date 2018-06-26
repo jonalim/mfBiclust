@@ -7,14 +7,14 @@ NULL
 #' object
 #'
 #' @export
-setGeneric("biclusterGUI", signature = "obj", function(obj) {
+setGeneric("biclusterGUI", signature = "obj", function(obj = NULL) {
   standardGeneric("biclusterGUI")
 })
 
 # clusters must be a named list of matrices
 #' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
 #' @importFrom shiny HTML actionButton animationOptions checkboxInput checkboxGroupInput column div downloadHandler downloadLink eventReactive fluidPage fluidRow h4 headerPanel htmlOutput need observe observeEvent p plotOutput reactiveValues renderPlot renderUI selectInput shinyApp sliderInput stopApp tabPanel tabsetPanel uiOutput updateSelectInput validate wellPanel withProgress conditionalPanel reactive outputOptions tags radioButtons downloadButton sidebarLayout sidebarPanel mainPanel
-setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
+setMethod("biclusterGUI", definition = function(obj) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
@@ -30,113 +30,70 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), function(obj) {
              color: red;
 }")
       )),
-      fluidRow(column(
-        12,
-        HTML("<br>")
-      )),
-      
-      sidebarLayout(
-        # User Control panel
-        sidebarPanel(
-          tags$head(tags$style("#loadingHeatmap{height:30vh !important;}")),
-          wellPanel(
-            # "Select data" panel. Enables user to select the BiclusterStrategy
-            # and which bicluster in that strategy.
-            # TODO add file I/O buttons.
-            h4("Select data"),
-            selectInput(inputId = "strategy", 
-                        label = "Biclustering strategy",
-                        choices = names(obj))
-          ),
-            # FIXME: Try changing the default to the BCV cluster number?
-          wellPanel(fluidRow(
-            column(
-              12,
-              HTML("<font size = 2>"),
-              h4("Format"),
-              # Log transform the original data (only for
-              # abundance. We expect the user to be
-              # responsible for homoscedascity,
-              # normalization, etc.
-              conditionalPanel("input.main_panel == 'Summary'",
-                               selectInput("logBase", "Log-transform",
-                                           choices = list("None" = 0, 
-                                                          "log[2]" = 2, 
-                                                          "ln" = "e", 
-                                                          "log[10]" = 10))),
-              # Formula for input data
-              conditionalPanel("input.main_panel == 'Sample distance'",
-                               selectInput("distType", "Formula",
-                                           choices = c("Euclidean distance",
-                                                       "1 - Pearson"))),
-              # Choose bicluster to highlight (for score and loading plots)
-              conditionalPanel("input.main_panel == 'Bicluster members' ||
-                                input.main_panel == 'Biomarkers'",
-                               uiOutput("selectCluster")),
-              # Choose sample ordering
-              conditionalPanel("input.main_panel != 'Biomarkers'",
-                               selectInput(
-                                 "sampOrder",
-                                 "Sample ordering",
-                                 choices = c(
-                                   "Same as input" = "input",
-                                   "Euclidean dist by abundance" = "distance",
-                                   "Euclidean dist by bicluster membership" = "cluster"
-                                 )
-                               )),
-              # Choose feature ordering (only for Biomarkers panel)
-              conditionalPanel("input.main_panel == 'Biomarkers'",
-                               selectInput(
-                                 "featOrder",
-                                 "Feature ordering",
-                                 choices = c(
-                                   "Same as input" = "input"
-                                   # ,
-                                   # "Euclidean dist by bicluster membership" = "cluster"
-                                 )
-                               )),
-              # Pick annotations to show along plot axes
-              conditionalPanel("input.main_panel != 'Stability' && 
-                               input.main_panel != 'Biomarkers'",
-                               uiOutput("annotPicker")),
-              # Show sample names?
-              conditionalPanel("input.main_panel != 'Stability' &&
-                                 input.main_panel != 'Biomarkers'",
-                               checkboxInput("sampNames", "Show sample names",
-                                              value = TRUE)),
-              # Show feature names?
-              conditionalPanel("input.main_panel == 'Summary' ||
-input.main_panel == 'Biomarkers'",
-                               checkboxInput("featNames", "Show feature names")),
-              HTML("</font>")
+      navbarPage("mfBiclust UI",
+        tabPanel(
+          "Data",
+          sidebarLayout(
+            sidebarPanel(
+              fileInput("input_df", "Import data", accept=c('text/csv','text/comma-separated-values,text/plain','.csv')),
+              checkboxInput("row_names", "Row names?", FALSE),
+              checkboxInput("header", "Header?", FALSE),
+              numericInput("skiplines", "Skip additional lines", 0),
+              textInput("sepchar", "Separator (empty = whitespace)", ""),
+              textInput("quotechar", "Quote", ""),
+              textInput("decchar", "Decimal", "."),
+              width = 3
+            ),
+            # Data panel and description column
+            mainPanel(
+              tabsetPanel(
+                tabPanel("Summary", 
+                  fluidRow(DT::DTOutput("raw_dt"))
+                  )
+              ),
+              # column(
+              #   9,
+              #   uiOutput("inside_tabs")
+              # ),
+              # column(
+              #   3,
+              #   h4("Panel description"),
+              #   htmlOutput("explanation")
+              # ),
+              width = 9
             )
-          )),
-          width = 3
-        ),
-        
-        # Data panel and description column
-        mainPanel(
-          column(
-            9,
-            uiOutput("mytabs")
-          ),
-          column(
-            3,
-            h4("Panel description"),
-            htmlOutput("explanation")
-          ),
-          width = 9
+          )
         )
       )
     ),
     
     #### SERVER ##################################################################
     server = function(input, output, session) {
+      
+      output$raw_dt <- DT::renderDataTable({
+        data <- data.frame(reactiveDT(), row.names = rownames(reactiveDT()))
+        return(data)
+      })
+      reactiveDT <- reactive({
+        rows <- if(input$row_names) 1 else NULL
+        if(is.null(input$input_df)) NULL
+        else read.table(input$input_df$datapath, header = input$header,
+                        row.names = rows, fill = TRUE, comment.char = "",
+                        sep = input$sepchar, quote = input$quotechar, dec = input$decchar, skip = input$skiplines)
+      })
+      
       # render the top tab panel
-      output$mytabs <- renderUI({
+      output$top_tabs <- renderUI({
+        tabPanel("Summary", sideBarLayout(
+          uiOutput("uiabundance", width = "100%"),
+                 plotOutput("pca", width = "100%"))
+      )
+      })
+      
+      # render the inside tab panel
+      output$inside_tabs <- renderUI({
         tabsetPanel(
-          tabPanel("Summary", uiOutput("uiabundance", width = "100%"),
-                   plotOutput("pca", width = "100%")),
+          
           tabPanel(
             "Sample distance",
             plotOutput("distance",
@@ -357,7 +314,7 @@ input.main_panel == 'Biomarkers'",
       # })
       #
       
-      #### REACTIVE INPUTS #######################################################
+      #### REACTIVE DATA #######################################################
       output$selectCluster <- renderUI({
         selectInput("cluster", "Select bicluster:", 
                     choices = names(getStrat(obj, input$strategy))

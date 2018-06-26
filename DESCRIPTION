@@ -28,7 +28,8 @@ Imports:
     Biobase,
     Matrix,
     mclust,
-    biclust
+    biclust,
+    DT
 LinkingTo: Rcpp
 RoxygenNote: 6.0.1
 Collate: 
