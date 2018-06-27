@@ -3,12 +3,12 @@
 \docType{methods}
 \name{biclusterGUI}
 \alias{biclusterGUI}
-\alias{biclusterGUI,BiclusterExperiment-method}
+\alias{biclusterGUI,ANY-method}
 \title{Explore a BiclusterExperiment}
 \usage{
-biclusterGUI(obj)
+biclusterGUI(obj = NULL)
 
-\S4method{biclusterGUI}{BiclusterExperiment}(obj)
+\S4method{biclusterGUI}{ANY}(obj = NULL)
 }
 \description{
 Opens a GUI to visualize analysis results contained in a BiclusterExperiment
@@ -16,6 +16,6 @@ object
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{BiclusterExperiment}: Open GUI for a BiclusterExperiment
+\item \code{ANY}: Open GUI for a BiclusterExperiment
 }}
 

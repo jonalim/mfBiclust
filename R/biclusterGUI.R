@@ -13,17 +13,18 @@ setGeneric("biclusterGUI", signature = "obj", function(obj = NULL) {
 
 # clusters must be a named list of matrices
 #' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
-#' @importFrom shiny HTML actionButton animationOptions checkboxInput checkboxGroupInput column div downloadHandler downloadLink eventReactive fluidPage fluidRow h4 headerPanel htmlOutput need observe observeEvent p plotOutput reactiveValues renderPlot renderUI selectInput shinyApp sliderInput stopApp tabPanel tabsetPanel uiOutput updateSelectInput validate wellPanel withProgress conditionalPanel reactive outputOptions tags radioButtons downloadButton sidebarLayout sidebarPanel mainPanel
+#' @import shiny
 setMethod("biclusterGUI", definition = function(obj) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
   
   ## define server global variables
-  values <- reactiveValues()
+  values <- reactiveValues(userBce = obj)
   
   shinyApp(
     ui = fluidPage(
+      shinyjs::useShinyjs(),
       #### UI ##################################################################
       tags$head(tags$style(
         HTML(".shiny-output-error-validation {
@@ -47,9 +48,13 @@ setMethod("biclusterGUI", definition = function(obj) {
             # Data panel and description column
             mainPanel(
               tabsetPanel(
-                tabPanel("Summary", 
-                  fluidRow(DT::DTOutput("raw_dt"))
-                  )
+                tabPanel("Table", 
+                  fluidRow(DT::DTOutput("dt"))
+                  ),
+                tabPanel("Heatmap",
+                  fluidRow(uiOutput("uiabundance", width = "100%"))),
+                tabPanel("PCA",
+                  fluidRow(uiOutput("pca")))
               ),
               # column(
               #   9,
@@ -70,17 +75,64 @@ setMethod("biclusterGUI", definition = function(obj) {
     #### SERVER ##################################################################
     server = function(input, output, session) {
       
-      output$raw_dt <- DT::renderDataTable({
-        data <- data.frame(reactiveDT(), row.names = rownames(reactiveDT()))
-        return(data)
-      })
-      reactiveDT <- reactive({
-        rows <- if(input$row_names) 1 else NULL
-        if(is.null(input$input_df)) NULL
-        else read.table(input$input_df$datapath, header = input$header,
+      reactiveSeparator <- observeEvent(input$input_df, {
+        # If the file input changes, try automatically changing separator to ","
+        if(substr(input$input_df$name, nchar(input$input_df$name) - 2,
+                  nchar(input$input_df$name)) == "csv") {
+          updateTextInput(session, "sepchar", value = ",")
+        }
+      }
+      )
+      
+      reactiveDF <- reactive({
+        # If the user has not chosen a file yet, look for a BiclusterExperiment in the execution environment of biclusterGUI
+        if(is.null(input$input_df)) {
+          shinyjs::disable("row_names")
+          shinyjs::disable("header")
+          shinyjs::disable("skiplines")
+          shinyjs::disable("sepchar")
+          shinyjs::disable("quotechar")
+          shinyjs::disable("decchar")
+          if(exists("values") && !is.null(values$userBce)) {
+            as.data.frame(t(as.matrix(values$userBce)))
+          } else NULL
+        }
+        # If the user has chosen a file, read it and update
+        else {
+          shinyjs::enable("row_names")
+          shinyjs::enable("header")
+          shinyjs::enable("skiplines")
+          shinyjs::enable("sepchar")
+          shinyjs::enable("decchar")
+          shinyjs::enable("quotechar")
+
+          # force character limits
+          shinyjs::runjs("$('#sepchar').attr('maxlength', 1)")
+          shinyjs::runjs("$('#quotechar').attr('maxlength', 1)")
+          shinyjs::runjs("$('#decchar').attr('maxlength', 1)")
+
+          
+          rows <- if(input$row_names) 1 else NULL
+          
+          read.table(input$input_df$datapath, header = input$header,
                         row.names = rows, fill = TRUE, comment.char = "",
                         sep = input$sepchar, quote = input$quotechar, dec = input$decchar, skip = input$skiplines)
+      }
       })
+
+      reactiveBce <- reactive({
+        # Always keep the BiclusterExperiment synchronized with (itself) or the user's file
+        if(is.null(input$input_df)) {
+          values$userBce
+        } else {
+          BiclusterExperiment(t(as.matrix(reactiveDF())))
+        }
+        })
+
+      output$dt <- DT::renderDT({
+        return(reactiveDF())
+      }, server = FALSE, selection = "none")
+      
       
       # render the top tab panel
       output$top_tabs <- renderUI({
@@ -117,16 +169,16 @@ setMethod("biclusterGUI", definition = function(obj) {
       reactiveHeatmapHeight500 <- reactive({ 
         max(500, length(input$annots) * 33 +
               sum(unlist(lapply(input$annots, function(annot) {
-                length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
-                                    pred(getStrat(obj, input$strategy))
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
+                                    pred(getStrat(reactiveBce(), input$strategy))
                 )[, annot]))
               }))) * 22 - 106)})
       
       reactiveHeatmapHeight300 <- reactive({ 
         max(300, length(input$annots) * 33 +
               sum(unlist(lapply(input$annots, function(annot) {
-                length(unique(cbind(Biobase::pData(Biobase::phenoData(obj)),
-                                    pred(getStrat(obj, input$strategy))
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
+                                    pred(getStrat(reactiveBce(), input$strategy))
                 )[, annot]))
               }))) * 22 - 106)})
       
@@ -140,22 +192,24 @@ setMethod("biclusterGUI", definition = function(obj) {
         print(gt) # printing ensures the returned gTable is drawn to Shiny
       }, height = function() {reactiveHeatmapHeight500()})
       reactive_abundance <- reactive({
-        withProgress(message = "Plotting...", value = 0, {
-          set.seed(1234567)
-          if(input$logBase == "e") {
-            logBase <- exp(1)
-          } else {
-            logBase <- as.numeric(input$logBase)
-          }
-          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(obj)))
-          biclustLabels <- intersect(input$annots, names(getStrat(obj, input$strategy)))
-          plot(obj, logBase = logBase, phenoLabels = phenoLabels, biclustLabels = biclustLabels, ordering = input$sampOrder, strategy = input$strategy, 
-               rowNames = input$sampNames, colNames = input$featNames)
-        })
+        if(!is.null(reactiveBce())) {
+          withProgress(message = "Plotting...", value = 0, {
+            set.seed(1234567)
+            if(input$logBase == "e") {
+              logBase <- exp(1)
+            } else {
+              logBase <- as.numeric(input$logBase)
+            }
+            phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
+            biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
+            plot(reactiveBce(), logBase = logBase, phenoLabels = phenoLabels, biclustLabels = biclustLabels, ordering = input$sampOrder, strategy = input$strategy, 
+                 rowNames = input$sampNames, colNames = input$featNames)
+          })
+        }
       })
       
       # Plot of samples along first two PCs
-      output$pca <- renderPlot({ pca(obj)})
+      output$pca <- renderPlot({ pca(reactiveBce())})
       
       # Euclidean Distance between samples (applied to raw data...might be good to scale first?)
       output$distance <- renderPlot({
@@ -164,19 +218,19 @@ setMethod("biclusterGUI", definition = function(obj) {
       }, height = function() {reactiveHeatmapHeight500()})
       reactiveDistance <- reactive({
         validate(need(
-          all(input$annot.rows %in% colnames(phenoData(obj))),
+          all(input$annot.rows %in% colnames(phenoData(reactiveBce()))),
           paste0(
             "\nPlease choose annotations from: ",
-            paste(colnames(phenoData(obj)), collapse = ", ")
+            paste(colnames(phenoData(reactiveBce())), collapse = ", ")
           )
         ))
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
-          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(obj)))
-          biclustLabels <- intersect(input$annots, names(getStrat(obj, input$strategy)))
+          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
+          biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
           distType <- if(input$distType == "Euclidean distance") {
             "euclidean"} else {"pearson"}
-          plotDist(obj, distType = distType, phenoLabels = phenoLabels, 
+          plotDist(reactiveBce(), distType = distType, phenoLabels = phenoLabels, 
                    biclustLabels = biclustLabels, 
                    ordering = input$sampOrder, strategy = input$strategy, 
                    rowColNames = input$sampNames
@@ -192,7 +246,7 @@ setMethod("biclusterGUI", definition = function(obj) {
       reactiveStability <- reactive({
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
-          plotClustStab(obj, input$strategy)
+          plotClustStab(reactiveBce(), input$strategy)
         })
       })
       
@@ -211,9 +265,9 @@ setMethod("biclusterGUI", definition = function(obj) {
         message = "Plotting...",
         value = 0, {
           set.seed(1234567)
-          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(obj)))
-          biclustLabels <- intersect(input$annots, names(getStrat(obj, input$strategy)))
-          heatmapFactor(obj, strategy = input$strategy, type = "score",
+          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
+          biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
+          heatmapFactor(reactiveBce(), strategy = input$strategy, type = "score",
                          phenoLabels = phenoLabels, 
                          biclustLabels = biclustLabels, ordering = input$sampOrder, 
                          colNames = input$sampNames)
@@ -227,7 +281,7 @@ setMethod("biclusterGUI", definition = function(obj) {
       reactive_score_threshold <- reactive({
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
-          plotSamples(obj, strategy = input$strategy, 
+          plotSamples(reactiveBce(), strategy = input$strategy, 
                       bicluster = input$cluster,
                       ordering = input$sampOrder)
         })
@@ -242,7 +296,7 @@ setMethod("biclusterGUI", definition = function(obj) {
         message = "Plotting...",
         value = 0, {
           set.seed(1234567)
-          heatmapFactor(obj, strategy = input$strategy, type = "loading",
+          heatmapFactor(reactiveBce(), strategy = input$strategy, type = "loading",
                          ordering = input$featOrder, 
                          colNames = input$featNames)
         }
@@ -255,7 +309,7 @@ setMethod("biclusterGUI", definition = function(obj) {
       reactiveMarkers <- reactive({
         withProgress(message = "Plotting...", value = 0, {
           set.seed(1234567)
-          plotMarkers(obj, strategy = input$strategy, 
+          plotMarkers(reactiveBce(), strategy = input$strategy, 
                       bicluster = input$cluster,
                       ordering = input$featOrder)
         })
@@ -317,13 +371,13 @@ setMethod("biclusterGUI", definition = function(obj) {
       #### REACTIVE DATA #######################################################
       output$selectCluster <- renderUI({
         selectInput("cluster", "Select bicluster:", 
-                    choices = names(getStrat(obj, input$strategy))
+                    choices = names(getStrat(reactiveBce(), input$strategy))
         )
       })
       output$annotPicker <- renderUI({
         selectInput("annots", label = "Annotations",
-                    choices = c(colnames(Biobase::phenoData(obj)), 
-                                names(getStrat(obj, input$strategy))),
+                    choices = c(colnames(Biobase::phenoData(reactiveBce())), 
+                                names(getStrat(reactiveBce(), input$strategy))),
                     selected = NULL, multiple = TRUE)
       }
       )
