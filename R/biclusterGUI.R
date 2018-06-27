@@ -97,6 +97,16 @@ setMethod("biclusterGUI", definition = function(obj) {
               width = 9
             )
           )
+        ),
+        tabPanel(
+          "Bicluster",
+          sidebarLayout(
+            sidebarPanel(
+              selectInput(inputId = "strategy", label = "Biclustering strategy"
+                          # FIXME
+                            ),
+              mainPanel()
+              )
         )
       )
     ),
