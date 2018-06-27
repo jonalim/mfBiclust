@@ -146,6 +146,8 @@ bcv <- function(Y, ks, holdouts = 10) {
   result.list
 }
 
+###% Algorithm by A.B. Owen, P.O. Perry. Bi-cross-validation of the SVD and the 
+###% nonnegative matrix factorization. Ann. Appl. Stat., 3 (2009), pp. 564-594
 # Helper function
 bcvGivenKs <- function(Y, ks, holdouts = 10) {
   # initialize...

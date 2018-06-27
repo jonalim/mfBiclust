@@ -259,6 +259,7 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
   # else {bce@strategies[idL]}
 })
 
+#### names ####
 #' Names of BiclusterStrategies in this BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
@@ -377,40 +378,40 @@ setMethod("plotDist", signature(x = "BiclusterExperiment"),
                                        annotation_row = annots)
             }
           })
-
-#### Cluster stability plot ####################################################
-#' @export
-setGeneric("plotClustStab", signature = "obj", function(obj, ...) {
-  standardGeneric("plotClustStab")
-})
-
-#' Cluster stability plot
-#'
-#' Plots the stability of clusters in the given BiclusterExperiment.
-#'
-#' @rdname plotClustStab
-#' @aliases plotClustStab
-setMethod(
-  "plotClustStab", signature(obj = "BiclusterExperiment"),
-  function(obj, clusters) {
-    if (length(obj@strategies) == 0) {
-      warning(paste0("Please calculate clusters first!"))
-      return(obj)
-    }
-    
-    # calculate consensus too?
-    
-    # calculate stability of the clusters check if there are more than 1 k value in ks range
-    stability <- NULL
-    # stability <- calculate_stability(metadata(object)$sc3$consensus, k)
-    stability <- abs(runif(n = clusters, min = 0, max = 1))
-    
-    d <- data.frame(Cluster = factor(1:length(stability)), Stability = stability)
-    ggplot2::ggplot(d, ggplot2::aes_string(x = "Cluster", y = "Stability")) +
-      ggplot2::geom_bar(stat = "identity") + ggplot2::ylim(0, 1) +
-      ggplot2::labs(x = "Cluster", y = "Stability Index") + ggplot2::theme_bw()
-  }
-)
+#' 
+#' #### Cluster stability plot ####################################################
+#' #' @export
+#' setGeneric("plotClustStab", signature = "obj", function(obj, ...) {
+#'   standardGeneric("plotClustStab")
+#' })
+#' 
+#' #' Cluster stability plot
+#' #'
+#' #' Plots the stability of clusters in the given BiclusterExperiment.
+#' #'
+#' #' @rdname plotClustStab
+#' #' @aliases plotClustStab
+#' setMethod(
+#'   "plotClustStab", signature(obj = "BiclusterExperiment"),
+#'   function(obj, clusters) {
+#'     if (length(obj@strategies) == 0) {
+#'       warning(paste0("Please calculate clusters first!"))
+#'       return(obj)
+#'     }
+#'     
+#'     # calculate consensus too?
+#'     
+#'     # calculate stability of the clusters check if there are more than 1 k value in ks range
+#'     stability <- NULL
+#'     # stability <- calculate_stability(metadata(object)$sc3$consensus, k)
+#'     stability <- abs(runif(n = clusters, min = 0, max = 1))
+#'     
+#'     d <- data.frame(Cluster = factor(1:length(stability)), Stability = stability)
+#'     ggplot2::ggplot(d, ggplot2::aes_string(x = "Cluster", y = "Stability")) +
+#'       ggplot2::geom_bar(stat = "identity") + ggplot2::ylim(0, 1) +
+#'       ggplot2::labs(x = "Cluster", y = "Stability Index") + ggplot2::theme_bw()
+#'   }
+#' )
 
 #### Factor matrix heatmap ###################################################
 #' @export

@@ -20,16 +20,13 @@ setMethod("biclusterGUI", definition = function(obj) {
   plotHeightSmall <- 300
   
   ## define server global variables
-  values <- reactiveValues(userBce = obj)
+  user <- reactiveValues(userBce = obj)
   
   shinyApp(
     ui = fluidPage(
       shinyjs::useShinyjs(),
       #### UI ##################################################################
       tags$head(tags$style(
-        HTML(".shiny-output-error-validation {
-             color: red;
-}")
       )),
       navbarPage("mfBiclust UI",
         tabPanel(
@@ -40,21 +37,53 @@ setMethod("biclusterGUI", definition = function(obj) {
               checkboxInput("row_names", "Row names?", FALSE),
               checkboxInput("header", "Header?", FALSE),
               numericInput("skiplines", "Skip additional lines", 0),
-              textInput("sepchar", "Separator (empty = whitespace)", ""),
+              textInput("sepchar", "Sep. (empty = whitespace)", ""),
               textInput("quotechar", "Quote", ""),
               textInput("decchar", "Decimal", "."),
-              width = 3
+              width = 2
             ),
             # Data panel and description column
             mainPanel(
               tabsetPanel(
                 tabPanel("Table", 
-                  fluidRow(DT::DTOutput("dt"))
-                  ),
-                tabPanel("Heatmap",
-                  fluidRow(uiOutput("uiabundance", width = "100%"))),
+                         fluidRow(DT::DTOutput("dt"))
+                ),
+                tabPanel(
+                  "Heatmap",
+                  fluidRow(
+                  sidebarLayout(
+                    sidebarPanel(
+                      fluidRow(
+                        h4("Format"),
+                        selectInput("logBase", "Log-transform",
+                                    choices = list("None" = 0, 
+                                                   "log[2]" = 2, 
+                                                   "ln" = "e", 
+                                                   "log[10]" = 10)),
+                        selectInput(
+                          "sampOrder",
+                          "Reorder by distance",
+                          choices = c(
+                            "Same as input" = "input",
+                            "Euclidean dist by abundance" = "distance",
+                            "Euclidean dist by bicluster membership" = "cluster"
+                          )
+                        ),
+                        uiOutput("annotPicker"),
+                        checkboxInput("sampNames", "Sample names"),
+                        checkboxInput("featNames", "Feature names")
+                      ),
+                      width = 2
+                    ),
+                    mainPanel(
+                      fluidRow(uiOutput("uiabundance", width = "100%")),
+                      width = 10),
+                    position = "right"
+                  )
+                )),
                 tabPanel("PCA",
-                  fluidRow(uiOutput("pca")))
+                         fluidRow(plotOutput("pca"))
+                )
               ),
               # column(
               #   9,
@@ -75,6 +104,12 @@ setMethod("biclusterGUI", definition = function(obj) {
     #### SERVER ##################################################################
     server = function(input, output, session) {
       
+      dep <- reactiveValues(
+        pheatmap = requireNamespace("pheatmap", quietly = TRUE),
+        plaid = requireNamespace("biclust", quietly = TRUE),
+        spectral = requireNamespace("biclust", quietly = TRUE)
+        )
+      #### DATA ####
       reactiveSeparator <- observeEvent(input$input_df, {
         # If the file input changes, try automatically changing separator to ","
         if(substr(input$input_df$name, nchar(input$input_df$name) - 2,
@@ -93,9 +128,10 @@ setMethod("biclusterGUI", definition = function(obj) {
           shinyjs::disable("sepchar")
           shinyjs::disable("quotechar")
           shinyjs::disable("decchar")
-          if(exists("values") && !is.null(values$userBce)) {
-            as.data.frame(t(as.matrix(values$userBce)))
-          } else NULL
+          if(exists("user") && !is.null(user$userBce)) {
+            as.data.frame(t(as.matrix(user$userBce)))
+          } else { validate(need(FALSE, "You may import your dataset."))
+          }
         }
         # If the user has chosen a file, read it and update
         else {
@@ -123,7 +159,9 @@ setMethod("biclusterGUI", definition = function(obj) {
       reactiveBce <- reactive({
         # Always keep the BiclusterExperiment synchronized with (itself) or the user's file
         if(is.null(input$input_df)) {
-          values$userBce
+          if(is.null(user$userBce)) {
+            validate(need(FALSE, "You may import your dataset."))
+          } else user$userBce
         } else {
           BiclusterExperiment(t(as.matrix(reactiveDF())))
         }
@@ -133,7 +171,100 @@ setMethod("biclusterGUI", definition = function(obj) {
         return(reactiveDF())
       }, server = FALSE, selection = "none")
       
+      # helper functions
+      reactiveHeatmapHeight500 <- reactive({ 
+        max(500, length(input$annots) * 33 +
+              sum(unlist(lapply(input$annots, function(annot) {
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
+                                    pred(getStrat(reactiveBce(), input$strategy))
+                )[, annot]))
+              }))) * 22 - 106)})
       
+      observeEvent(input$pheatmap, {
+        withProgress(message = "Installing pheatmap...", value = 0, {
+          install.packages("pheatmap")
+        })
+        if(requireNamespace("pheatmap", quietly = TRUE)) {
+          dep$pheatmap <- TRUE
+        }
+        })
+
+      # plot abundance heatmap (original data)
+      output$uiabundance <- renderUI({
+        if(!dep$pheatmap) {
+            actionButton("pheatmap", "Install dependency \"pheatmap\"")
+          } else {
+        height = reactiveHeatmapHeight500()
+        plotOutput("abundance", height = height)
+      }
+      })
+      output$abundance <- renderPlot({
+        gt <- reactive_abundance()
+        print(gt) # printing ensures the returned gTable is drawn to Shiny
+      }, height = function() {reactiveHeatmapHeight500()})
+      reactive_abundance <- reactive({
+        if(!is.null(reactiveBce())) {
+          
+          withProgress(message = "Plotting...", value = 0, {
+            set.seed(1234567)
+            if(input$logBase == "e") {
+              logBase <- exp(1)
+            } else {
+              logBase <- as.numeric(input$logBase)
+            }
+            phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
+            # biclustLabels <- if(length(names(reactiveBce())) > 0) {
+            #   intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
+            plot(reactiveBce(), logBase = logBase, phenoLabels = phenoLabels, ordering = input$sampOrder, strategy = input$strategy, 
+                 rowNames = input$sampNames, colNames = input$featNames)
+          })
+        }
+      })
+      
+      # Plot of samples along first two PCs
+      output$pca <- renderPlot({ 
+        pca(reactiveBce())
+        }
+        )
+      
+      # Euclidean Distance between samples (applied to raw data...might be good to scale first?)
+      output$distance <- renderPlot({
+        gt <- reactiveDistance()
+        print(gt)
+      }, height = function() {reactiveHeatmapHeight500()})
+      reactiveDistance <- reactive({
+        validate(need(
+          all(input$annot.rows %in% colnames(phenoData(reactiveBce()))),
+          paste0(
+            "\nPlease choose annotations from: ",
+            paste(colnames(phenoData(reactiveBce())), collapse = ", ")
+          )
+        ))
+        withProgress(message = "Plotting...", value = 0, {
+          set.seed(1234567)
+          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
+          biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
+          distType <- if(input$distType == "Euclidean distance") {
+            "euclidean"} else {"pearson"}
+          plotDist(reactiveBce(), distType = distType, phenoLabels = phenoLabels, 
+                   biclustLabels = biclustLabels, 
+                   ordering = input$sampOrder, strategy = input$strategy, 
+                   rowColNames = input$sampNames
+          )
+        })
+      })
+
+      ####
+
+
+      reactiveHeatmapHeight300 <- reactive({ 
+        max(300, length(input$annots) * 33 +
+              sum(unlist(lapply(input$annots, function(annot) {
+                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
+                                    pred(getStrat(reactiveBce(), input$strategy))
+                )[, annot]))
+              }))) * 22 - 106)})
+
       # render the top tab panel
       output$top_tabs <- renderUI({
         tabPanel("Summary", sideBarLayout(
@@ -163,79 +294,6 @@ setMethod("biclusterGUI", definition = function(obj) {
           id = "main_panel",
           type = "pills"
         )
-      })
-      #### REACTIVE PANELS #######################################################
-      # helper functions
-      reactiveHeatmapHeight500 <- reactive({ 
-        max(500, length(input$annots) * 33 +
-              sum(unlist(lapply(input$annots, function(annot) {
-                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
-                                    pred(getStrat(reactiveBce(), input$strategy))
-                )[, annot]))
-              }))) * 22 - 106)})
-      
-      reactiveHeatmapHeight300 <- reactive({ 
-        max(300, length(input$annots) * 33 +
-              sum(unlist(lapply(input$annots, function(annot) {
-                length(unique(cbind(Biobase::pData(Biobase::phenoData(reactiveBce())),
-                                    pred(getStrat(reactiveBce(), input$strategy))
-                )[, annot]))
-              }))) * 22 - 106)})
-      
-      # plot abundance heatmap (original data)
-      output$uiabundance <- renderUI({
-        height = reactiveHeatmapHeight500()
-        plotOutput("abundance", height = height)
-      })
-      output$abundance <- renderPlot({
-        gt <- reactive_abundance()
-        print(gt) # printing ensures the returned gTable is drawn to Shiny
-      }, height = function() {reactiveHeatmapHeight500()})
-      reactive_abundance <- reactive({
-        if(!is.null(reactiveBce())) {
-          withProgress(message = "Plotting...", value = 0, {
-            set.seed(1234567)
-            if(input$logBase == "e") {
-              logBase <- exp(1)
-            } else {
-              logBase <- as.numeric(input$logBase)
-            }
-            phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
-            biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
-            plot(reactiveBce(), logBase = logBase, phenoLabels = phenoLabels, biclustLabels = biclustLabels, ordering = input$sampOrder, strategy = input$strategy, 
-                 rowNames = input$sampNames, colNames = input$featNames)
-          })
-        }
-      })
-      
-      # Plot of samples along first two PCs
-      output$pca <- renderPlot({ pca(reactiveBce())})
-      
-      # Euclidean Distance between samples (applied to raw data...might be good to scale first?)
-      output$distance <- renderPlot({
-        gt <- reactiveDistance()
-        print(gt)
-      }, height = function() {reactiveHeatmapHeight500()})
-      reactiveDistance <- reactive({
-        validate(need(
-          all(input$annot.rows %in% colnames(phenoData(reactiveBce()))),
-          paste0(
-            "\nPlease choose annotations from: ",
-            paste(colnames(phenoData(reactiveBce())), collapse = ", ")
-          )
-        ))
-        withProgress(message = "Plotting...", value = 0, {
-          set.seed(1234567)
-          phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(reactiveBce())))
-          biclustLabels <- intersect(input$annots, names(getStrat(reactiveBce(), input$strategy)))
-          distType <- if(input$distType == "Euclidean distance") {
-            "euclidean"} else {"pearson"}
-          plotDist(reactiveBce(), distType = distType, phenoLabels = phenoLabels, 
-                   biclustLabels = biclustLabels, 
-                   ordering = input$sampOrder, strategy = input$strategy, 
-                   rowColNames = input$sampNames
-          )
-        })
       })
       
       # plot cluster stability (not implemented yet)
@@ -375,46 +433,48 @@ setMethod("biclusterGUI", definition = function(obj) {
         )
       })
       output$annotPicker <- renderUI({
+        classes <- if(inherits(reactiveBce(), "BiclusterExperiment")) {
+          c(colnames(Biobase::phenoData(reactiveBce())))
+        } else NULL
         selectInput("annots", label = "Annotations",
-                    choices = c(colnames(Biobase::phenoData(reactiveBce())), 
-                                names(getStrat(reactiveBce(), input$strategy))),
+                    choices = classes,
                     selected = NULL, multiple = TRUE)
       }
       )
       
       # observer for marker genes
-      observe({
-        if (FALSE) {
-          # biology) {
-          # get all marker genes
-          markers <- organise_marker_genes(object, input$strategy, 
-                                           as.numeric(input$pValMark), 
-                                           as.numeric(input$auroc.threshold))
-          values$n.markers <- nrow(markers)
-          # get top 10 marker genes of each cluster
-          markers <- markers_for_heatmap(markers)
-          clusts <- unique(markers[, 1])
-          if (is.null(clusts)) {
-            clusts <- "None"
-          }
-          values$mark.res <- markers
-          updateSelectInput(session, "cluster", choices = clusts)
-        } else {
-          values$n.markers <- 0
-        }
-      })
-      
-      
-      output$has_biomarkers <- reactive({
-        return(TRUE)
-      })
+      # observe({
+      #   if (FALSE) {
+      #     # biology) {
+      #     # get all marker genes
+      #     markers <- organise_marker_genes(object, input$strategy, 
+      #                                      as.numeric(input$pValMark), 
+      #                                      as.numeric(input$auroc.threshold))
+      #     user$n.markers <- nrow(markers)
+      #     # get top 10 marker genes of each cluster
+      #     markers <- markers_for_heatmap(markers)
+      #     clusts <- unique(markers[, 1])
+      #     if (is.null(clusts)) {
+      #       clusts <- "None"
+      #     }
+      #     user$mark.res <- markers
+      #     updateSelectInput(session, "cluster", choices = clusts)
+      #   } else {
+      #     user$n.markers <- 0
+      #   }
+      # })
+      # 
+      # 
+      # output$has_biomarkers <- reactive({
+      #   return(TRUE)
+      # })
       
       # stop App on closing the browser
       session$onSessionEnded(function() {
         stopApp()
       })
-      
-      outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
+      # 
+      # outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
     },
     
     # launch App in a browser
