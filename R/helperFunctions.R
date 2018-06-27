@@ -404,9 +404,9 @@ validateStratName <- function(stratName, bce) {
   }
 }
 
-# Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe. (2018)
-# https://cran.r-project.org/web/packages/NMF/
-# http://renozao.github.io/NMF
+###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe. (2018)
+###% https://cran.r-project.org/web/packages/NMF/
+###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps_conv=1e-4, verbose=FALSE){
   #nmfsh_comb <- function(A, k, param, verbose=FALSE, bi_conv=c(0, 10), eps_conv=1e-4, version=c('R', 'L')){
@@ -520,10 +520,10 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
     # test convergence every 5 iterations OR if the base average error has not been computed yet
     if ( (i %% 5==0)  || (length(erravg1)==0) ){
       
-       #### Algorithm adapted from:####
-       #     M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
-       #     Nonnegative Matrix Factorization," Computational Statistics and Data
-       #     Analysis, vol. 52, no. 1, pp. 155-173.
+       #### Convergence test adapted from:####
+       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
+       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
+       ###% Analysis, vol. 52, no. 1, pp. 155-173.
       dnorm = sqrt(sum((A - W %*% H)^2) / length(A))
       dw = max(abs(W - Wold) / (sqrteps + max(abs(Wold))))
       dh = max(abs(H - Hold) / (sqrteps + max(abs(Hold))))

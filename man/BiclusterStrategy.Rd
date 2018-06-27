@@ -5,7 +5,8 @@
 \title{Construct a BiclusterStrategy}
 \usage{
 BiclusterStrategy(m, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
-  "plaid", "spectral"), scoreThresh = c("otsu"), loadingThresh = c("otsu"))
+  "plaid", "spectral"), scoreThresh = c("otsu"), loadingThresh = c("otsu"),
+  ...)
 }
 \arguments{
 \item{scoreThresh}{the score thresholding algorithm to use. Ignored if
@@ -36,7 +37,7 @@ bicluster k. The first threshold will be applied to determine bicluster
 members.
 
 Careful! Use of NIPALS-PCA is not allowed when data is not missing. (NIPALS
-is very slow.)
+is very slow.) Note: when Spectral, can provide minR as the minimum fraction of rows/columns that can constitute a cluster.
 
 To be added: factorize: sparsenmf, plaid, bimax.
 To be added: threshold: ita, fcm
