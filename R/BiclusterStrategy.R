@@ -73,7 +73,6 @@ BiclusterStrategy <-
         # use R pca.
         bc <- svd_pca(m, k)
       } else if (method == "als-nmf") {
-        # Use NMF package
         if(any(m < 0)) {
           warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
                         "this BiclusterStrategy because",
@@ -81,6 +80,7 @@ BiclusterStrategy <-
           m <- m + abs(min(m))
         }
         tryCatch(
+          # Use helper function adapted from the NMF package
           bc <- als_nmf(m, k),
           error = function(c) {
             warning("ALS-NMF failed, switching to PCA.")
@@ -297,14 +297,18 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
     bca <- capitalize(method(bcs))
     sta <- capitalize(bcs@scoreThreshAlgo)
     lta <- capitalize(bcs@loadingThreshAlgo)
-    paste(
-      bca,
-      paste(sta, lta, sep = "/"),
-      nclust(bcs),
+  }
+  name(list(bca = bca, sta = sta, lta = lta, k = nclust(bcs)))
+})
+
+setMethod("name", c(bcs = "list"), function(bcs) {
+  paste(
+      bcs$bca,
+      paste(bcs$sta, bcs$lta, sep = "/"),
+      bcs$k,
       sep = " | "
     )
-  }
-})
+  })
 
 #' Names of biclusters in this BiclusterStrategy
 #' @export
