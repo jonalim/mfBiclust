@@ -1,16 +1,17 @@
-auto.snapshot: TRUE
+auto.snapshot: FALSE
 use.cache: FALSE
 print.banner.on.startup: auto
 vcs.ignore.lib: TRUE
 vcs.ignore.src: FALSE
 external.packages:
+    BiocInstaller
 local.repos: 
-load.external.packages.on.startup: TRUE
+load.external.packages.on.startup: FALSE
 ignored.packages: 
 ignored.directories:
     data
     inst
-quiet.package.installation: TRUE
+quiet.package.installation: FALSE
 snapshot.recommended.packages: FALSE
 snapshot.fields:
     Imports

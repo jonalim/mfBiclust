@@ -178,7 +178,8 @@ plaid <- function(m, k) {
   while(number < k && release > 0) {
     dummy <- capture.output({
       bc <- biclust::biclust(m, method = biclust::BCPlaid(), 
-                             row.release = release, col.release = release)
+                             row.release = release, col.release = release,
+                             max.layers = k)
     })
     if(bc@Number > number) {
       number <- bc@Number
