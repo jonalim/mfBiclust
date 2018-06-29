@@ -1,6 +1,6 @@
 #' @include helperFunctions.R
 
-initPy <- function(pathToPy27 = NULL) {
+libGri <- function(pathToPy27 = NULL) {
   if(!requireNamespace("reticulate")) {
     if(askYesNo(paste("Would you like to install reticulate and its", 
                       "depencencies to use this feature?"))) {
@@ -23,17 +23,54 @@ initPy <- function(pathToPy27 = NULL) {
            }
   )
 }
+
+libClusterProfiler <- function() {
+  if(!requireNamespace("clusterProfiler")) {
+    if(!requireNamespace("GO.db")) {
+      BiocInstaller::biocLite("GO.db", type = "source", INSTALL_opts = "--no-multiarch")
+    }
+    BiocInstaller::biocLite("clusterProfiler")
+  }
+  if(!requireNamespace("clusterProfiler")) {
+    stop("Unable to install clusterProfiler")
+  }
+}
+
 testFE <- function() {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
-  
+  libClusterProfiler()
   solutions.als_nmf <- sapply(datasets.all, function(dataset) {
     # Perform biclustering for 300 biclusters
-    bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
-    bce <- addStrat(bce, k = max(nrow(datset), ncol(dataset)), method = "als-nmf")
-    
+
+    bce <- BiclusterExperiment(t(as.matrix(dataset)))
+    # is this k logic really needed? Maybe the biclustering wrappers already limit k
+    bce <- addStrat(bce, k = min(max(nrow(dataset), ncol(dataset)), 500), method = "als-nmf")
     # filter down to a list of 100 biclusters / gene lists
+    bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, loadingThresh(getStrat(bce, 1)))
+    geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
+                                  BiclusterxCol = bc,
+                                  max = 100, overlap = 0.25)[[2]]
+    browser()
+    geneLists <- apply(geneLists, MARGIN = 1, function(index) {
+      rownames(bce)[index]
+    })
     
+    go <- sapply(geneLists, function(list) {
+      mf <- clusterProfiler::enrichGO(gene = list, universe = rownames(bce),
+                                organism = "yeast", ont = "mf", 
+                                pAdjustMethod = "BH", pvalueCutoff = 0.05)
+      bp <- clusterProfiler::enrichGO(gene = list, universe = rownames(bce),
+                                      organism = "yeast", ont = "bp", 
+                                      pAdjustMethod = "BH", pvalueCutoff = 0.05)
+      go <- rbind(mf, bp)
+      c(sum(go$p.adjust < 0.05), 
+        sum(go$p.adjust < 0.01),
+        sum(go$p.adjust < 0.005),
+        sum(go$p.adjust < 0.0001),
+        sum(go$p.adjust < 0.00001))
+    })
     
+    list(geneLists, go)
   })
 }
 
@@ -44,7 +81,7 @@ loadBenchmark <- function(dir, classes = FALSE) {
       files, 
       function(x) {
         # Read without header because duplicate column names are not allowed
-        tab <- read.table(file = paste0(dir, x), sep = "\t",
+        tab <- read.table(file = paste0(dir, x), sep = "",
                           header = FALSE, stringsAsFactors = FALSE)
         labels <- factor(as.character(tab[1, 2:ncol(tab)]))
         tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
@@ -63,25 +100,21 @@ loadBenchmark <- function(dir, classes = FALSE) {
     )
   } else {
     lapply(files, function(x) {
-      tab <- read.table(file = paste0(dir, x), sep = "\t",
-                        header = FALSE, row.names = 1, stringsAsFactors = FALSE)
+      tab <- read.table(file = paste0(dir, x), sep = "",
+                        header = FALSE, row.names = 2, stringsAsFactors = FALSE)
       tab[, 2:ncol(tab)]
     })
   }
 }
 
-testResidAgriCor <- function() {
+testResidAgriCor <- function(rep = 30) {
+  libGri()
   datasets.all <- loadBenchmark("data/cancer_benchmark/", classes = TRUE)
   # Test only datasets with >2 classes because ALS-NMF is deterministic-sh for two 
   # classes
   overTwoClass <- datasets.all[sapply(datasets.all, 
                                       function(X) ncol(X$labels) > 2)]
   
-  # Befor setting random seed, Pearsons correlations were in the range
-  # -0.66234210 to 0.29274232.; mean = -0.1535854 +/- 0.1325893 (95%), p =
-  # 0.02547 for two-tailed t-test. Positive correlations were theoretically
-  # caused by some signal orthogonal to the sample classes. That could be shown 
-  # by determining if the AGRI-residual PCC correlates with mean (or max) AGRI
   set.seed(12345)
   
   agrisResids <- sapply(seq_len(30), FUN = function(i) {
@@ -111,16 +144,36 @@ testResidAgriCor <- function() {
   # print(boxplot(x = pearsons, xlab = "20 datasets", y = "Pearson's Correlation"))
   
   agris <- apply(agrisResids, MARGIN = 2, function(dataset) {
-    mean(dataset[1, ])
+    dataset[1, ]
   })
 
-  print(plot(x = agris, y = pearsons, xlab = "AGRI", ylab = "PCC[AGRI, rms(resids)]"))
-  fit <- lm(pearsons ~ agris)
+  xs <- colMeans(agris)
+  browser()
+  print(plot(x = xs, y = pearsons, xlab = "AGRI", ylab = "PCC[AGRI, rms(resids)]"))
+  fit <- lm(pearsons ~ xs)
   abline(fit)
-  imax <- which.max(agris)
-  text(agris[imax] - 0.02, pearsons[imax], paste0("slope = ", round(fit$coefficients[2], 1)), pos=2)
+  imax <- which.max(xs)
+  text(xs[imax] - 0.02, pearsons[imax], paste0("slope = ", round(fit$coefficients[2], 1)), pos=2)
+
+  se2 <- unlist(apply(agris, MARGIN = 2, function(x) {
+    2 * sd(x) / sqrt(length(x))
+  }))
+  arrows(xs + se2, pearsons, xs - se2, pearsons, angle=0, code=3, length=0.1)
+    
+  # Pearsons correlations were in the range
+  # -0.662 to 0.293.; mean = -0.154 +/- 0.132 (95%), p =
+  # 0.02547 for two-tailed t-test. Supporting this, the
+  # correlation was more negative on datasets on which ALS-NMF performed well,
+  # suggesting that best performance is achieved by trying a few replicates.
   
-  list(pearsons = pearsons, tt <- t.test(x = pearsons, alternative = c("two.sided")))
+  # Positive correlations were theoretically
+  # caused by some signal orthogonal to the sample classes. 
+  
+  list(pearsons = pearsons, 
+       tt = t.test(x = pearsons, alternative = c("two.sided")),
+       agris = agris,
+       resids.rms = apply(agrisResids, MARGIN = 2, function(dataset) dataset[2, ])
+  )
 }
 
 testMultiBiclustering <- function() {
@@ -133,18 +186,11 @@ testMultiBiclustering <- function() {
   
   # Use 13AGRI to compare possibilistic clustering solutions with the reference,
   # which happens to be exclusive hard clustering
-  
+  libGri()
   # Configure loading 13AGRI from Python module 
   # https://github.com/padilha/gri
-  
-  reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
-  # 
-  reticulate::py_config()
-  gri <- reticulate::import("gri")
   # installed by running python setup.py install, then placing the .egg and gri.py at
   # anaconda3/Lib/site-packages
-  
-  # set this to any python2.7 installation
   
   # Load cancer benchmark
   datasets.all <- lapply(
@@ -242,8 +288,8 @@ testMultiBiclustering <- function() {
   agris.als_nmf.means <- rowMeans(agris.als_nmf)
   agris.plaid.means <- rowMeans(agris.plaid)
   ys <- rbind(agris.als_nmf.means, agris.svd_pca, agris.plaid.means)
-  agris.als_nmf.se2 <- 2 * apply(agris.als_nmf, 1, sd)
-  agris.plaid.se2 <- 2 * apply(agris.plaid, 1, sd)
+  agris.als_nmf.se2 <- 2 * apply(agris.als_nmf, 1, function(x) sd(x) / sqrt(length(x)))
+  agris.plaid.se2 <- 2 * apply(agris.plaid, 1, function(x) sd(x) / sqrt(length(x)))
   agris.svd_pca.se2 <- rep(0, length(agris.svd_pca))
   se2 <- rbind(agris.als_nmf.se2, agris.svd_pca.se2, agris.plaid.se2)
   bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
@@ -342,8 +388,8 @@ testSinglePca <- function() {
   ys <- rbind(aris.als_nmf, aris.svd_pca, aris.plaid.means, aris.spectral.means)
   colnames(ys) <- unlist(sapply(colnames(ys), function(x) substr(x, 1, nchar(x) - 13)))
   
-  aris.spectral.se2 <- 2 * apply(aris.spectral, 1, sd)
-  aris.plaid.se2 <- 2 * apply(aris.plaid, 1, sd)
+  aris.spectral.se2 <- 2 * apply(aris.spectral, 1, function(x) sd(x) / sqrt(length(x)))
+  aris.plaid.se2 <- 2 * apply(aris.plaid, 1, function(x) sd(x) / sqrt(length(x)))
   aris.svd_pca.se2 <- rep(0, length(aris.svd_pca))
   aris.als_nmf.se2 <- rep(0, length(aris.als_nmf))
   se2 <- rbind(aris.als_nmf.se2, aris.svd_pca.se2, aris.plaid.se2, aris.spectral.se2)

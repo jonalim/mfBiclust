@@ -139,9 +139,8 @@ BiclusterStrategy <-
     } else {
       # leave thresholds NULL? still to be implemented
     }
-    
     #### Results #############################################################
-    pred <- threshold(bc@fit@W, st[1])
+    pred <- threshold(bc@fit@W, MARGIN = 2, st)
     
     bcs <- new(
       "BiclusterStrategy",
