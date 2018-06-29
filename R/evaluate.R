@@ -1,7 +1,134 @@
 #' @include helperFunctions.R
-# example usage
+
+initPy <- function(pathToPy27 = NULL) {
+  if(!requireNamespace("reticulate")) {
+    if(askYesNo(paste("Would you like to install reticulate and its", 
+                      "depencencies to use this feature?"))) {
+      install.packages("reticulate")
+    }
+  }
+  if(!requireNamespace("reticulate")) { stop("Unable to install reticulate.") }
+  
+  if(!is.null(pathToPy27)) {
+    reticulate::use_python(pathToPy27)
+  }
+  reticulate::py_config()
+  tryCatch(gri <<- reticulate::import("gri"), 
+           error = function(e) {
+             stop(paste("Unable to import Python module gri-master. Please",
+                        "download from https://github.com/padilha/gri, run",
+                        "\"python setup.py install\" and then move files",
+                        "gri-1.0-py2.7.egg, gri.py, and gri.pyc to the /lib/site-packages",
+                        "folder of your Python installation."))
+           }
+  )
+}
+testFE <- function() {
+  datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
+  
+  solutions.als_nmf <- sapply(datasets.all, function(dataset) {
+    # Perform biclustering for 300 biclusters
+    bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+    bce <- addStrat(bce, k = max(nrow(datset), ncol(dataset)), method = "als-nmf")
+    
+    # filter down to a list of 100 biclusters / gene lists
+    
+    
+  })
+}
+
+loadBenchmark <- function(dir, classes = FALSE) {
+  files <- list.files(path = dir)
+  if(classes) {
+    lapply(
+      files, 
+      function(x) {
+        # Read without header because duplicate column names are not allowed
+        tab <- read.table(file = paste0(dir, x), sep = "\t",
+                          header = FALSE, stringsAsFactors = FALSE)
+        labels <- factor(as.character(tab[1, 2:ncol(tab)]))
+        tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
+        
+        # convert labels to classification matrix
+        classes <- levels(labels)
+        labels <- do.call(rbind, lapply(labels, function(lab) {
+          vec <- rep(0, length(classes))
+          names(vec) <- classes
+          vec[lab] <- 1
+          vec
+        }))
+        
+        list(data = tab, labels = labels)
+      }
+    )
+  } else {
+    lapply(files, function(x) {
+      tab <- read.table(file = paste0(dir, x), sep = "\t",
+                        header = FALSE, row.names = 1, stringsAsFactors = FALSE)
+      tab[, 2:ncol(tab)]
+    })
+  }
+}
+
+testResidAgriCor <- function() {
+  datasets.all <- loadBenchmark("data/cancer_benchmark/", classes = TRUE)
+  # Test only datasets with >2 classes because ALS-NMF is deterministic-sh for two 
+  # classes
+  overTwoClass <- datasets.all[sapply(datasets.all, 
+                                      function(X) ncol(X$labels) > 2)]
+  
+  # Befor setting random seed, Pearsons correlations were in the range
+  # -0.66234210 to 0.29274232.; mean = -0.1535854 +/- 0.1325893 (95%), p =
+  # 0.02547 for two-tailed t-test. Positive correlations were theoretically
+  # caused by some signal orthogonal to the sample classes. That could be shown 
+  # by determining if the AGRI-residual PCC correlates with mean (or max) AGRI
+  set.seed(12345)
+  
+  agrisResids <- sapply(seq_len(30), FUN = function(i) {
+    agrisResids <- sapply(overTwoClass, FUN = function(dataset) {
+      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- addStrat(bce, k = length(unique(colnames(dataset$labels))), 
+                      method = "als-nmf")
+      labels <- dataset$labels
+      
+      agri <- if(method(getStrat(bce, 1)) == "als-nmf") {
+        prediction <- pred(getStrat(bce, 1))
+        prediction <- apply(prediction, 2, as.numeric)
+        gri$grand_index(t(labels), t(prediction), adjusted=TRUE)  
+      } else { 0 }
+      resid <- t(as.matrix(dataset$data)) - 
+        score(getStrat(bce, 1)) %*% loading(getStrat(bce, 1))
+      resid.rms <- sqrt(sum(resid ^ 2) / length(resid))
+      
+      c(agri, resid.rms)
+    })
+    agrisResids
+  }, simplify = "array")
+
+  pearsons <- apply(agrisResids, MARGIN = 2, function(array) {
+    cor(x = array[1, ], y = array[2, ], method = "pearson")
+    })
+  # print(boxplot(x = pearsons, xlab = "20 datasets", y = "Pearson's Correlation"))
+  
+  agris <- apply(agrisResids, MARGIN = 2, function(dataset) {
+    mean(dataset[1, ])
+  })
+
+  print(plot(x = agris, y = pearsons, xlab = "AGRI", ylab = "PCC[AGRI, rms(resids)]"))
+  fit <- lm(pearsons ~ agris)
+  abline(fit)
+  imax <- which.max(agris)
+  text(agris[imax] - 0.02, pearsons[imax], paste0("slope = ", round(fit$coefficients[2], 1)), pos=2)
+  
+  list(pearsons = pearsons, tt <- t.test(x = pearsons, alternative = c("two.sided")))
+}
 
 testMultiBiclustering <- function() {
+  
+  # This evaluation yielded large confidence intervals for AGRI on ALS-NMF. 
+  # If the algorithm is run repeatedly on the same matrix, does lower norm of residuals
+  # correlate with higher AGRI? H0: Pearson correlation = 0 across all datasets.
+  set.seed(12345)
   load(file = "plots/multigroup-cancer-benchmark/results.rda")
   
   # Use 13AGRI to compare possibilistic clustering solutions with the reference,
@@ -11,7 +138,7 @@ testMultiBiclustering <- function() {
   # https://github.com/padilha/gri
   
   reticulate::use_python("C:\\Users\\2329118L\\Documents\\anaconda3\\envs\\bibench27\\python.exe")
-  # reticulate::use_python("C:\\Users\\Jonathan\\Anaconda3\\envs\\pattern27\\python.exe")
+  # 
   reticulate::py_config()
   gri <- reticulate::import("gri")
   # installed by running python setup.py install, then placing the .egg and gri.py at

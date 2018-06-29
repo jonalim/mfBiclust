@@ -297,8 +297,8 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
     bca <- capitalize(method(bcs))
     sta <- capitalize(bcs@scoreThreshAlgo)
     lta <- capitalize(bcs@loadingThreshAlgo)
+    name(list(bca = bca, sta = sta, lta = lta, k = nclust(bcs)))
   }
-  name(list(bca = bca, sta = sta, lta = lta, k = nclust(bcs)))
 })
 
 setMethod("name", c(bcs = "list"), function(bcs) {
