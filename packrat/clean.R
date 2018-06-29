@@ -1,7 +1,7 @@
 packrat::set_opts("auto.snapshot" = FALSE)
 up <- packrat::unused_packages()
 up <- up[sapply(up, function(x) ! x$name %in% c("BH", "plogr", "Rcpp", "BiocGenerics"))]
-try(packrat::clean(up))
+packrat::clean(up)
 
 if(!requireNamespace("devtools")) {
   install.packages("devtools")

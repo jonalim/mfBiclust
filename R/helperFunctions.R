@@ -73,23 +73,25 @@ createAnnots <-
   }
 
 
-# Function adapted from James Holland Jones, 2009.
-# http://monkeysuncle.stanford.edu/?p=485
+
 #' Error bars
+#' 
+#' Function adapted from James Holland Jones, 2009.
+#' http://monkeysuncle.stanford.edu/?p=485
 #' 
 #' @param x the result of a call to barplot()
 #' @param y the ys provided to barplot()
 #' @param upper vector of lengths of upper error bars
 #' @param lower vector of lengths of lower error bars; by default, same as 
 #'   upper
-#' 
+#' @export
 error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
   if(length(x) != length(y) | length(y) !=length(lower) | length(lower) != length(upper))
     stop("vectors must be same length")
   suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
-filterBiclusters <- function(RowxBicluster, BiclusterxCol, max = NULL, 
+filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL, 
                              overlap = 0.25) {
   k <- ncol(RowxBicluster)
   # Create lists of rows and columns contained in biclusters
@@ -99,24 +101,34 @@ filterBiclusters <- function(RowxBicluster, BiclusterxCol, max = NULL,
   chosen <- rep(FALSE, each = k)
   pool <- rep(TRUE, each = k)
   sizes <- sapply(seq_len(k), function(biclus) {
-    length(BiclusterRows[biclus]) * length(BiclusterCols[biclus])
+    length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
   })
+  names(sizes) <- seq_len(k)
+  
+  # exclude empty biclusters and whole-dataset biclusters
+  pool[sizes == 0 | sizes == nrow(RowxBicluster) * ncol(BiclusterxCol)] <- FALSE
   
   overlaps <- sapply(seq_len(k), function(biclus1) {
     sapply(seq_len(k), function(biclus2) {
-      length(intersect(BiclusterRows[biclus1], BiclusterRows[biclus2])) *
-        length(intersect(BiclusterCols[biclus1], BiclusterCols[biclus2]))
-    })
+        intersection1 <- base::intersect(BiclusterRows[biclus1], BiclusterRows[biclus2])
+        intersection1 <- if(length(intersection1) > 0) length(intersection1[[1]])
+        else 0
+        intersection2 <- base::intersect(BiclusterCols[biclus1], BiclusterCols[biclus2])
+        intersection2 <- if(length(intersection2) > 0) length(intersection2[[1]])
+        else 0
+      intersection <- intersection1 * intersection2
+      overlap <- intersection / sizes[biclus1]
+    }) 
   })
 
-  while(all(sum(chosen) > max) && sum(pool) > 0) {
-    chooseMe <- which.max(sizes[which(pool)])
+  while(all(sum(chosen) < max) && sum(pool) > 0) {
+    chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
     chosen[chooseMe] <- TRUE
-    
     # Remove from the pool any biclusters heavily overlapping with chooseMe
-    pool[overlaps[chosen, ] > overlap] <- FALSE
+    pool[overlaps[chooseMe, ] > overlap] <- FALSE
+    pool[chooseMe] <- FALSE
   }
-  
+
   list(RowxBicluster = RowxBicluster[, chosen], 
        BiclusterxCol = BiclusterxCol[chosen, ])
 }
@@ -313,17 +325,43 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE) {
 }
 
 #### threshold ####
-setGeneric("threshold", signature = "m", function(m, ...) {standardGeneric("threshold")})
 #' Apply threshold to a score or loading matrix
 #'
 #' Returns a binary matrix of the same size as \code{m} where all elements over
 #' the threshold are 1.
 #'
+#' If th is a vector, the first element of th will be used as threshold for the
+#' first col/row in m, etc.
+setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {standardGeneric("threshold")})
+
 #' @export
-setMethod("threshold", c(m = "matrix"), function(m, th) {
-  mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
-  mat[m < th] <- FALSE
-  mat
+setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, MARGIN = 2, th) {
+  if(length(th) == 1) {
+    mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
+    mat[m < th] <- FALSE
+    mat
+    }
+  else {
+    if(MARGIN == 1) {
+      if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
+      mat <- do.call(rbind, lapply(seq_len(nrow(m)), function(row) {
+        m[row, ] > th[row]
+      }))
+    } else {
+      if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
+      mat <- sapply(seq_len(ncol(m)), function(col) {
+        m[, col] > th[col]
+      })
+    }
+    colnames(mat) <- colnames(m)
+    rownames(mat) <- rownames(m)
+    mat
+  }
+}
+)
+
+setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, MARGIN = 2, th) {
+  threshold(m, MARGIN, as.numeric(th))
 }
 )
 

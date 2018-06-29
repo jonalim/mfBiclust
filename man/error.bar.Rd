@@ -17,5 +17,6 @@ error.bar(x, y, upper, lower = upper, length = 0.1, ...)
 upper}
 }
 \description{
-Error bars
+Function adapted from James Holland Jones, 2009.
+http://monkeysuncle.stanford.edu/?p=485
 }
