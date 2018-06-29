@@ -89,6 +89,38 @@ error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
   suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
+filterBiclusters <- function(RowxBicluster, BiclusterxCol, max = NULL, 
+                             overlap = 0.25) {
+  k <- ncol(RowxBicluster)
+  # Create lists of rows and columns contained in biclusters
+  BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
+  BiclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
+  
+  chosen <- rep(FALSE, each = k)
+  pool <- rep(TRUE, each = k)
+  sizes <- sapply(seq_len(k), function(biclus) {
+    length(BiclusterRows[biclus]) * length(BiclusterCols[biclus])
+  })
+  
+  overlaps <- sapply(seq_len(k), function(biclus1) {
+    sapply(seq_len(k), function(biclus2) {
+      length(intersect(BiclusterRows[biclus1], BiclusterRows[biclus2])) *
+        length(intersect(BiclusterCols[biclus1], BiclusterCols[biclus2]))
+    })
+  })
+
+  while(all(sum(chosen) > max) && sum(pool) > 0) {
+    chooseMe <- which.max(sizes[which(pool)])
+    chosen[chooseMe] <- TRUE
+    
+    # Remove from the pool any biclusters heavily overlapping with chooseMe
+    pool[overlaps[chosen, ] > overlap] <- FALSE
+  }
+  
+  list(RowxBicluster = RowxBicluster[, chosen], 
+       BiclusterxCol = BiclusterxCol[chosen, ])
+}
+
 is.wholenumber <-
   function(x, tol = sqrt(.Machine$double.eps)) {
     abs(x - round(x)) < tol

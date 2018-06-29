@@ -44,4 +44,5 @@ Suggests:
     testthat,
     mclust,
     biclust,
-    pheatmap
+    pheatmap,
+    reticulate
