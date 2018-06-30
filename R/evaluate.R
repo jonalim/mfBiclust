@@ -24,21 +24,30 @@ libGri <- function(pathToPy27 = NULL) {
   )
 }
 
-libClusterProfiler <- function() {
-  if(!requireNamespace("clusterProfiler")) {
+libGoseq <- function() {
+  reqs <- rep(FALSE, 3)
+  names(reqs) <- c("gostats", "GO.db" "DO.db")
+  if(!requireNamespace("gostats")) {
+    reqs[1] <- TRUE
+  }
     if(!requireNamespace("GO.db")) {
-      BiocInstaller::biocLite("GO.db", type = "source", INSTALL_opts = "--no-multiarch")
+      reqs[2] <- TRUE]
     }
-    BiocInstaller::biocLite("clusterProfiler")
+  if(askYesNo(paste("Dependencies", reqs, "required. Install? (y/n)"))) {
+  	if(reqs[2]) {
+		BiocInstaller::biocLite("GO.db", type = "source", INSTALL_opts = "--no-multiarch")
+  	}
+  	if(reqs[1]) {
+  		BiocInstaller::biocLite("GOstats", dependencies = TRUE)
+  	}
   }
-  if(!requireNamespace("clusterProfiler")) {
-    stop("Unable to install clusterProfiler")
-  }
+
+  requireNamespace("goseq")
 }
 
 testFE <- function() {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
-  libClusterProfiler()
+
   solutions.als_nmf <- sapply(datasets.all, function(dataset) {
     # Perform biclustering for 300 biclusters
 
@@ -50,24 +59,42 @@ testFE <- function() {
     geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
                                   BiclusterxCol = bc,
                                   max = 100, overlap = 0.25)[[2]]
-    browser()
+    
     geneLists <- apply(geneLists, MARGIN = 1, function(index) {
       rownames(bce)[index]
     })
-    
-    go <- sapply(geneLists, function(list) {
-      mf <- clusterProfiler::enrichGO(gene = list, universe = rownames(bce),
-                                organism = "yeast", ont = "mf", 
-                                pAdjustMethod = "BH", pvalueCutoff = 0.05)
-      bp <- clusterProfiler::enrichGO(gene = list, universe = rownames(bce),
-                                      organism = "yeast", ont = "bp", 
-                                      pAdjustMethod = "BH", pvalueCutoff = 0.05)
-      go <- rbind(mf, bp)
-      c(sum(go$p.adjust < 0.05), 
-        sum(go$p.adjust < 0.01),
-        sum(go$p.adjust < 0.005),
-        sum(go$p.adjust < 0.0001),
-        sum(go$p.adjust < 0.00001))
+    browser()
+    universe <- rownames(bce) # I sure hope these are entrez
+    go <- sapply(geneLists, function(geneList) {
+      # need to get "name of an Affy annotation package"
+      # 
+      # Molecular Function ontology
+      mf <- GOstats::hyperGTest(new("GOHyperGParams",
+                                    geneIds = geneList,
+                                    universeGeneIds = universe,
+                                    annotation = "ANNOTATION.DB",
+                                    ontology = "mf",
+                                    pvalueCutoff = 0.05,
+                                    testDirection = "over"))
+      
+      # Biological Process ontology
+      bp <- GOstats::hyperGTest(new("GOHyperGParams",
+                                    geneIds = geneList,
+                                    universeGeneIds = universe,
+                                    annotation = "ANNOTATION.DB",
+                                    ontology = "bp",
+                                    pvalueCutoff = 0.05,
+                                    testDirection = "over"))
+      
+      # will return a vector with a GO term count for each cutoff
+      cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
+      termCounts <- sapply(cutoffs, function(cutoff) {
+        res <- rbind(summary(mf, pvalueCutoff = cutoff), 
+                  summary(bp, pvalueCutoff = cutoff))
+        dim(res)$1
+      })
+      names(termCounts) <- as.character(cutoffs)
+      termCounts
     })
     
     list(geneLists, go)
