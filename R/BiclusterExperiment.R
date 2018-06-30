@@ -156,19 +156,9 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                                       "nipals-pca", "plaid", "spectral"), maxNa, 
                    silent = FALSE, ...) {
             # Validate parameters
-            if(!is.wholenumber(k)) {
-              stop("Arg \"k\" must be a whole number.")
-            }
-            
             # k must be whole number, smaller than both dimensions of m
             m <- t(as.matrix(bce))
-            tryCatch(k <- validateKM(k, m),
-                     error = function(e) {
-                       warning(paste("Initializing k to the size of the smaller matrix",
-                                     "dimension."))
-                       k <<- min(nrow(m), ncol(m))
-                     }
-            )
+            k <- validateKM(k, m, method)
             
             if(!(maxNa <= 1 && maxNa >= 0)) {
               stop("Arg \"maxNa\" must be in the range of 0 to 1.")

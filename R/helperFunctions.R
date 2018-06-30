@@ -121,6 +121,7 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
     }) 
   })
 
+  # FIXME broken when only one bicluster because sapply shrinks it to a vector
   while(all(sum(chosen) < max) && sum(pool) > 0) {
     chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
     chosen[chooseMe] <- TRUE
@@ -175,14 +176,21 @@ nipals_pca <- function(m, k) {
       method = "nipals-pca")
 }
 
-spectral <- function(m, k, minSize = 0) {
-  number <- 0
-  v <- nrow(m)
+# spectral may find over k biclusters, but only k will be returned
+# minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
+spectral <- function(m, k, minSize = NULL) {
+  minx <- if(is.null(minSize)) 2 else floor(min(nrow(m), ncol(m)) * minSize)
+  number <- 0 # save the biclustering solution with the most clusters
+  
+  # JNL try to find the lowest value of withinVar that yields enough biclusters.
+  # 10 * nrow(m) is an arbitrary cutoff. Note that this is most effective when
+  # height is the smaller matrix dimension.
+  v <- nrow(m) 
   best <- NULL
   while(number < k && v <= 10L * nrow(m)) {
     # dummy <- capture.output({
       bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "log",
-                             withinVar= v, minr = floor(nrow(m) * minSize), minc = floor(ncol(m) * minSize))
+                             withinVar= v, minr = minx, minc = minx)
     # })
     if(bc@Number > number) {
       number <- bc@Number
@@ -417,17 +425,16 @@ validateK <- function(k) {
   k
 }
 
-validateKM <- function(k, m = NULL) {
+validateKM <- function(k, m = NULL, method) {
   k <- validateK(k)
-  if (k >= nrow(m) || k >= ncol(m)) {
-    stop(
-      paste0(
-        "Number of biclusters must be smaller than both dimensions of",
-        "the assay data matrix."
-      )
-    )
+  if(method == "als-nmf" || "method" == "svd-pca" || method == "nipals-pca") {
+    if (k >= min(nrow(m), ncol(m))) {
+      warning(paste("Initializing k to the size of the smaller matrix",
+                    "dimension."))
+      return(min(nrow(m), ncol(m)))
+    }
   }
-  k
+  if(method == "plaid" || method == "spectral") k
 }
 
 validateKs <- function(ks) {

@@ -45,15 +45,23 @@ libGoseq <- function() {
   requireNamespace("goseq")
 }
 
+<<<<<<< HEAD
 calcFE <- function(dataset, algorithm) {
   cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
+=======
+calcFE <- function(dataset, algorithm, cutoffs) {
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
   
   # Perform biclustering for 300 biclusters
   bce <- BiclusterExperiment(t(as.matrix(dataset)))
   # is this k logic really needed? Maybe the biclustering wrappers already limit k
+<<<<<<< HEAD
   browser()
   bce <- addStrat(bce, k = min(max(nrow(dataset), ncol(dataset)), 500), 
                   method = algorithm)
+=======
+  bce <- addStrat(bce, 500, method = algorithm)
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
   # filter down to a list of 100 biclusters / gene lists
   # 
   bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, loadingThresh(getStrat(bce, 1)))
@@ -66,8 +74,13 @@ calcFE <- function(dataset, algorithm) {
     rownames(bce)[index]
   })
   
+<<<<<<< HEAD
   if(method(getStrat(bce, 1)) != method) {
     termCount = data.frame(rep(NA, length(cutoffs)))
+=======
+  if(method(getStrat(bce, 1)) != algorithm) {
+    termCount = as.data.frame(matrix(rep(NA, length(cutoffs)), nrow = 1))
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
     colnames(termCount) <- as.character(cutoffs)
     list(biclusters = list(), termCount = termCount)
   } else {
@@ -107,16 +120,28 @@ calcFE <- function(dataset, algorithm) {
     list(bce = bce, geneLists = geneLists, termCounts = termCount)
   }
 
+<<<<<<< HEAD
   requireNamespace("goseq")
+=======
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
 }
 
 testFE <- function(rep = 30) {
   set.seed(12345)
+<<<<<<< HEAD
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
+=======
+  cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
+  datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
+  # change to TRUE to save biclustering results
+  saveMe <- TRUE
+  save.file <- "plots/yeast_benchmark_results/"
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
 
   methods.nondet <- c("als-nmf", "plaid", "spectral")
   methods.det <- "svd-pca"
   
+<<<<<<< HEAD
   extractBest <- function(reps) {
     best <- which.max(sapply(reps, function(rep) {
       sum(rep$termCount[, 1] > 0) / length(rep$biclusters)
@@ -147,6 +172,71 @@ testFE <- function(rep = 30) {
     list(enriched = enriched[1], total = total, percent = scores)
   }
   # FIXME continue working here
+=======
+  extractBest <- function(solutions) {
+    best <- which.max(sapply(solutions, function(solution) {
+        sum(solution$termCount[, length(cutoffs)] > 0) / length(solution$geneLists)
+      }))
+      if(length(best) == 0) best <- 1
+      best <- solutions[[best]]
+      # number of enriched biclusters at various cutoffs
+      best$enriched <- colSums(best$termCount > 0)
+    best
+  }
+  
+  # Find biclusters using nondeterministic algorithms
+  solutions.nondet <- lapply(methods.nondet, function(algo) {
+    solutions <- lapply(datasets.all, function(dataset) {
+      # try 30 times to get the most GO-enriched biclusters. Seems like cheating,
+      # but this does reflect a real use case. We can inform users that "super"
+      # functional analysis will repeat NMF to find the most biological signal
+      reps <- lapply(seq_len(rep), function(i) {
+        calcFE(dataset, algorithm = algo, cutoffs)
+      })
+      extractBest(reps)
+    })
+  })
+  
+  if(saveMe) save(solutions.nondet, file = paste0(save.file, "solutions.nondet.Rda")) # save at each step!
+
+  # find biclusters using deterministic methods
+  solutions.det <- lapply(methods.det, function(algo) {
+     solutions <- lapply(datasets.all, function(dataset) {
+       solution <- calcFE(dataset, algorithm = algo, cutoffs)
+       solution$enriched <- solution$termCount > 0
+       solution
+    })
+  })
+  
+  # compile the results
+  solutions <- c(solutions.nondet, solutions.det)
+  
+  if(saveMe) save(solutions, file = paste0(save.file, "solutions.all.Rda")) # save at each step!
+  
+  res <- sapply(solutions, function(solutions.algo) {
+    # total enriched at each cutoff
+    enriched <- colSums(do.call(rbind, lapply(solutions.algo, function(solution.dataset) {
+      solution.dataset$enriched
+      })), na.rm = TRUE)
+    total <- sum(sapply(solutions.algo, function(x) {
+      length(x$geneLists)
+      })) # total
+    scores <- enriched / total * 100
+    list(enriched = enriched[1], total = total, percent = scores)
+  })
+
+  methods.all <- c(methods.nondet, methods.det)
+  colnames(res) <- methods.all
+  
+  ys <- apply(res, MARGIN = 2, function(x) x$percent)
+  if(saveMe) save(solutions, res, file = paste0(save.file, "solutions+stats.Rda"))
+  
+  old.par <- par(no.readonly = TRUE)
+  par(mar = c(4.1, 4.1, 1.1, 1.1))
+  barplot(height = ys, beside = TRUE, legend.text = methods.all, args.legend = c("topright"),
+          ylab = "% GO-enriched", xlab = "Adj. p-value cutoff", col = RColorBrewer::brewer.pal(nrow(res), "Dark2"))
+  par(old.par)
+>>>>>>> Use GOStats to test for GO enrichment on yeast datasets (in progress)
 }
 
 loadBenchmark <- function(dir, classes = FALSE) {
@@ -257,7 +347,7 @@ testMultiBiclustering <- function() {
   # If the algorithm is run repeatedly on the same matrix, does lower norm of residuals
   # correlate with higher AGRI? H0: Pearson correlation = 0 across all datasets.
   set.seed(12345)
-  load(file = "plots/multigroup-cancer-benchmark/results.rda")
+  try(load(file = "plots/multigroup-cancer-benchmark/results.rda"))
   
   # Use 13AGRI to compare possibilistic clustering solutions with the reference,
   # which happens to be exclusive hard clustering
@@ -367,10 +457,14 @@ testMultiBiclustering <- function() {
   agris.plaid.se2 <- 2 * apply(agris.plaid, 1, function(x) sd(x) / sqrt(length(x)))
   agris.svd_pca.se2 <- rep(0, length(agris.svd_pca))
   se2 <- rbind(agris.als_nmf.se2, agris.svd_pca.se2, agris.plaid.se2)
+  
+  old.par <- par(no.readonly = T)
+  par(mar = c(2.1, 4.1, 1.1, 0))
   bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid"), args.legend = c("topright"),
                 ylab = "'13 Adjusted Grand Rand Index", col = RColorBrewer::brewer.pal(3, "Dark2"),
-                ylim = c(0, .6))
+                ylim = c(0, .35))
   error.bar(bp, ys, se2, length = 0.01)
+  par(old.par)
 }
 
 testSinglePca <- function() {
@@ -469,10 +563,13 @@ testSinglePca <- function() {
   aris.als_nmf.se2 <- rep(0, length(aris.als_nmf))
   se2 <- rbind(aris.als_nmf.se2, aris.svd_pca.se2, aris.plaid.se2, aris.spectral.se2)
   
-  bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid", "Spectral"), args.legend = c(x = "topleft"),
+  old.par <- par(no.readonly = T)
+  par(mar = c(3.1, 4.1, 1.1, 1))
+  bp <- barplot(height = ys, beside = TRUE, legend.text = c("ALS-NMF", "SVD-PCA", "Plaid", "Spectral"), args.legend = c(x = "topright"),
                 ylab = "Adjusted Rand Index", col = RColorBrewer::brewer.pal(4, "Dark2"),
                 ylim = c(0, 1), xaxt = "n")
   error.bar(bp, ys, se2, length = 0.01)
+  par(old.par)
 }
 
 #' @importFrom Biobase pData
