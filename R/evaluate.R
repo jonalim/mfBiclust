@@ -25,80 +25,128 @@ libGri <- function(pathToPy27 = NULL) {
 }
 
 libGoseq <- function() {
-  reqs <- rep(FALSE, 3)
-  names(reqs) <- c("gostats", "GO.db" "DO.db")
+  reqs <- rep(FALSE, 2)
+  names(reqs) <- c("gostats", "GO.db")
   if(!requireNamespace("gostats")) {
     reqs[1] <- TRUE
   }
-    if(!requireNamespace("GO.db")) {
-      reqs[2] <- TRUE]
-    }
-  if(askYesNo(paste("Dependencies", reqs, "required. Install? (y/n)"))) {
-  	if(reqs[2]) {
-		BiocInstaller::biocLite("GO.db", type = "source", INSTALL_opts = "--no-multiarch")
-  	}
-  	if(reqs[1]) {
-  		BiocInstaller::biocLite("GOstats", dependencies = TRUE)
-  	}
+  if(!requireNamespace("GO.db")) {
+    reqs[2] <- TRUE
   }
-
+  if(askYesNo(paste("Dependencies", reqs, "required. Install? (y/n)"))) {
+    if(reqs[2]) {
+      BiocInstaller::biocLite("GO.db", type = "source", INSTALL_opts = "--no-multiarch")
+    }
+    if(reqs[1]) {
+      BiocInstaller::biocLite("GOstats", dependencies = TRUE)
+    }
+  }
+  
   requireNamespace("goseq")
 }
 
-testFE <- function() {
-  datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
-
-  solutions.als_nmf <- sapply(datasets.all, function(dataset) {
-    # Perform biclustering for 300 biclusters
-
-    bce <- BiclusterExperiment(t(as.matrix(dataset)))
-    # is this k logic really needed? Maybe the biclustering wrappers already limit k
-    bce <- addStrat(bce, k = min(max(nrow(dataset), ncol(dataset)), 500), method = "als-nmf")
-    # filter down to a list of 100 biclusters / gene lists
-    bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, loadingThresh(getStrat(bce, 1)))
-    geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
-                                  BiclusterxCol = bc,
-                                  max = 100, overlap = 0.25)[[2]]
-    
-    geneLists <- apply(geneLists, MARGIN = 1, function(index) {
-      rownames(bce)[index]
-    })
-    browser()
+calcFE <- function(dataset, algorithm) {
+  cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
+  
+  # Perform biclustering for 300 biclusters
+  bce <- BiclusterExperiment(t(as.matrix(dataset)))
+  # is this k logic really needed? Maybe the biclustering wrappers already limit k
+  browser()
+  bce <- addStrat(bce, k = min(max(nrow(dataset), ncol(dataset)), 500), 
+                  method = algorithm)
+  # filter down to a list of 100 biclusters / gene lists
+  # 
+  bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, loadingThresh(getStrat(bce, 1)))
+  
+  geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
+                              BiclusterxCol = bc,
+                              max = 100, overlap = 0.25)[[2]]
+  
+  geneLists <- apply(geneLists, MARGIN = 1, function(index) {
+    rownames(bce)[index]
+  })
+  
+  if(method(getStrat(bce, 1)) != method) {
+    termCount = data.frame(rep(NA, length(cutoffs)))
+    colnames(termCount) <- as.character(cutoffs)
+    list(biclusters = list(), termCount = termCount)
+  } else {
     universe <- rownames(bce) # I sure hope these are entrez
-    go <- sapply(geneLists, function(geneList) {
-      # need to get "name of an Affy annotation package"
-      # 
+    
+    # get a table where each column is a p-value cutoff; each row is a
+    # bicluster
+    termCount <- do.call(rbind, lapply(geneLists, function(geneList) {
       # Molecular Function ontology
       mf <- GOstats::hyperGTest(new("GOHyperGParams",
                                     geneIds = geneList,
                                     universeGeneIds = universe,
-                                    annotation = "ANNOTATION.DB",
-                                    ontology = "mf",
+                                    annotation = "org.Sc.sgd.db",
+                                    ontology = "MF",
                                     pvalueCutoff = 0.05,
-                                    testDirection = "over"))
+                                    testDirection = "over", 
+                                    conditional = TRUE))
       
       # Biological Process ontology
       bp <- GOstats::hyperGTest(new("GOHyperGParams",
                                     geneIds = geneList,
                                     universeGeneIds = universe,
-                                    annotation = "ANNOTATION.DB",
-                                    ontology = "bp",
+                                    annotation = "org.Sc.sgd.db",
+                                    ontology = "BP",
                                     pvalueCutoff = 0.05,
-                                    testDirection = "over"))
+                                    testDirection = "over",
+                                    conditional = TRUE))
       
-      # will return a vector with a GO term count for each cutoff
-      cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
+      # a vector with a GO term count for each cutoff
       termCounts <- sapply(cutoffs, function(cutoff) {
-        res <- rbind(summary(mf, pvalueCutoff = cutoff), 
-                  summary(bp, pvalueCutoff = cutoff))
-        dim(res)$1
+        sum(GOstats::pvalues(mf) < cutoff) + sum(GOstats::pvalues(bp) < cutoff)
       })
+      
       names(termCounts) <- as.character(cutoffs)
       termCounts
-    })
+    }))
+    list(bce = bce, geneLists = geneLists, termCounts = termCount)
+  }
+
+  requireNamespace("goseq")
+}
+
+testFE <- function(rep = 30) {
+  set.seed(12345)
+  datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
+
+  methods.nondet <- c("als-nmf", "plaid", "spectral")
+  methods.det <- "svd-pca"
+  
+  extractBest <- function(reps) {
+    best <- which.max(sapply(reps, function(rep) {
+      sum(rep$termCount[, 1] > 0) / length(rep$biclusters)
+    }))
+    best <- reps[best]
+    # number of enriched biclusters at various cutoffs
+    best$enriched <- colSums(best$termCount > 0)
+    best
+  }
+  
+  res.nondet <- lapply(method.nondet, function(algo) {
     
-    list(geneLists, go)
-  })
+    solutions <- sapply(datasets.all[1:3], function(dataset) {
+      # try 30 times to get the most GO-enriched biclusters. Seems like cheating,
+      # but this does reflect a real use case. We can inform users that "super" 
+      # functional analysis will repeat NMF to find the most biological signal
+      reps <- sapply(seq_len(rep), function(i) {
+        calcFE(dataset, algorithm = algo)
+      })
+      extractBest(reps)
+    })
+
+    # compile the results
+    # total enriched at each cutoff
+    enriched <- colSums(sapply(solutions, function(x) x$enriched)) 
+    total <- sum(sapply(solutions, function(x) length(x$geneLists))) # total
+    scores <- enriched / total
+    list(enriched = enriched[1], total = total, percent = scores)
+  }
+  # FIXME continue working here
 }
 
 loadBenchmark <- function(dir, classes = FALSE) {
@@ -164,16 +212,16 @@ testResidAgriCor <- function(rep = 30) {
     })
     agrisResids
   }, simplify = "array")
-
+  
   pearsons <- apply(agrisResids, MARGIN = 2, function(array) {
     cor(x = array[1, ], y = array[2, ], method = "pearson")
-    })
+  })
   # print(boxplot(x = pearsons, xlab = "20 datasets", y = "Pearson's Correlation"))
   
   agris <- apply(agrisResids, MARGIN = 2, function(dataset) {
     dataset[1, ]
   })
-
+  
   xs <- colMeans(agris)
   browser()
   print(plot(x = xs, y = pearsons, xlab = "AGRI", ylab = "PCC[AGRI, rms(resids)]"))
@@ -181,12 +229,12 @@ testResidAgriCor <- function(rep = 30) {
   abline(fit)
   imax <- which.max(xs)
   text(xs[imax] - 0.02, pearsons[imax], paste0("slope = ", round(fit$coefficients[2], 1)), pos=2)
-
+  
   se2 <- unlist(apply(agris, MARGIN = 2, function(x) {
     2 * sd(x) / sqrt(length(x))
   }))
   arrows(xs + se2, pearsons, xs - se2, pearsons, angle=0, code=3, length=0.1)
-    
+  
   # Pearsons correlations were in the range
   # -0.662 to 0.293.; mean = -0.154 +/- 0.132 (95%), p =
   # 0.02547 for two-tailed t-test. Supporting this, the
@@ -332,29 +380,29 @@ testSinglePca <- function() {
   datasets.all <- sapply(X = list.files(path = "data/cancer_benchmark/"), 
                          function(x) {
                            tab <- read.table(file = paste0("data/cancer_benchmark/", x), sep = "\t",
-                                                header = FALSE, stringsAsFactors = FALSE)
+                                             header = FALSE, stringsAsFactors = FALSE)
                            labels <- factor(as.character(tab[1, 2:ncol(tab)]))
                            tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
                            if(length(levels(labels)) == 2) { list(data = tab,
                                                                   labels = labels)
-                             }
-                           else { NULL }
                            }
-                         )
+                           else { NULL }
+                         }
+  )
   twoClass <- datasets.all[sapply(datasets.all, function(X) !is.null(X))]
   rm(datasets.all)
   
   minRowClusterFraction <- min(sapply(twoClass, function(x) table(x$labels) / length(x$labels)))
   
   aris.als_nmf <- sapply(twoClass, function(dataset) {
-      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
-      bce <- addStrat(bce, k = 1, method = "als-nmf")
-      
-      labels <- dataset$labels
-      if(method(getStrat(bce, 1)) == "als-nmf") {
-        mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
-      } else { 0 }
-    })
+    bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+    bce <- addStrat(bce, k = 1, method = "als-nmf")
+    
+    labels <- dataset$labels
+    if(method(getStrat(bce, 1)) == "als-nmf") {
+      mclust::adjustedRandIndex(labels, getStrat(bce, 1)@pred[, 1])
+    } else { 0 }
+  })
   
   bces.svd_pca <- sapply(twoClass, function(l) {
     bce <- BiclusterExperiment(t(as.matrix(l$data)))
@@ -399,9 +447,9 @@ testSinglePca <- function() {
       bce <- BiclusterExperiment(t(as.matrix(l$data)))
       ari.spectral <- NULL
       
-        bce <- addStrat(bce, k = 2, method = "spectral", min = minRowClusterFraction)
-        predictions <- pred(getStrat(bce, 1))[, 1]
-        ari.spectral <- mclust::adjustedRandIndex(l$labels, predictions)
+      bce <- addStrat(bce, k = 2, method = "spectral", min = minRowClusterFraction)
+      predictions <- pred(getStrat(bce, 1))[, 1]
+      ari.spectral <- mclust::adjustedRandIndex(l$labels, predictions)
       
       if(is.numeric(ari.spectral)) ari.spectral
       else 0 # N.B. My Spectral wrapper tries withinVar at 1:10 * nrow(m)
@@ -409,7 +457,7 @@ testSinglePca <- function() {
   })
   
   save(aris.als_nmf, aris.svd_pca, aris.plaid, aris.spectral, file = "plots/two-group-cancer-benchmark/results.rda")
-
+  
   aris.spectral.means <- rowMeans(aris.spectral)
   aris.plaid.means <- rowMeans(aris.plaid)
   ys <- rbind(aris.als_nmf, aris.svd_pca, aris.plaid.means, aris.spectral.means)
@@ -438,15 +486,15 @@ testMicroarrays <- function() {
   gse1.labels[which(sapply(pData(gse1)$title, function(x) {
     s <- substring(text = x, first = 7, last = 30)
     stringi::stri_replace_first(s, ".", regex = "-")
-    }) %in% whichClustered[, 1])] <- "clustered"
+  }) %in% whichClustered[, 1])] <- "clustered"
   
   # data/GSE2223/GPL1833.soft # grep case-sensitive BRAIN GBM O others in source_name_ch2 # 4, 31, 14, 6
   gse2223 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE2223/GSE2223_series_matrix.txt.gz")
   gse2223.labels <- rep("Other", nrow(pData(gse2223)))
   gse2223.labels[grep(pattern = "BRAIN", x = pData(gse2223)$source_name_ch2, 
-                     ignore.case = FALSE)] <- "BRAIN"
+                      ignore.case = FALSE)] <- "BRAIN"
   gse2223.labels[grep(pattern = "GBM", x = pData(gse2223)$source_name_ch2, 
-                     ignore.case = TRUE)] <- "GBM"
+                      ignore.case = TRUE)] <- "GBM"
   gse2223.labels[grep(pattern = "GNN", x = pData(gse2223)$source_name_ch2, 
                       ignore.case = TRUE)] <- "GBM"
   gse2223.labels[grep(pattern = "O", x = pData(gse2223)$source_name_ch2, 
@@ -457,11 +505,11 @@ testMicroarrays <- function() {
   gse17025 <- GEOquery::getGEO(file = "data/annotated_microarrays/GSE17025/GSE17025_series_matrix.txt.gz")
   gse17025.labels <- rep(0, nrow(pData(gse17025)))
   gse17025.labels[grep(pattern = "EE", x = pData(gse17025)$source_name_ch1, 
-                      ignore.case = FALSE)] <- "EE"
+                       ignore.case = FALSE)] <- "EE"
   gse17025.labels[grep(pattern = "PS", x = pData(gse17025)$source_name_ch1, 
-                      ignore.case = TRUE)] <- "PS"
+                       ignore.case = TRUE)] <- "PS"
   gse17025.labels[grep(pattern = "NL", x = pData(gse17025)$source_name_ch1, 
-                      ignore.case = TRUE)] <- "NL"
+                       ignore.case = TRUE)] <- "NL"
   
   exprSets <- list(gse1, gse17025, gse2223)
   labels <- list(gse1.labels, gse17025.labels, gse2223.labels)
@@ -471,8 +519,8 @@ testMicroarrays <- function() {
     k.oracle <- length(labels)
     addStrat(bce, BiclusterStrategy(t(as.matrix(bce)), k.oracle, method = "nipals"))
     adjustedRandIndex(gse1.labels, getStrat(bce, 1)@pred[, 1])
-    },
-    es = exprSets, labels = labels)
+  },
+  es = exprSets, labels = labels)
   # data1/GSE3726/GSE3726_series_matrix.txt.gz # grep B, C in title # 62, 42
   # "data/GSE4045/GSE4045_series_matrix.txt.gz" # grep serrated in description # 8, 29
   # data/GSE82009/GPL8300.soft # characteristics_ch1 can be read as factor # 	14,7,14,15
@@ -481,10 +529,10 @@ testMicroarrays <- function() {
   
   # GSE3398 needs individual samples assembled (Garber adenocarcinomas)
   # "data/GSE3933/GSE3933-GPL3044_series_matrix.txt.gz" 43008 features (not processed into genes)
-
+  
   # 
   # inside loop: fetch file.
-    # perform biclustering
+  # perform biclustering
   #evaluate
   
 }
