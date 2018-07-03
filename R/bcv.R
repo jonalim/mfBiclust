@@ -1,63 +1,3 @@
-analyzeTest <- function(test_res, k_limit = 10, iter = 10) {
-  
-  lapply(seq_len(length(test_res)), FUN = function(i) {
-    l <- test_res[[i]]
-    name <- names(test_res)[i]
-    esaBcvRes <- l[[1]]
-    median(esaBcvRes)
-    png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[esa].png"))
-    try(barplot(height = table(factor(esaBcvRes, levels = as.character(0:10))),  main = name,
-             xlab = "# biclusters", ylab = "BCV[ESA] Outcome Frequency (n = 40)"))
-    dev.off()
-    
-    browser()
-    
-    png(filename = paste0("plots/simdata_nonoverlap_pictures/", name, ".bcv[pca].png"))
-    barplot(height = table(factor(l[[2]], levels = as.character(0:10))), main = name, xlab = "# biclusters",
-            ylab = "BCV[PCA] Outcome Frequency (n = 40)")
-    dev.off()
-    
-    bcvRes <- l[[2]]
-    median(bcvRes)
-    browser()
-
-  })
-  
-}
-
-testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
-  res <- lapply(list.files(directory), function(file) {
-    path <- file.path(directory, file)
-    
-    input <- read.csv(file = path)
-    esaRes <- sapply(1:iter, FUN = function(x) {
-      esabcv <- sapply(1:(holdouts ^ 2), function(x) {
-        tryCatch({
-        eb <- esaBcv::EsaBcv(input, center = TRUE, niter = 3, r.limit = k_limit, nRepeat = 2, only.r = TRUE)$result.list[1, ]
-        if(length(eb) < k_limit + 1) { 
-          eb <- c(eb, rep(0, each = k_limit + 1 - length(eb))) 
-        }
-        eb
-        },
-        error = function(e) rep(NA, each = 11))
-      })
-      # Create one prediction error from the 100 random holdouts
-      mean_pe <- colMeans(t(esabcv))
-      as.numeric(names(which.min(mean_pe)))
-    })
-    
-    bcvRes <- sapply(1:iter, FUN = function(x) {
-      which.min(bcv(input, k_limit, holdouts = holdouts))
-    })
-    # returns just a vector of the results
-    res <- list(esaRes, bcvRes)
-    names(res) <- c("eb", "b")
-    res
-  })
-  names(res) <- list.files(directory)
-  res
-}
-
 #' Perform bcv until convergence
 #'
 #' Performs BCV until the the distribution of results has converged. Often this
@@ -81,6 +21,9 @@ testBcvNewOld <- function(directory, k_limit = 10, iter = 10, holdouts = 10) {
 #' @export
 auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
                      verbose = TRUE) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   distr <- rep(1, each = length(ks))
   names(distr) <- as.character(ks)
   distrOld <- distr
@@ -134,6 +77,9 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
 #'
 #' @export
 bcv <- function(Y, ks, holdouts = 10) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
