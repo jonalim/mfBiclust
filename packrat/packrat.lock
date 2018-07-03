@@ -184,10 +184,6 @@ GithubRepo: devtools
 GithubUsername: r-lib
 GithubRef: 33a9404583833f162f84b6a931cca2ccca2dd8d7
 GithubSha1: 33a9404583833f162f84b6a931cca2ccca2dd8d7
-RemoteHost: https://api.github.com
-RemoteRepo: devtools
-RemoteUsername: r-lib
-RemoteSha: 33a9404583833f162f84b6a931cca2ccca2dd8d7
 
 Package: dichromat
 Source: CRAN
@@ -260,10 +256,6 @@ GithubRepo: git2r
 GithubUsername: ropensci
 GithubRef: master
 GithubSha1: 33c9e25d5d3f11858b894a6f1492977251018245
-RemoteHost: https://api.github.com
-RemoteRepo: git2r
-RemoteUsername: ropensci
-RemoteSha: 33c9e25d5d3f11858b894a6f1492977251018245
 
 Package: glue
 Source: CRAN
@@ -425,10 +417,6 @@ GithubRepo: pkgbuild
 GithubUsername: r-lib
 GithubRef: master
 GithubSha1: 94d2f0da8a49fe9bec5a7f5e9608b7dead959b7c
-RemoteHost: https://api.github.com
-RemoteRepo: pkgbuild
-RemoteUsername: r-lib
-RemoteSha: 94d2f0da8a49fe9bec5a7f5e9608b7dead959b7c
 
 Package: pkgconfig
 Source: CRAN
@@ -444,10 +432,6 @@ GithubRepo: pkgload
 GithubUsername: r-lib
 GithubRef: master
 GithubSha1: 35efedd287f1beddf9c6f7ca931e820313490b6b
-RemoteHost: https://api.github.com
-RemoteRepo: pkgload
-RemoteUsername: r-lib
-RemoteSha: 35efedd287f1beddf9c6f7ca931e820313490b6b
 
 Package: pkgmaker
 Source: CRAN
@@ -511,10 +495,6 @@ GithubRepo: rcmdcheck
 GithubUsername: r-lib
 GithubRef: master
 GithubSha1: ad42561aa6e06297367455546b6312dcf59282b6
-RemoteHost: https://api.github.com
-RemoteRepo: rcmdcheck
-RemoteUsername: r-lib
-RemoteSha: ad42561aa6e06297367455546b6312dcf59282b6
 
 Package: registry
 Source: CRAN
@@ -532,6 +512,12 @@ Source: CRAN
 Version: 1.4.3
 Hash: 79564c7d36fe3a861158337bc5cc564b
 Requires: Rcpp, plyr, stringr
+
+Package: reticulate
+Source: CRAN
+Version: 1.8
+Hash: 7ab0643f3e1e9a45066ece50d49771c0
+Requires: Rcpp, jsonlite
 
 Package: rlang
 Source: CRAN
