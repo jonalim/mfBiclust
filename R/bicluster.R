@@ -2,7 +2,7 @@
 ###% https://cran.r-project.org/web/packages/NMF/
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
-als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00, 
+als_nmf <- function(A, k, rep = 4, maxIter= 100L, eta=0, beta=0.00, 
                     eps_conv = sqrt(.Machine$double.eps), verbose=FALSE){
   oldSeed <- duplicable() # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -23,24 +23,21 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   if( beta <=0 )
     stop("SNMF/", version, "::Invalid argument 'beta' - value should be positive")
   
-  solutions <- lapply(seq_len(4), function(x) {
+  solutions <- lapply(seq_len(rep), function(i) {
     W <- NULL # these are the results of each replicate
     H <- NULL
     residNorm <- max(A)
     # initialize random W if no starting point is given
     
-      # rank is given by x
-      k <- x
+      # rank is given by k
       message('# NOTE: Initialise W internally (runif)')
       W <- matrix(runif(m*k), m,k)
-      
-      x <- NULL
     
     idxWold=rep(0, m); idxHold=rep(0, n); inc=0;
     
     # check validity of seed
     if( any(NAs <- is.na(W)) )
-      stop("SNMF/", version, "::Invalid initialization - NAs found in the ", if(version=='R') 'basis (W)' else 'coefficient (H)' , " matrix [", sum(NAs), " NAs / ", length(NAs), " entries]")
+      stop("ALS-NMF::Invalid initialization - NAs found in the ", if(version=='R') 'basis (W)' else 'coefficient (H)' , " matrix [", sum(NAs), " NAs / ", length(NAs), " entries]")
     
     # normalize columns of W
     frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
@@ -83,10 +80,6 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
       Wt = res[[1]]
       W <- t(Wt);		
       
-      # track the error (not computed unless tracking option is enabled in x)
-      if( !is.null(x) ) 
-        x <- trackError(x, .snmf.objective(A, W, H, eta, beta), niter=i)
-      
       #### Convergence test adapted from:####
       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
@@ -114,10 +107,7 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
     return(list(obj = residNorm, W = W, H = H))
   })
 
-  solution.best <- which.min(unlist(sapply(solutions, function(x) {
-    
-    x$obj
-    })))
+  solution.best <- which.min(unlist(sapply(solutions, function(x) x$obj)))
   W <- solutions[[solution.best]]$W
   H <- solutions[[solution.best]]$H
   
