@@ -24,7 +24,7 @@ libGri <- function(pathToPy27 = NULL) {
   )
 }
 
-libGoseq <- function() {
+libGostats <- function() {
   reqs <- rep(FALSE, 2)
   names(reqs) <- c("gostats", "GO.db")
   if(!requireNamespace("gostats")) {
@@ -41,26 +41,22 @@ libGoseq <- function() {
       BiocInstaller::biocLite("GOstats", dependencies = TRUE)
     }
   }
-  
-  requireNamespace("goseq")
 }
-
 
 calcFE <- function(dataset, algorithm, cutoffs) {
   # Perform biclustering for 300 biclusters
   bce <- BiclusterExperiment(t(as.matrix(dataset)))
 
   bce <- addStrat(bce, 500, method = algorithm)
-  # filter down to a list of 100 biclusters / gene lists
-  # 
-  bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, loadingThresh(getStrat(bce, 1)))
   
+  # filter down to a list of 100 biclusters / gene lists
+  bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, 
+                  loadingThresh(getStrat(bce, 1)))
   geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
                               BiclusterxCol = bc,
                               max = 100, overlap = 0.25)[[2]]
-  
-  geneLists <- apply(geneLists, MARGIN = 1, function(index) {
-    rownames(bce)[index]
+  geneLists <- lapply(seq_along(nrow(geneLists)), function(index) {
+    rownames(bce)[geneLists[index, ]]
   })
   
   if(method(getStrat(bce, 1)) != algorithm) {
@@ -158,19 +154,21 @@ testFE <- function(rep = 30) {
   
   if(saveMe) save(solutions, file = paste0(save.file, "solutions.all.Rda")) # save at each step!
   
-  res <- sapply(solutions, function(solutions.algo) {
+  res <- lapply(solutions, function(solutions.algo) {
     # total enriched at each cutoff
     enriched <- colSums(do.call(rbind, lapply(solutions.algo, function(solution.dataset) {
       solution.dataset$enriched
       })), na.rm = TRUE)
     total <- sum(sapply(solutions.algo, function(x) {
-      length(x$geneLists)
-      })) # total
+      length(x$geneLists) #how many biclusters in one solution
+      })) # total number of biclusters summed across all datasets
     scores <- enriched / total * 100
     list(enriched = enriched[1], total = total, percent = scores)
+  })
 
   extractBest <- function(solutions) {
     best <- which.max(sapply(solutions, function(solution) {
+      # solution with the highest percentage of biclusters enriched
         sum(solution$termCount[, length(cutoffs)] > 0) / length(solution$geneLists)
       }))
       if(length(best) == 0) best <- 1
@@ -220,6 +218,7 @@ testFE <- function(rep = 30) {
     scores <- enriched / total * 100
     list(enriched = enriched[1], total = total, percent = scores)
   })
+  if(!inherits(res, "matrix")) res <- cbind(res)
 
   methods.all <- c(methods.nondet, methods.det)
   colnames(res) <- methods.all
@@ -308,7 +307,6 @@ testResidAgriCor <- function(rep = 30) {
   })
   
   xs <- colMeans(agris)
-  browser()
   print(plot(x = xs, y = pearsons, xlab = "AGRI", ylab = "PCC[AGRI, rms(resids)]"))
   fit <- lm(pearsons ~ xs)
   abline(fit)
