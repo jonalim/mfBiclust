@@ -159,7 +159,6 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
             # k must be whole number, smaller than both dimensions of m
             m <- t(as.matrix(bce))
             k <- validateKM(k, m, method)
-            
             if(!(maxNa <= 1 && maxNa >= 0)) {
               stop("Arg \"maxNa\" must be in the range of 0 to 1.")
             }
