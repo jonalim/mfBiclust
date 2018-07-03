@@ -72,7 +72,12 @@ createAnnots <-
     annots
   }
 
-
+duplicable <- function() {
+  if (!exists(".Random.seed", mode="numeric")) sample(NA)
+  oldSeed <- .Random.seed
+  set.seed(12345)
+  oldSeed
+}
 
 #' Error bars
 #' 
@@ -133,7 +138,6 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
       })
     })
     
-    # FIXME broken when only one bicluster because sapply shrinks it to a vector
     while(all(sum(chosen) < max) && sum(pool) > 0) {
       chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
       chosen[chooseMe] <- TRUE
@@ -169,7 +173,10 @@ is.wholenumber <-
 #   })
 # }
 
-nipals_pca <- function(m, k) {
+nipals_pca <- function(m, k, reps = 1) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   np <- tryCatch({
     nipals::nipals(x = m, ncomp = k, center = FALSE, scale = FALSE, 
                    tol = 1e-6)
@@ -182,6 +189,7 @@ nipals_pca <- function(m, k) {
       stop(e)
     }
   })
+  
   new("genericFit", fit = new("genericFactorization",
                               W = np$scores,
                               H = t(np$loadings)),
@@ -190,7 +198,10 @@ nipals_pca <- function(m, k) {
 
 # spectral may find over k biclusters, but only k will be returned
 # minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
-spectral <- function(m, k, minSize = NULL) {
+spectral <- function(m, k, minSize = NULL, reps = 1) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   minx <- if(is.null(minSize)) 2 else floor(min(nrow(m), ncol(m)) * minSize)
   number <- 0 # save the biclustering solution with the most clusters
   
@@ -200,10 +211,8 @@ spectral <- function(m, k, minSize = NULL) {
   v <- nrow(m) 
   best <- NULL
   while(number < k && v <= 10L * nrow(m)) {
-    # dummy <- capture.output({
     bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "log",
                            withinVar= v, minr = minx, minc = minx)
-    # })
     if(bc@Number > number) {
       number <- bc@Number
       best <- bc
@@ -231,11 +240,16 @@ spectral <- function(m, k, minSize = NULL) {
     l
   }, biclusters = biclusters))
   
+  assign(".Random.seed", oldSeed, envir=globalenv()) # reset the R environment
+  
   new("genericFit", fit = new("genericFactorization",
                               W = scores, H = loadings), method = "spectral")
 }
 
 plaid <- function(m, k) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+
   number <- 0
   release <- 0.7
   best <- NULL
@@ -313,6 +327,9 @@ svd_pca <- function(m, k) {
 #' @param beta the starting beta
 #' @export
 snmf <- function(m, k, beta = 0.01, verbose = FALSE) {
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   tryCatch(
     suppressMessages(res <-
                        NMF::nmf(
@@ -500,13 +517,8 @@ validateStratName <- function(stratName, bce) {
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps_conv=1e-4, verbose=FALSE){
-  #nmfsh_comb <- function(A, k, param, verbose=FALSE, bi_conv=c(0, 10), eps_conv=1e-4, version=c('R', 'L')){
-  
-  # # depending on the version: 
-  # # in version L: A is transposed while W and H are swapped and transposed
-  # version <- match.arg(version)
-  # if( version == 'L' ) A <- t(A) 
-  #if( missing(param) ) param <- c(-1, 0.01)
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
