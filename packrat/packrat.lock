@@ -33,6 +33,11 @@ Source: Bioconductor
 Version: 0.24.0
 Hash: b0e8545b3d329a929c98672b0957fbde
 
+Package: BiocInstaller
+Source: Bioconductor
+Version: 1.28.0
+Hash: d0ba96fdc386731c75313f5bb5ba3d68
+
 Package: Category
 Source: Bioconductor
 Version: 2.44.0
