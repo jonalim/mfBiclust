@@ -4,6 +4,19 @@ RVersion: 3.4.4
 Repos: CRAN=https://cran.rstudio.com/,
     CRANextra=http://www.stats.ox.ac.uk/pub/RWin
 
+Package: AnnotationDbi
+Source: Bioconductor
+Version: 1.40.0
+Hash: 185bc9c8ccbed94957b7f4a622195278
+Requires: Biobase, BiocGenerics, DBI, IRanges, RSQLite, S4Vectors
+
+Package: AnnotationForge
+Source: Bioconductor
+Version: 1.20.0
+Hash: 7347e14cd1d7fb370edc9571c08cf5b4
+Requires: AnnotationDbi, Biobase, BiocGenerics, DBI, RCurl, RSQLite,
+    S4Vectors, XML
+
 Package: BH
 Source: CRAN
 Version: 1.66.0-1
@@ -20,6 +33,18 @@ Source: Bioconductor
 Version: 0.24.0
 Hash: b0e8545b3d329a929c98672b0957fbde
 
+Package: Category
+Source: Bioconductor
+Version: 2.44.0
+Hash: 0681429f1959333377cacc7214563182
+Requires: AnnotationDbi, Biobase, BiocGenerics, DBI, GSEABase, RBGL,
+    annotate, genefilter, graph
+
+Package: DBI
+Source: CRAN
+Version: 1.0.0
+Hash: 6abedd7919c4457604c0aa44529a6683
+
 Package: DT
 Source: CRAN
 Version: 0.4
@@ -33,6 +58,31 @@ Hash: 3d36a29a32deaebdc7e7c432403fe320
 Requires: BiocGenerics, RCurl, abind, fftwtools, htmltools,
     htmlwidgets, jpeg, locfit, png, tiff
 
+Package: GO.db
+Source: Bioconductor
+Version: 3.5.0
+Hash: a7a4c0448689f88fab4aecdd1f0f4577
+Requires: AnnotationDbi
+
+Package: GOstats
+Source: Bioconductor
+Version: 2.44.0
+Hash: f7d395411d51c434779ad431c02ecff7
+Requires: AnnotationDbi, AnnotationForge, Biobase, Category, GO.db,
+    RBGL, Rgraphviz, annotate, graph
+
+Package: GSEABase
+Source: Bioconductor
+Version: 1.40.1
+Hash: 45609e6671efafc85479114b0f1eeaf1
+Requires: AnnotationDbi, Biobase, BiocGenerics, XML, annotate, graph
+
+Package: IRanges
+Source: Bioconductor
+Version: 2.12.0
+Hash: 20a52cdea49f9eb06ac17ebb163bc188
+Requires: BiocGenerics, S4Vectors
+
 Package: NMF
 Source: CRAN
 Version: 0.21.0
@@ -45,6 +95,12 @@ Source: CRAN
 Version: 2.2.2
 Hash: b2366cd9d2f3851a5704b4e192b985c2
 
+Package: RBGL
+Source: Bioconductor
+Version: 1.54.0
+Hash: 647270d8cd89aea5674cd52018bedac5
+Requires: graph
+
 Package: RColorBrewer
 Source: CRAN
 Version: 1.1-2
@@ -56,10 +112,33 @@ Version: 1.95-4.10
 Hash: 06af5153f969a90c6cd6c87ee57baa44
 Requires: bitops
 
+Package: RSQLite
+Source: CRAN
+Version: 2.1.1
+Hash: bb9ff3ac4a8baecbbf9ea188b76fcc8b
+Requires: BH, DBI, Rcpp, bit64, blob, memoise, pkgconfig, plogr
+
 Package: Rcpp
 Source: CRAN
 Version: 0.12.17
 Hash: d2eff4634ccd7aca030c540ad805ac4a
+
+Package: Rgraphviz
+Source: Bioconductor
+Version: 2.22.0
+Hash: df2a93d0406abb6d753415d07687b860
+Requires: graph
+
+Package: S4Vectors
+Source: Bioconductor
+Version: 0.16.0
+Hash: 5b1afbd539d11cd088f381808566d3ee
+Requires: BiocGenerics
+
+Package: XML
+Source: CRAN
+Version: 3.98-1.11
+Hash: 93ca736e34d01f5952dc770fbfa5fa62
 
 Package: abind
 Source: CRAN
@@ -70,6 +149,12 @@ Package: additivityTests
 Source: CRAN
 Version: 1.1-4
 Hash: 8c3cc38035235348ce761c8530281a64
+
+Package: annotate
+Source: Bioconductor
+Version: 1.56.2
+Hash: 11ec1739fb06cff9d4875954d30f2452
+Requires: AnnotationDbi, Biobase, BiocGenerics, DBI, RCurl, XML, xtable
 
 Package: assertthat
 Source: CRAN
@@ -109,10 +194,27 @@ Version: 0.2.2
 Hash: 557f908819df9f67af5dc93f501610ab
 Requires: Rcpp, bindr, plogr
 
+Package: bit
+Source: CRAN
+Version: 1.1-14
+Hash: 704eb98fa9be263c95d00df4b2a448dd
+
+Package: bit64
+Source: CRAN
+Version: 0.9-7
+Hash: 4b195615d19ba49c114eb04e09e30a96
+Requires: bit
+
 Package: bitops
 Source: CRAN
 Version: 1.0-6
 Hash: 67d0775189fd0041d95abca618c5c07e
+
+Package: blob
+Source: CRAN
+Version: 1.1.1
+Hash: 532700d8073e660dce40a984900bc647
+Requires: prettyunits
 
 Package: brew
 Source: CRAN
@@ -236,6 +338,12 @@ Version: 1.4.4
 Hash: 4df5ab2c8c35382dacab75d414da6748
 Requires: iterators
 
+Package: genefilter
+Source: Bioconductor
+Version: 1.60.0
+Hash: 7363a86a50a713c146c79c3045b15228
+Requires: AnnotationDbi, Biobase, S4Vectors, annotate
+
 Package: ggplot2
 Source: CRAN
 Version: 2.2.1
@@ -261,6 +369,12 @@ Package: glue
 Source: CRAN
 Version: 1.2.0
 Hash: 381e42baedecc633c0e547a0c7ca9de7
+
+Package: graph
+Source: Bioconductor
+Version: 1.56.0
+Hash: 68a5f90fa79c61c6c608fdd44e50215b
+Requires: BiocGenerics
 
 Package: gridBase
 Source: CRAN
@@ -390,6 +504,12 @@ Package: openssl
 Source: CRAN
 Version: 1.0.1
 Hash: e04b8ed7b05c1f75aa81c65a086b1d0c
+
+Package: org.Sc.sgd.db
+Source: Bioconductor
+Version: 3.5.0
+Hash: 2f5a0c8fc093b91671ed072eda6da1d3
+Requires: AnnotationDbi
 
 Package: packrat
 Source: CRAN

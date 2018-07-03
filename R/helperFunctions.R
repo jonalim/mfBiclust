@@ -92,46 +92,58 @@ error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
 }
 
 filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL, 
-                             overlap = 0.25) {
+                           overlap = 0.25) {
+  if(ncol(RowxBicluster) != nrow(BiclusterxCol)) { # validate
+    stop(paste0("RowxBicluster must have the same number of columns as",
+                "BiclusterxCol"))
+  }
+  
   k <- ncol(RowxBicluster)
-  # Create lists of rows and columns contained in biclusters
-  BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
-  BiclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
-  
-  chosen <- rep(FALSE, each = k)
-  pool <- rep(TRUE, each = k)
-  sizes <- sapply(seq_len(k), function(biclus) {
-    length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
-  })
-  names(sizes) <- seq_len(k)
-  
-  # exclude empty biclusters and whole-dataset biclusters
-  pool[sizes == 0 | sizes == nrow(RowxBicluster) * ncol(BiclusterxCol)] <- FALSE
-  
-  overlaps <- sapply(seq_len(k), function(biclus1) {
-    sapply(seq_len(k), function(biclus2) {
+  if(k == 1 || k == 0) {
+    # no filtering needed
+    list(RowxBicluster = RowxBicluster, 
+         BiclusterxCol = BiclusterxCol)
+  } else {
+    
+    # Create lists of rows and columns contained in biclusters
+    BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
+    BiclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
+    
+    chosen <- rep(FALSE, each = k)
+    pool <- rep(TRUE, each = k)
+    sizes <- sapply(seq_len(k), function(biclus) {
+      length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
+    })
+    names(sizes) <- seq_len(k)
+    
+    # exclude empty biclusters and whole-dataset biclusters
+    pool[sizes == 0 | sizes == nrow(RowxBicluster) * ncol(BiclusterxCol)] <- FALSE
+    
+    # For each bicluster, calculate its overlap with all other biclusters
+    overlaps <- lapply(seq_len(k), function(biclus1) {
+      sapply(seq_len(k), function(biclus2) {
         intersection1 <- base::intersect(BiclusterRows[biclus1], BiclusterRows[biclus2])
         intersection1 <- if(length(intersection1) > 0) length(intersection1[[1]])
         else 0
         intersection2 <- base::intersect(BiclusterCols[biclus1], BiclusterCols[biclus2])
         intersection2 <- if(length(intersection2) > 0) length(intersection2[[1]])
         else 0
-      intersection <- intersection1 * intersection2
-      overlap <- intersection / sizes[biclus1]
-    }) 
-  })
-
-  # FIXME broken when only one bicluster because sapply shrinks it to a vector
-  while(all(sum(chosen) < max) && sum(pool) > 0) {
-    chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
-    chosen[chooseMe] <- TRUE
-    # Remove from the pool any biclusters heavily overlapping with chooseMe
-    pool[overlaps[chooseMe, ] > overlap] <- FALSE
-    pool[chooseMe] <- FALSE
+        intersection <- intersection1 * intersection2
+        overlap <- intersection / sizes[biclus1]
+      })
+    })
+    
+    # FIXME broken when only one bicluster because sapply shrinks it to a vector
+    while(all(sum(chosen) < max) && sum(pool) > 0) {
+      chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
+      chosen[chooseMe] <- TRUE
+      # Remove from the pool any biclusters heavily overlapping with chooseMe
+      pool[overlaps[[chooseMe]] > overlap] <- FALSE
+      pool[chooseMe] <- FALSE
+    }
+    list(RowxBicluster = RowxBicluster[, chosen], 
+         BiclusterxCol = BiclusterxCol[chosen, ])
   }
-
-  list(RowxBicluster = RowxBicluster[, chosen], 
-       BiclusterxCol = BiclusterxCol[chosen, ])
 }
 
 is.wholenumber <-
@@ -189,8 +201,8 @@ spectral <- function(m, k, minSize = NULL) {
   best <- NULL
   while(number < k && v <= 10L * nrow(m)) {
     # dummy <- capture.output({
-      bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "log",
-                             withinVar= v, minr = minx, minc = minx)
+    bc <- biclust::biclust(m, method = biclust::BCSpectral(), normalization = "log",
+                           withinVar= v, minr = minx, minc = minx)
     # })
     if(bc@Number > number) {
       number <- bc@Number
@@ -202,7 +214,7 @@ spectral <- function(m, k, minSize = NULL) {
     k <- number
     warning(paste("Spectral could only find", k, "biclusters"))
   }
-
+  
   biclusters <- biclust::biclusternumber(best)
   
   scores <- sapply(seq_len(k), function(i, biclusters) {
@@ -239,7 +251,7 @@ plaid <- function(m, k) {
     }
     release <- release - 0.1
   }
-
+  
   if(k > number) {
     k <- number
     warning(paste("Plaid could only find", k, "biclusters"))
@@ -258,7 +270,7 @@ plaid <- function(m, k) {
     l[bicluster$Cols] <- 1
     l
   }, biclusters = biclust::biclusternumber(best)))
-
+  
   new("genericFit", fit = new("genericFactorization",
                               W = scores, H = loadings), method = "plaid")
   # write function to filter?
@@ -348,7 +360,7 @@ setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, MARGIN = 2, 
     mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
     mat[m < th] <- FALSE
     mat
-    }
+  }
   else {
     if(MARGIN == 1) {
       if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
@@ -357,9 +369,9 @@ setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, MARGIN = 2, 
       }))
     } else {
       if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
-      mat <- sapply(seq_len(ncol(m)), function(col) {
+      mat <- do.call(cbind, lapply(seq_len(ncol(m)), function(col) {
         m[, col] > th[col]
-      })
+      }))
     }
     colnames(mat) <- colnames(m)
     rownames(mat) <- rownames(m)
@@ -435,6 +447,7 @@ validateKM <- function(k, m = NULL, method) {
     }
   }
   if(method == "plaid" || method == "spectral") k
+  k
 }
 
 validateKs <- function(ks) {
@@ -598,10 +611,10 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
     # test convergence every 5 iterations OR if the base average error has not been computed yet
     if ( (i %% 5==0)  || (length(erravg1)==0) ){
       
-       #### Convergence test adapted from:####
-       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
-       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
-       ###% Analysis, vol. 52, no. 1, pp. 155-173.
+      #### Convergence test adapted from:####
+      ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
+      ###% Nonnegative Matrix Factorization," Computational Statistics and Data
+      ###% Analysis, vol. 52, no. 1, pp. 155-173.
       dnorm = sqrt(sum((A - W %*% H)^2) / length(A))
       dw = max(abs(W - Wold) / (sqrteps + max(abs(Wold))))
       dh = max(abs(H - Hold) / (sqrteps + max(abs(Hold))))
@@ -626,7 +639,7 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
       # # compute base average error if necessary
       # if ( length(erravg1)==0 )
       #   erravg1=erravg;
-
+      
       if ( verbose && (i %% 100==0) ){ # prints number of changing elements
         cat("Track:\tIter\tdeltaMaxChange\tdNorm\n")
         cat(sprintf("\t%d\t%f\t%f\n",
@@ -651,7 +664,7 @@ als_nmf <- function(A, x, maxIter= 100L, eta=0, beta=0.00, bi_conv=c(0, 10), eps
   # transpose and reswap the roles
   if( !is.null(x) ){ 
     .basis(x) <- t(H)
-      .coef(x) <- t(W)
+    .coef(x) <- t(W)
     
     # set number of iterations performed
     niter(x) <- i
