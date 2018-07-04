@@ -4,8 +4,8 @@
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00, 
                     eps_conv = sqrt(.Machine$double.eps), verbose=FALSE){
-  # oldSeed <- duplicable() # do not modify the R global environment
-  # on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  oldSeed <- duplicable() # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
