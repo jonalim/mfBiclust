@@ -9,7 +9,7 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
-  #eta=param[1]; beta=param[2]; 
+  # to do with sparsity constraints
   maxA=max(A); if ( eta<0 ) eta=maxA;
   eta2=eta^2;
   
@@ -19,8 +19,9 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   # eps_conv
   if( eps_conv <= 0 )
     stop("SNMF/", version, "::Invalid argument 'eps_conv' - value should be positive")
-  
-  tA2 <- sum(diag(t(A) %*% A))
+  # beta
+  if( beta <=0 )
+    stop("SNMF/", version, "::Invalid argument 'beta' - value should be positive")
   
   solutions <- lapply(seq_len(4), function(x) {
     W <- NULL # these are the results of each replicate
@@ -42,14 +43,15 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
       stop("SNMF/", version, "::Invalid initialization - NAs found in the ", if(version=='R') 'basis (W)' else 'coefficient (H)' , " matrix [", sum(NAs), " NAs / ", length(NAs), " entries]")
     
     # normalize columns of W
-    W <- apply(W, 2, function(x) x / sqrt(sum(x ^ 2)) );
+    frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
+    W <- sweep(W, 2, frob, FUN = "/")
+    
     Wold <- W
     Hold <- matrix(runif(k*n), k,n);	
     residNormOld <- maxA
     I_k=diag(eta, k); betavec=rep(sqrt(beta), k); nrestart=0;
     i <- 0L
     while( i < maxIter){
-
       i <- i + 1L
       
       # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
@@ -68,8 +70,12 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
         idxWold=rep(0, m); idxHold=rep(0, n); inc=0; 
         erravg1 <- numeric();# re-initialize base average error
         W <- matrix(runif(m*k), m,k);
-        W <- apply(W, 2, function(x) x / sqrt(sum(x ^ 2)) );  # normalize columns of W	
-        next;
+        
+        # JNL normalize columns of W	
+        frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
+        W <- sweep(W, 2, frob, FUN = "/")
+        
+        next
       }
       
       # min_w ||[H'; I_k]*W' - [A'; 0]||, s.t. W>=0, for given A and H. 
@@ -81,13 +87,11 @@ als_nmf <- function(A, x, rep = 4, maxIter= 100L, eta=0, beta=0.00,
       if( !is.null(x) ) 
         x <- trackError(x, .snmf.objective(A, W, H, eta, beta), niter=i)
       
-      
       #### Convergence test adapted from:####
       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
       ###% Analysis, vol. 52, no. 1, pp. 155-173.
       residNorm <- sum((A - W %*% H) ^ 2)
-      # residNorm <- tA2 - 2(sum(diag(t(H) %*%(t(W) %*% A)))) + sum(diag(t(H) %*% (t(W) %*% W %*% H)))
       if(abs(residNormOld - residNorm) <= eps_conv) {
         message("Converged!")
         break
