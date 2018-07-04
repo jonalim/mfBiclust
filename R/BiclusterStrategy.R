@@ -140,7 +140,13 @@ BiclusterStrategy <-
       # leave thresholds NULL? still to be implemented
     }
     #### Results #############################################################
-    pred <- threshold(bc@fit@W, MARGIN = 2, st)
+    if(!any(is.na(st))) { pred <- threshold(bc@fit@W, MARGIN = 2, st) }
+    else { 
+      pred <- matrix(rep(FALSE, length(bc@fit@W)), nrow(bc@fit@W))
+      dimnames(pred) <- dimnames(bc@fit@W)
+      warning(paste("Biclustering did not find valid results. No samples or",
+                    "features are biclustered."))
+    }
     
     bcs <- new(
       "BiclusterStrategy",
@@ -392,7 +398,10 @@ setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
 #' @param biclustNames names of the threshold matrix rows
 generateThresholdMatrix <-
   function(thresholds, matrix, biclustNames) {
-    if (identical(thresholds, "otsu")) {
+    if(any(is.na(matrix))) {
+      tMatrix <- matrix(rep(NaN, ncol(matrix) * length(thresholds)), 
+                        ncol = length(thresholds), dimnames = list(biclustNames, thresholds))
+    } else if (identical(thresholds, "otsu")) {
       # Calculate thresholds using available algorithms
       tMatrix <- as.matrix(apply(matrix, 2, function(x) {
         if (max(x) != min(x)) {
@@ -443,7 +452,6 @@ generateThresholdMatrix <-
         atomic, a vector of length k, or an matrix with k rows."
       )
     }
-    
     if (!is.null(rownames(tMatrix))) {
       rownames(tMatrix) <- biclustNames
     }

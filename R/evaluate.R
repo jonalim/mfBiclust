@@ -47,7 +47,7 @@ calcFE <- function(dataset, algorithm, cutoffs) {
   # Perform biclustering for 300 biclusters
   bce <- BiclusterExperiment(t(as.matrix(dataset)))
 
-  bce <- addStrat(bce, 500, method = algorithm)
+  bce <- addStrat(bce, 500, method = algorithm, duplicable = FALSE)
   
   # filter down to a list of 100 biclusters / gene lists
   bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, 

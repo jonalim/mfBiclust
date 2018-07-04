@@ -2,12 +2,12 @@
 ###% https://cran.r-project.org/web/packages/NMF/
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
-als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
+ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
                     eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, duplicable = TRUE){
-  if(duplicable) {
+  # if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-  } else { reps <- 1 }
+  # } else { reps <- 1 }
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
@@ -170,10 +170,11 @@ plaid <- function(m, k, duplicable = FALSE) {
     k <- number
     warning(paste("Plaid could only find", k, "biclusters"))
   }
-  biclusters <- biclust::biclusternumber(best)
   
-  scoreLoading <- if(k > 0) { biclusterNumber2scoreLoading(biclusters, m, k) }
-  else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
+  scoreLoading <- if(k > 0) { 
+    biclusters <- biclust::biclusternumber(best)
+    biclusterNumber2scoreLoading(biclusters, m, k) 
+    } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
               matrix(rep(NA, ncol(m)), nrow = 1)) }
   
   new("genericFit", fit = new("genericFactorization",
@@ -270,10 +271,11 @@ spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE) {
     warning(paste("Spectral could only find", k, "biclusters"))
   }
   
-  biclusters <- biclust::biclusternumber(best)
-  scoreLoading <- if(k > 0) { biclusterNumber2scoreLoading(biclusters, m, k) }
-  else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
-              matrix(rep(NA, ncol(m)), nrow = 1)) }
+  scoreLoading <- if(k > 0) { 
+    biclusters <- biclust::biclusternumber(best)
+    biclusterNumber2scoreLoading(biclusters, m, k) 
+  } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
+                matrix(rep(NA, ncol(m)), nrow = 1)) }
   
   new("genericFit", fit = new("genericFactorization",
                               W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "spectral")
