@@ -2,10 +2,12 @@
 ###% https://cran.r-project.org/web/packages/NMF/
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
-als_nmf <- function(A, k, rep = 4, maxIter= 100L, eta=0, beta=0.00, 
-                    eps_conv = sqrt(.Machine$double.eps), verbose=FALSE){
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
+                    eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, duplicable = TRUE){
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  } else { reps <- 1 }
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
@@ -20,10 +22,10 @@ als_nmf <- function(A, k, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   if( eps_conv <= 0 )
     stop("SNMF/", version, "::Invalid argument 'eps_conv' - value should be positive")
   # beta
-  if( beta <=0 )
+  if( beta < 0 )
     stop("SNMF/", version, "::Invalid argument 'beta' - value should be positive")
   
-  solutions <- lapply(seq_len(rep), function(i) {
+  solutions <- lapply(seq_len(reps), function(i) {
     W <- NULL # these are the results of each replicate
     H <- NULL
     residNorm <- max(A)
@@ -108,6 +110,7 @@ als_nmf <- function(A, k, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   })
 
   solution.best <- which.min(unlist(sapply(solutions, function(x) x$obj)))
+
   W <- solutions[[solution.best]]$W
   H <- solutions[[solution.best]]$H
   
@@ -115,9 +118,12 @@ als_nmf <- function(A, k, rep = 4, maxIter= 100L, eta=0, beta=0.00,
   res <- new("genericFit", fit = res, method = "als-nmf")
   return(invisible(res))
 }
-nipals_pca <- function(m, k, reps = 1) {
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+
+nipals_pca <- function(m, k, reps = 1, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
   
   np <- tryCatch({
     nipals::nipals(x = m, ncomp = k, center = FALSE, scale = FALSE, 
@@ -138,9 +144,11 @@ nipals_pca <- function(m, k, reps = 1) {
       method = "nipals-pca")
 }
 
-plaid <- function(m, k) {
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+plaid <- function(m, k, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
   
   number <- 0
   release <- 0.7
@@ -184,9 +192,11 @@ plaid <- function(m, k) {
 #' @param m the target matrix
 #' @param k the size of the reduced dimension
 #' @param beta the starting beta
-snmf <- function(m, k, beta = 0.01, verbose = FALSE) {
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
   
   tryCatch(
     suppressMessages(res <-
@@ -221,9 +231,11 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE) {
 
 # spectral may find over k biclusters, but only k will be returned
 # minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
-spectral <- function(m, k, minSize = NULL, reps = 1) {
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
   
   minx <- if(is.null(minSize)) 2 else floor(min(nrow(m), ncol(m)) * minSize)
   if(nrow(m) < 6 || ncol(m) < 6) {
@@ -273,7 +285,7 @@ spectral <- function(m, k, minSize = NULL, reps = 1) {
 #'
 #' @param m the target matrix
 #' @param k the number of principal components
-svd_pca <- function(m, k) {
+svd_pca <- function(m, k, duplicable = NULL) {
   prcmp <- prcomp(m, rank. = k, retx = TRUE, center = FALSE)
   new(
     "genericFit",

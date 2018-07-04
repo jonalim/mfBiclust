@@ -90,10 +90,11 @@ createAnnots <-
     annots
   }
 
-duplicable <- function() {
+duplicable <- function(str) {
   if (!exists(".Random.seed", mode="numeric")) sample(NA)
   oldSeed <- .Random.seed
-  set.seed(12345)
+  newSeed <- strtoi(str, 35L)
+  if(inherits(newSeed, "numeric")) set.seed(newSeed) else set.seed(12345)
   oldSeed
 }
 
