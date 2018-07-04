@@ -81,7 +81,7 @@ BiclusterStrategy <-
         }
         tryCatch(
           # Use helper function adapted from the NMF package
-          bc <- als_nmf(m, k),
+          bc <- als_nmf(m, k, ...),
           error = function(c) {
             warning("ALS-NMF failed, switching to PCA.")
             bc <<- svd_pca(m, k) # fallback to PCA
@@ -92,7 +92,7 @@ BiclusterStrategy <-
       } else if (method == "snmf") {
         # Use NMF package
         tryCatch(
-          bc <- snmf(m, k),
+          bc <- snmf(m, k, ...),
           error = function(c) {
             warning("Sparse NMF failed, switching to PCA.")
             bc <<- svd_pca(m, k) # fallback to PCA
@@ -101,7 +101,7 @@ BiclusterStrategy <-
           }
         )
       } else if (method == "plaid") {
-        bc <- plaid(m, k)
+        bc <- plaid(m, k, ...)
       } else if (method == "spectral") {
         bc <- spectral(m, k, ...)
       }
@@ -111,7 +111,7 @@ BiclusterStrategy <-
                       "matrix has missing data"))
         method <- "nipals-pca"
       }
-      bc <- nipals_pca(m, k)
+      bc <- nipals_pca(m, k, ...)
     }
 
     k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than

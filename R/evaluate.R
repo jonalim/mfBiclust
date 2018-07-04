@@ -103,16 +103,17 @@ calcFE <- function(dataset, algorithm, cutoffs) {
 }
 
 testFE <- function(rep = 30) {
-  set.seed(12345)
-
+  oldSeed <- duplicable("evalua") # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
   # change to TRUE to save biclustering results
   saveMe <- TRUE
   save.file <- "plots/yeast_benchmark_results/"
 
-  methods.nondet <- c("als-nmf", "plaid", "spectral")
-  methods.det <- "svd-pca"
+  methods.nondet <- c("plaid", "spectral")
+  methods.det <- c("als-nmf", "svd-pca")
   
   extractBest <- function(solutions) {
     best <- which.max(sapply(solutions, function(solution) {
@@ -149,62 +150,8 @@ testFE <- function(rep = 30) {
     })
   })
   
-  # compile the results
-  solutions <- c(solutions.nondet, solutions.det)
-  
-  if(saveMe) save(solutions, file = paste0(save.file, "solutions.all.Rda")) # save at each step!
-  
-  res <- lapply(solutions, function(solutions.algo) {
-    # total enriched at each cutoff
-    enriched <- colSums(do.call(rbind, lapply(solutions.algo, function(solution.dataset) {
-      solution.dataset$enriched
-      })), na.rm = TRUE)
-    total <- sum(sapply(solutions.algo, function(x) {
-      length(x$geneLists) #how many biclusters in one solution
-      })) # total number of biclusters summed across all datasets
-    scores <- enriched / total * 100
-    list(enriched = enriched[1], total = total, percent = scores)
-  })
-
-  extractBest <- function(solutions) {
-    best <- which.max(sapply(solutions, function(solution) {
-      # solution with the highest percentage of biclusters enriched
-        sum(solution$termCount[, length(cutoffs)] > 0) / length(solution$geneLists)
-      }))
-      if(length(best) == 0) best <- 1
-      best <- solutions[[best]]
-      # number of enriched biclusters at various cutoffs
-      best$enriched <- colSums(best$termCount > 0)
-    best
-  }
-  
-  # Find biclusters using nondeterministic algorithms
-  solutions.nondet <- lapply(methods.nondet, function(algo) {
-    solutions <- lapply(datasets.all, function(dataset) {
-      # try 30 times to get the most GO-enriched biclusters. Seems like cheating,
-      # but this does reflect a real use case. We can inform users that "super"
-      # functional analysis will repeat NMF to find the most biological signal
-      reps <- lapply(seq_len(rep), function(i) {
-        calcFE(dataset, algorithm = algo, cutoffs)
-      })
-      extractBest(reps)
-    })
-  })
-  
-  if(saveMe) save(solutions.nondet, file = paste0(save.file, "solutions.nondet.Rda")) # save at each step!
-
-  # find biclusters using deterministic methods
-  solutions.det <- lapply(methods.det, function(algo) {
-     solutions <- lapply(datasets.all, function(dataset) {
-       solution <- calcFE(dataset, algorithm = algo, cutoffs)
-       solution$enriched <- solution$termCount > 0
-       solution
-    })
-  })
-  
-  # compile the results
-  solutions <- c(solutions.nondet, solutions.det)
-  
+  # compile the results ("als-nmf", "svd-pca", "plaid", "spectral")
+  solutions <- c(solutions.det, solutions.nondet) 
   if(saveMe) save(solutions, file = paste0(save.file, "solutions.all.Rda")) # save at each step!
   
   res <- sapply(solutions, function(solutions.algo) {
@@ -220,16 +167,16 @@ testFE <- function(rep = 30) {
   })
   if(!inherits(res, "matrix")) res <- cbind(res)
 
-  methods.all <- c(methods.nondet, methods.det)
+  methods.all <- c(methods.det, methods.nondet)
   colnames(res) <- methods.all
   
   ys <- apply(res, MARGIN = 2, function(x) x$percent)
-  if(saveMe) save(solutions, res, file = paste0(save.file, "solutions+stats.Rda"))
+  if(saveMe) save(solutions, res, cutoffs, file = paste0(save.file, "solutions+stats.Rda"))
   
   old.par <- par(no.readonly = TRUE)
   par(mar = c(4.1, 4.1, 1.1, 1.1))
-  barplot(height = ys, beside = TRUE, legend.text = methods.all, args.legend = c("topright"),
-          ylab = "% GO-enriched", xlab = "Adj. p-value cutoff", col = RColorBrewer::brewer.pal(nrow(res), "Dark2"))
+  barplot(height = ys, beside = TRUE, legend.text = as.character(cutoffs), args.legend = c(x = "right"),
+          ylab = "% GO-enriched", xlab = "Algorithm", col = RColorBrewer::brewer.pal(nrow(res), "Dark2"))
   par(old.par)
 }
 
@@ -267,6 +214,9 @@ loadBenchmark <- function(dir, classes = FALSE) {
 }
 
 testResidAgriCor <- function(rep = 30) {
+  oldSeed <- duplicable("evalua") # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   libGri()
   datasets.all <- loadBenchmark("data/cancer_benchmark/", classes = TRUE)
   # Test only datasets with >2 classes because ALS-NMF is deterministic-sh for two 
@@ -335,11 +285,12 @@ testResidAgriCor <- function(rep = 30) {
 }
 
 testMultiBiclustering <- function() {
+  oldSeed <- duplicable("evalua") # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
   # This evaluation yielded large confidence intervals for AGRI on ALS-NMF. 
   # If the algorithm is run repeatedly on the same matrix, does lower norm of residuals
   # correlate with higher AGRI? H0: Pearson correlation = 0 across all datasets.
-  set.seed(12345)
   try(load(file = "plots/multigroup-cancer-benchmark/results.rda"))
   
   # Use 13AGRI to compare possibilistic clustering solutions with the reference,
@@ -461,6 +412,9 @@ testMultiBiclustering <- function() {
 }
 
 testSinglePca <- function() {
+  oldSeed <- duplicable("evalua") # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
   try(load("plots/two-group-cancer-benchmark/results.rda"))
   # Load previously stored data now (so we don't overwrite new results)
   
