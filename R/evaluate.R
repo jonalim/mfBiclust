@@ -113,9 +113,9 @@ testFE <- function(rep = 30) {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
   # change to TRUE to save biclustering results
   saveMe <- TRUE
-  save.file <- "plots/yeast_benchmark_results/t"
+  save.file <- "plots/yeast_benchmark_results/"
 
-  methods.nondet <- c("als-nmf", "spectral")
+  methods.nondet <- c("plaid", "spectral")
   methods.det <- c("als-nmf", "svd-pca")
   
   extractBest <- function(solutions) {
