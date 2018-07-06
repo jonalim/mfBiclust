@@ -128,7 +128,6 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
     list(RowxBicluster = RowxBicluster, 
          BiclusterxCol = BiclusterxCol)
   } else {
-    
     # Create lists of rows and columns contained in biclusters
     BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
     BiclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
@@ -157,6 +156,7 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
       })
     })
     
+    # Evaluates to TRUE even if argument max was missing
     while(all(sum(chosen) < max) && sum(pool) > 0) {
       chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
       chosen[chooseMe] <- TRUE
@@ -164,8 +164,15 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
       pool[overlaps[[chooseMe]] > overlap] <- FALSE
       pool[chooseMe] <- FALSE
     }
+    
+    biclustered <- matrix(0, nrow = nrow(RowxBicluster), 
+                          ncol = ncol(BiclusterxCol))
+    sapply(which(chosen), function(bicluster) {
+      biclustered[RowxBicluster[ , bicluster], BiclusterxCol[bicluster, ]] <<- 1 
+    })
     list(RowxBicluster = RowxBicluster[, chosen], 
-         BiclusterxCol = BiclusterxCol[chosen, ])
+         BiclusterxCol = BiclusterxCol[chosen, ],
+         biclustered)
   }
 }
 
