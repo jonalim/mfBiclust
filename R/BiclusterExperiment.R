@@ -20,7 +20,6 @@ NULL
 #' @importClassesFrom Biobase eSet
 setClass("BiclusterExperiment", slots = list(
   strategies = "list", distance = "dist"
-  ### FIXME: Change to similarity matrix? Use cor(t(as.matrix(x)), method = "pearson") to get similarity. Use "clustering_distance_rows = "correlation" in pheatmap calls.
 ), contains = "eSet")
 
 setAs("ExpressionSet", "BiclusterExperiment", function(from) {
@@ -189,12 +188,12 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               
               if (method == "nipals-pca") {
                 # Careful! because we're in tryCatch, warnings won't be printed.
-                
                 bcs <- tryCatch({
                   BiclusterStrategy(m = mat, k = k, method = method, ...)
                 }, error = function(e) {
-                  if(method == "nipals-pca") {
-                    
+                  if(method == "nipals-pca" &&
+                     grepl(pattern = paste0("replacement has length zero"), 
+                           x = e)) {
                     maxNa <- maxNa - (maxNa / 2)
                     message(paste("Cleaning with maxNAs at", maxNa))
                     
