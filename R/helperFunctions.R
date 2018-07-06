@@ -173,26 +173,15 @@ is.wholenumber <-
   function(x, tol = sqrt(.Machine$double.eps)) {
     abs(x - round(x)) < tol
   }
-# 
-# autoNipals <- function(m, k, cleanParam = 0) {
-#   cleanRes <- clean(m, cleanParam, index = TRUE)
-#   mClean <- cleanRes$obj
-#   indexRem <- cleanRes$indexRemaining
-#   
-#   tryCatch({
-#     list(m = mClean, nipals_pca(mClean, k), indexRemaining = indexRem)
-#   }, error = function(e) {
-#     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
-#       cleanParam <- cleanParam + (1 - cleanParam) / 2
-#       message(paste("Too many NA in the data. Cleaning with maxNAs at", 
-#                     cleanParam))
-#       # pass the original m so indexRemaining is valid for the user's matrix
-#       autoNipals(m, k, cleanParam)
-#     } else { stop(e) }
-#   })
-# }
 
-
+pseudovalues <- function(m) {
+  if(any(m < 0)) {
+    warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
+                  "this BiclusterStrategy because",
+                  "negative values are not allowed."))
+    m + abs(min(m))
+  }
+}
 
 #### threshold ####
 #' Apply threshold to a score or loading matrix
@@ -287,9 +276,13 @@ validateK <- function(k) {
   k
 }
 
+# Ensure k is valid for the selected matrix and method
+#
+# Modify this when adding a new biclustering method
 validateKM <- function(k, m = NULL, method) {
   k <- validateK(k)
-  if(method == "als-nmf" || "method" == "svd-pca" || method == "nipals-pca") {
+  if(method == "als-nmf" || "method" == "svd-pca" || method == "nipals-pca" ||
+     method == "snmf") {
     if (k >= min(nrow(m), ncol(m))) {
       warning(paste("Initializing k to the size of the smaller matrix",
                     "dimension."))

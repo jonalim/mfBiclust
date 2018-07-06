@@ -118,8 +118,31 @@
   res <- new("genericFit", fit = res, method = "als-nmf")
   return(invisible(res))
 }
+ 
+nipals_pca <- function(m, k, cleanParam = 0, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
+  
+  cleanRes <- clean(m, cleanParam, index = TRUE)
+  mClean <- cleanRes$obj
+  indexRem <- cleanRes$indexRemaining
+  
+  tryCatch({
+    list(m = mClean, nipals_pca_helper(mClean, k, duplicabledebug(NMF::nmf)), indexRemaining = indexRem)
+  }, error = function(e) {
+    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
+      cleanParam <- cleanParam + (1 - cleanParam) / 2
+      message(paste("Too many NA in the data. Cleaning with maxNAs at",
+                    cleanParam))
+      # pass the original m so indexRemaining is valid for the user's matrix
+      autoNipals(m, k, cleanParam, duplicable)
+    } else { stop(e) }
+  })
+}
 
-nipals_pca <- function(m, k, reps = 1, duplicable = FALSE) {
+nipals_pca_helper <- function(m, k, reps = 1, duplicable = FALSE) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -200,11 +223,15 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE) {
   }
   
   tryCatch(
-    suppressMessages(res <-
+    {
+      browser()
+      suppressMessages(res <-
                        NMF::nmf(
                          m, k, method = "snmf/l", beta = beta,
                          verbose = verbose
-                       )),
+                       ))
+      browser()
+      },
     warning = function(w) {
       if (any(suppressWarnings(
         grepl(
@@ -214,14 +241,17 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE) {
           fixed = TRUE
         )
       ))) {
+        browser()
         beta <<- beta ^ 2
         message(paste0("Decreased beta (sparsity parameter) to ", beta))
         res <<- snmfWrapper(m, k, beta)
       } else {
+        browser()
         warning(w)
       }
     },
     error = function(e) {
+      browser()
       stop(e)
     },
     finally = function() {

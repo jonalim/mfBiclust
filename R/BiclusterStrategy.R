@@ -69,51 +69,55 @@ BiclusterStrategy <-
     if(!any(is.na(m))) {
       
       # These three are only valid when m is complete
-      if (method == "svd-pca") {
-        # use R pca.
-        bc <- svd_pca(m, k)
-      } else if (method == "als-nmf") {
-        if(any(m < 0)) {
-          warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
-                        "this BiclusterStrategy because",
-                        "negative values are not allowed."))
-          m <- m + abs(min(m))
+      switch(
+        method,
+        `svd-pca` = {
+          # use R default pca.
+          bc <- svd_pca(m, k)
+        },
+        `als-nmf` = {
+          m <- pseudovalues(m)
+          tryCatch(
+            # Use helper function adapted from the NMF package
+            bc <- als_nmf(m, k, ...),
+            error = function(c) {
+              warning("ALS-NMF failed, switching to PCA.")
+              bc <<- svd_pca(m, k) # fallback to PCA
+              method <<- "svd-pca"
+              return(NULL)
+            }
+          )
+        },
+        snmf = {
+          m <- pseudovalues(m)
+          tryCatch(
+            bc <- snmf(m, k, ...), # Use wrapper for NMF::nmf(method = "snmf/l")
+            error = function(c) {
+              warning("Sparse NMF failed, switching to PCA.")
+              bc <<- svd_pca(m, k) # fallback to PCA
+              method <<- "svd-pca"
+              return(NULL)
+            }
+          )
+        },
+        plaid = {
+          # use wrapper for biclust::biclust(method = biclust::BCPlaid())
+          bc <- plaid(m, k, ...)
+        }, 
+        spectral = {
+          # use wrapper for biclust::biclust(method = biclust::BCSpectral())
+          bc <- spectral(m, k, ...)
         }
-        tryCatch(
-          # Use helper function adapted from the NMF package
-          bc <- als_nmf(m, k, ...),
-          error = function(c) {
-            warning("ALS-NMF failed, switching to PCA.")
-            bc <<- svd_pca(m, k) # fallback to PCA
-            method <<- "svd-pca"
-            return(NULL)
-          }
-        )
-      } else if (method == "snmf") {
-        # Use NMF package
-        tryCatch(
-          bc <- snmf(m, k, ...),
-          error = function(c) {
-            warning("Sparse NMF failed, switching to PCA.")
-            bc <<- svd_pca(m, k) # fallback to PCA
-            method <<- "svd-pca"
-            return(NULL)
-          }
-        )
-      } else if (method == "plaid") {
-        bc <- plaid(m, k, ...)
-      } else if (method == "spectral") {
-        bc <- spectral(m, k, ...)
-      }
+      )
     } else {
       if (method != "nipals-pca") {
         warning(paste("Switching to the NIPALS-PCA method because the input",
                       "matrix has missing data"))
         method <- "nipals-pca"
       }
-      bc <- nipals_pca(m, k, ...)
+      bc <- nipals_pca_helper(m, k, ...) # Prone to errors if cleaning needed
     }
-
+    
     k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
     # k biclusters
     biclustNames <- unlist(sapply(seq_len(k), function(x) {
@@ -179,7 +183,7 @@ validBiclusterStrategy <- function(object) {
       msg <- c(msg, val)
     }
   }
-
+  
   sThresh <- scoreThresh(object)
   if (!(inherits(sThresh, "matrix") &&
         mode(sThresh) == "numeric")) {
@@ -308,12 +312,12 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
 
 setMethod("name", c(bcs = "list"), function(bcs) {
   paste(
-      bcs$bca,
-      paste(bcs$sta, bcs$lta, sep = "/"),
-      bcs$k,
-      sep = " | "
-    )
-  })
+    bcs$bca,
+    paste(bcs$sta, bcs$lta, sep = "/"),
+    bcs$k,
+    sep = " | "
+  )
+})
 
 #' Names of biclusters in this BiclusterStrategy
 #' @export
