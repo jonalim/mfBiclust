@@ -2,11 +2,11 @@
 ###% https://cran.r-project.org/web/packages/NMF/
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
- als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
+als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
                     eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, duplicable = TRUE){
   # if(duplicable) {
-    oldSeed <- duplicable("biclus") # do not modify the R global environment
-    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  oldSeed <- duplicable("biclus") # do not modify the R global environment
+  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   # } else { reps <- 1 }
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
@@ -31,9 +31,9 @@
     residNorm <- max(A)
     # initialize random W if no starting point is given
     
-      # rank is given by k
-      message('# NOTE: Initialise W internally (runif)')
-      W <- matrix(runif(m*k), m,k)
+    # rank is given by k
+    message('# NOTE: Initialise W internally (runif)')
+    W <- matrix(runif(m*k), m,k)
     
     idxWold=rep(0, m); idxHold=rep(0, n); inc=0;
     
@@ -56,7 +56,7 @@
       # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
       res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)))
       H <- res[[1]]
-
+      
       if ( any(rowSums(H)==0) ){
         if( verbose ) cat(sprintf("iter%d: 0 row in H eta=%.4e restart!\n",i,eta));
         nrestart=nrestart+1;
@@ -108,9 +108,9 @@
     }
     return(list(obj = residNorm, W = W, H = H))
   })
-
+  
   solution.best <- which.min(unlist(sapply(solutions, function(x) x$obj)))
-
+  
   W <- solutions[[solution.best]]$W
   H <- solutions[[solution.best]]$H
   
@@ -118,7 +118,7 @@
   res <- new("genericFit", fit = res, method = "als-nmf")
   return(invisible(res))
 }
- 
+
 nipals_pca <- function(m, k, cleanParam = 0, duplicable = FALSE) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
@@ -197,8 +197,8 @@ plaid <- function(m, k, duplicable = FALSE) {
   scoreLoading <- if(k > 0) { 
     biclusters <- biclust::biclusternumber(best)
     biclusterNumber2scoreLoading(biclusters, m, k) 
-    } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
-              matrix(rep(NA, ncol(m)), nrow = 1)) }
+  } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
+                matrix(rep(NA, ncol(m)), nrow = 1)) }
   
   new("genericFit", fit = new("genericFactorization",
                               W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "plaid")
@@ -226,12 +226,12 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE) {
     {
       browser()
       suppressMessages(res <-
-                       NMF::nmf(
-                         m, k, method = "snmf/l", beta = beta,
-                         verbose = verbose
-                       ))
+                         NMF::nmf(
+                           m, k, method = "snmf/l", beta = beta,
+                           verbose = verbose
+                         ))
       browser()
-      },
+    },
     warning = function(w) {
       if (any(suppressWarnings(
         grepl(
