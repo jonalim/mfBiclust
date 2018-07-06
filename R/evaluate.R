@@ -52,13 +52,14 @@ calcFE <- function(dataset, algorithm, cutoffs) {
   # filter down to a list of 100 biclusters / gene lists
   bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, 
                   loadingThresh(getStrat(bce, 1)))
-  geneLists <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
+  res <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
                               BiclusterxCol = bc,
-                              max = 100, overlap = 0.25)[[2]]
-  geneLists <- lapply(seq_along(nrow(geneLists)), function(index) {
+                              max = 100, overlap = 0.25)
+  biclustered <- res[[3]]
+  geneLists <- lapply(seq_len(nrow(res[[2]])), function(index) {
     rownames(bce)[geneLists[index, ]]
   })
-  
+
   if(method(getStrat(bce, 1)) != algorithm) {
     termCount = as.data.frame(matrix(rep(NA, length(cutoffs)), nrow = 1))
     colnames(termCount) <- as.character(cutoffs)
@@ -97,7 +98,9 @@ calcFE <- function(dataset, algorithm, cutoffs) {
       names(termCounts) <- as.character(cutoffs)
       termCounts
     }))
-    list(bce = bce, geneLists = geneLists, termCounts = termCount)
+
+    list(bce = bce, biclustered = biclustered, geneLists = geneLists, 
+         termCounts = termCount)
   }
 
 }
@@ -110,9 +113,9 @@ testFE <- function(rep = 30) {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
   # change to TRUE to save biclustering results
   saveMe <- TRUE
-  save.file <- "plots/yeast_benchmark_results/"
+  save.file <- "plots/yeast_benchmark_results/t"
 
-  methods.nondet <- c("plaid", "spectral")
+  methods.nondet <- c("als-nmf", "spectral")
   methods.det <- c("als-nmf", "svd-pca")
   
   extractBest <- function(solutions) {
@@ -163,14 +166,15 @@ testFE <- function(rep = 30) {
       length(x$geneLists)
       })) # total
     scores <- enriched / total * 100
-    list(enriched = enriched[1], total = total, percent = scores)
+    pctBiclustered <- sum(solution.dataset$biclustered == 1) / length(solution.dataset$biclustered) * 100
+    list(enriched = enriched[1], total = total, pctEnriched = scores, pctBiclustered = pctBiclustered)
   })
   if(!inherits(res, "matrix")) res <- cbind(res)
 
   methods.all <- c(methods.det, methods.nondet)
   colnames(res) <- methods.all
   
-  ys <- apply(res, MARGIN = 2, function(x) x$percent)
+  ys <- apply(res, MARGIN = 2, function(x) x$pctEnriched)
   if(saveMe) save(solutions, res, cutoffs, file = paste0(save.file, "solutions+stats.Rda"))
   
   old.par <- par(no.readonly = TRUE)
