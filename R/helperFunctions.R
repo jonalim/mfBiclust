@@ -176,7 +176,7 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
   })
   list(RowxBicluster = RowxBicluster[, chosen, drop = FALSE], 
        BiclusterxCol = BiclusterxCol[chosen, , drop = FALSE],
-       biclustered)
+       biclustered = biclustered, chosen = chosen)
 }
 
 is.wholenumber <-
@@ -189,8 +189,9 @@ pseudovalues <- function(m) {
     warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
                   "this BiclusterStrategy because",
                   "negative values are not allowed."))
-    m + abs(min(m))
+    m <- m + abs(min(m))
   }
+  return(m)
 }
 
 #### threshold ####
