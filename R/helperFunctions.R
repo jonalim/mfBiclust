@@ -123,10 +123,11 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
   }
   
   k <- ncol(RowxBicluster)
-  if(k == 1 || k == 0) {
+  if(k == 0) {
+    chosen = rep(FALSE, ncol(RowxBicluster))
+  } else if(k == 1 ) {
     # no filtering needed
-    list(RowxBicluster = RowxBicluster, 
-         BiclusterxCol = BiclusterxCol)
+    chosen = rep(TRUE, ncol(RowxBicluster))
   } else {
     # Create lists of rows and columns contained in biclusters
     BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
@@ -164,16 +165,17 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
       pool[overlaps[[chooseMe]] > overlap] <- FALSE
       pool[chooseMe] <- FALSE
     }
-    
-    biclustered <- matrix(0, nrow = nrow(RowxBicluster), 
-                          ncol = ncol(BiclusterxCol))
-    sapply(which(chosen), function(bicluster) {
-      biclustered[RowxBicluster[ , bicluster], BiclusterxCol[bicluster, ]] <<- 1 
-    })
-    list(RowxBicluster = RowxBicluster[, chosen], 
-         BiclusterxCol = BiclusterxCol[chosen, ],
-         biclustered)
   }
+
+  # Determine the union of all biclustered matrix elements
+  biclustered <- matrix(0, nrow = nrow(RowxBicluster), 
+                        ncol = ncol(BiclusterxCol))
+  sapply(which(chosen), function(bicluster) {
+    biclustered[RowxBicluster[ , bicluster], BiclusterxCol[bicluster, ]] <<- 1
+  })
+  list(RowxBicluster = RowxBicluster[, chosen, drop = FALSE], 
+       BiclusterxCol = BiclusterxCol[chosen, , drop = FALSE],
+       biclustered)
 }
 
 is.wholenumber <-
