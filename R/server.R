@@ -1,4 +1,5 @@
 function(input, output, session) {
+  #### REACTIVE VALUES #### 
   dep <- reactiveValues(
     pheatmap = requireNamespace("pheatmap", quietly = TRUE),
     plaid = requireNamespace("biclust", quietly = TRUE),
@@ -11,8 +12,11 @@ function(input, output, session) {
       NULL
     } else userBce,
     rawmat = if(!is.null(userBce)) as.matrix(userBce) else NULL,
-    strategy = NULL
+    strategy = NULL,
+    zoom = c(0, 1, 0, 1)
   )
+  
+  #### DATA I/O ####
   reactiveSeparator <- observeEvent(input$input_df, {
     # If the file input changes, try automatically changing separator to ","
     if(substr(input$input_df$name, nchar(input$input_df$name) - 2,
@@ -22,17 +26,17 @@ function(input, output, session) {
   }
   )
   
-  observeEvent({ # read the raw input as a data.frame
-    input$input_df
-    input$row_names
-    input$header
-    input$sepchar
-    input$quotechar
-    input$decchar
-    input$skiplines
-    input$sampleCols
-  }, 
-  { # If the user has not chosen a file yet, look for a BiclusterExperiment in the execution environment of biclusterGUI
+  # observeEvent({ # read the raw input as a data.frame
+  #   input$input_df
+  #   input$row_names
+  #   input$header
+  #   input$sepchar
+  #   input$quotechar
+  #   input$decchar
+  #   input$skiplines
+  #   input$sampleCols
+  # }, 
+  rawmat <- reactive({ # If the user has not chosen a file yet, look for a BiclusterExperiment in the execution environment of biclusterGUI
     if(is.null(input$input_df)) {
       shinyjs::disable("row_names")
       shinyjs::disable("header")
@@ -58,7 +62,6 @@ function(input, output, session) {
       shinyjs::runjs("$('#quotechar').attr('maxlength', 1)")
       shinyjs::runjs("$('#decchar').attr('maxlength', 1)")
       
-      
       rows <- if(input$row_names) 1 else NULL
       withProgress({
         incProgress(1/8)
@@ -70,20 +73,22 @@ function(input, output, session) {
         if(input$sampleCols) rawmat <- t(rawdf)
         incProgress(1/8)
       }, message = "Parsing data...", value = 0)
-      values$rawmat <- rawmat
+      # rawmat() <- rawmat
+      rawmat
     }
   })
   
-  # Always keep the BiclusterExperiment synchronized with the user's fi
-  observeEvent(values$rawmat, {
-    values$bce <- BiclusterExperiment(values$rawmat)
+  # Always keep the BiclusterExperiment synchronized with the global data-matrix
+  observeEvent(rawmat(), {
+    values$bce <- BiclusterExperiment(rawmat())
   })
   
+  # Render an interactive data.table for the user's benefit
   output$dt <- DT::renderDT({
-    return(values$rawmat)
+    return(rawmat())
   }, server = FALSE, selection = "none")
   reactiveDF <- reactive({
-    values$rawmat
+    rawmat()
   })
   
   # helper functions
@@ -204,8 +209,20 @@ function(input, output, session) {
   }
   )
   
+  observeEvent({values$bce
+    input$k
+  },
+  {if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "numeric"))) {
+    shinyjs::disable("bicluster")
+  } else {
+    shinyjs::enable("bicluster")
+  }
+  }
+  )
+  
   observeEvent(input$bicluster, {
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
+    validate(need(inherits(input$k, "integer"), ""))
     bce <- values$bce
     # Look for an existing BiclusterStrategy with the same parameters
     stratName <- name(list(bca = capitalize(input$algo), 
@@ -222,6 +239,7 @@ function(input, output, session) {
             paste(input$algo, "failed on your dataset, so the", algo,
                   "algorithm was used instead."), duration = 5)
         }
+        values$strategy <- getStrat(bce, newStrat)
       }, message = "Biclustering...", value = 0.2)
     } else {
       values$strategy <- getStrat(bce, matchStrats[1])
@@ -234,69 +252,162 @@ function(input, output, session) {
   }, shinyjs::enable("bicluster")
   )
   
-  #### Scores ####
-  output$selectCluster <- renderUI({
-    stratName <- name(list(bca = capitalize(input$algo), 
-                           sta = capitalize("otsu"), 
-                           lta = capitalize("otsu"), k = input$k))
-    selectInput("cluster", "Select bicluster:", 
-                choices = names(getStrat(values$bce, stratName))
-    )
+  #### Summary ####
+  # Reset zoom when the user's input data changes or upon double-click  
+  observeEvent({rawmat()
+    input$image_dblclick
+    }, {
+    mat <- rawmat()
+    
+    if(inherits(mat, "matrix") && mode(mat) == "numeric") {
+      values$zoom <- c(0, 1, 0, 1)
+    }
+  })
+
+  # Re-render the bicluster plot when raw data OR BiclusterStrategy OR selected biclusters changes
+  imageArr <- reactive({
+    # render the whole heatmap
+    mat <- rawmat()
+    validate(need(inherits(mat, "matrix") && mode(mat) == "numeric", ""))
+    m <- mat / max(mat)
+    width <- ncol(m)
+    height <- nrow(m)
+    
+    # Convert the vector to an array with 3 planes for R, G, B
+    arr <- array(c(m, m, m), dim = c(height, width, 3))
+    
+    # Add bicluster outlines 
+    bcs <- values$strategy
+    if(!is.null(bcs)) {
+      cols <- hcl(h = seq(0, (nclust(bcs) - 1) / (nclust(bcs)),
+                                length = nclust(bcs)) * 360, c = 100, l = 65,
+                  fixup = TRUE)
+      cols <- col2rgb(cols) # RGB as rows; each column a different color
+      # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
+      # hovering mouse over. Give warning when biclusters are overlapping.
+      lapply(seq_len(nclust(bcs)), function(bicluster) {
+        yrange <- which(loading(bcs)[bicluster, ] > bcs@loadingThresh[1, 1])
+        xrange <- which(pred(bcs)[, bicluster])
+        arr[xrange, yrange, 1] <<- cols["red", bicluster] / 255
+        arr[xrange, yrange, 2] <<- cols["green", bicluster] / 255
+        arr[xrange, yrange, 3] <<- cols["blue", bicluster] / 255
+      })
+    }
+    browser()
+    arr
   })
   
-  reactiveHeatmapHeight300 <- reactive({
-    bce <- values$bce
-    max(300, length(input$annots) * 33 +
-          sum(unlist(lapply(input$annots, function(annot) {
-            length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
-                                pred(getStrat(bce, input$strategy))
-            )[, annot]))
-          }))) * 22 - 106)})
+  output$image1 <- renderImage({
+    browser()
+    arr <- imageArr()
+    validate(need(inherits(arr, "array") && 
+                    mode(arr) == "numeric" &&
+                    !is.null(dim(arr)),
+      "Data for heatmap has not been parsed yet. Try switching revisiting the 'Data' tab momentarily."))
+    temp <- tempfile(fileext = ".png")
+    # if(inherits(arr, "array") && mode(arr) == "numeric") {
+      
+      # subset the PNG and re-render
+      rangeY <- c(floor(values$zoom[3] * dim(arr)[1]) + 1, round(values$zoom[4] * dim(arr)[1]))
+      rangeX <- c(floor(values$zoom[1] * dim(arr)[2]) + 1, round(values$zoom[2] * dim(arr)[2]))
+      # bug; it's possible to zoom in so much that rangeY[2] - rangeY[1]< 1 similarly for rangeX
+      
+      arr <- arr[rangeY[1]:rangeY[2], rangeX[1]:rangeX[2], ]
+    # } else {
+    #   arr <- array(1, dim = c(1, 1, 1)) # one white pixel
+    #   
+    # }
+   tryCatch(png::writePNG(arr,
+             target = temp), error = function(e) {
+               browser()}
+   )
+      # Return a list containing information about the zoomed image
+      list(
+        src = temp,
+        contentType = "image/png",
+        title = "Click and drag to zoom in; double-click to reset"
+      )
+  })
+  
+  # If the user uses the brush, zoom in. Clearing the brush simply allows the
+  # GUI to await another brush input.
+  observeEvent(input$image_brush, {
+    browser()
+    brush <- input$image_brush
+    zoom <- values$zoom
+    if(!is.null(brush)) {
+      # contains fractions of the whole image
+      values$zoom <- c(zoom[1] + (zoom[2] - zoom[1]) * brush$xmin / session$clientData$output_image1_width, 
+                       zoom[1] + (zoom[2] - zoom[1]) * brush$xmax / session$clientData$output_image1_width,
+                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymin / session$clientData$output_image1_height,
+                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymax / session$clientData$output_image1_height)
+      shinyjs::runjs("document.getElementById('image1_brush').remove()")
+    }
+  })
+  
+  #### Scores ####
+  # output$selectCluster <- renderUI({
+  #   stratName <- name(list(bca = capitalize(input$algo), 
+  #                          sta = capitalize("otsu"), 
+  #                          lta = capitalize("otsu"), k = input$k))
+  #   selectInput("cluster", "Select bicluster:", 
+  #               choices = names(getStrat(values$bce, stratName))
+  #   )
+  # })
+  # 
+  # reactiveHeatmapHeight300 <- reactive({
+  #   bce <- values$bce
+  #   max(300, length(input$annots) * 33 +
+  #         sum(unlist(lapply(input$annots, function(annot) {
+  #           length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
+  #                               pred(getStrat(bce, input$strategy))
+  #           )[, annot]))
+  #         }))) * 22 - 106)})
   
   # heatmap of scores for all samples
   # using renderUI prevents overlapping plots
-  output$uiScoreHeatmap <- renderUI({
-    height = reactiveHeatmapHeight300()
-    plotOutput("scoreHeatmap", height = height)
-  })
-  output$scoreHeatmap <- renderPlot({
-    gt <- reactiveScoreHeatmap()
-    print(gt)
-  }, 
-  height = function() { reactiveHeatmapHeight300() })
-  reactiveScoreHeatmap <- reactive({
-    bce <- values$bce
-    withProgress(
-      message = "Plotting...",
-      value = 0, {
-        set.seed(1234567)
-        phenoLabels <- intersect(input$annots, 
-                                 colnames(Biobase::phenoData(bce)))
-        biclustLabels <- intersect(input$annots, 
-                                   names(getStrat(values$bce, 
-                                                  input$strategy)))
-        heatmapFactor(bce, strategy = input$strategy, type = "score",
-                      phenoLabels = phenoLabels, 
-                      biclustLabels = biclustLabels, 
-                      ordering = if(input$scoreReorder) { "cluster" }
-                      else { "input" }, 
-                      colNames = input$sampNames)
-      })
-  })
+  # output$uiScoreHeatmap <- renderUI({
+  #   height = reactiveHeatmapHeight300()
+  #   plotOutput("scoreHeatmap", height = height)
+  # })
+  # output$scoreHeatmap <- renderPlot({
+  #   gt <- reactiveScoreHeatmap()
+  #   print(gt)
+  # }, 
+  # height = function() { reactiveHeatmapHeight300() })
+  # reactiveScoreHeatmap <- reactive({
+  #   bce <- values$bce
+  #   withProgress(
+  #     message = "Plotting...",
+  #     value = 0, {
+  #       set.seed(1234567)
+  #       phenoLabels <- intersect(input$annots, 
+  #                                colnames(Biobase::phenoData(bce)))
+  #       biclustLabels <- intersect(input$annots, 
+  #                                  names(getStrat(values$bce, 
+  #                                                 input$strategy)))
+  #       heatmapFactor(bce, strategy = input$strategy, type = "score",
+  #                     phenoLabels = phenoLabels, 
+  #                     biclustLabels = biclustLabels, 
+  #                     ordering = if(input$scoreReorder) { "cluster" }
+  #                     else { "input" }, 
+  #                     colNames = input$sampNames)
+  #     })
+  # })
   
   # Plot of sample scores for one bicluster
-  output$score_threshold <- renderPlot({
-    reactive_score_threshold()
-  })
-  reactive_score_threshold <- reactive({
-    withProgress(message = "Plotting...", value = 0, {
-      set.seed(1234567)
-      plotSamples(values$bce, strategy = input$strategy, 
-                  bicluster = input$cluster,
-                  ordering = if(input$sampOrder) { "input" }
-                  else { "distance" })
-    })
-  })
+  # output$score_threshold <- renderPlot({
+  #   reactive_score_threshold()
+  # })
+  # reactive_score_threshold <- reactive({
+  #   withProgress(message = "Plotting...", value = 0, {
+  #     set.seed(1234567)
+  #     plotSamples(values$bce, strategy = input$strategy, 
+  #                 bicluster = input$cluster,
+  #                 ordering = if(input$sampOrder) { "input" }
+  #                 else { "distance" })
+  #   })
+  # })
   
   
   # render the top tab panel
@@ -308,106 +419,94 @@ function(input, output, session) {
   })
   
   # render the inside tab panel
-  output$inside_tabs <- renderUI({
-    tabsetPanel(
-      
-      tabPanel(
-        "Sample distance",
-        plotOutput("distance",
-                   width = "100%"
-        )
-      ),
-      # tabPanel("Stability", plotOutput("stability", width = "100%")),
-      
-      tabPanel("Biomarkers", plotOutput("loadingHeatmap", width = "100%"), 
-               plotOutput("plot_biomarkers", width = "100%")),
-      id = "main_panel",
-      type = "pills"
-    )
-  })
-  
-  # plot cluster stability (not implemented yet)
-  output$stability <- renderPlot({
-    gt <- reactiveStability()
-    print(gt)
-  })
-  reactiveStability <- reactive({
-    withProgress(message = "Plotting...", value = 0, {
-      set.seed(1234567)
-      plotClustStab(values$bce, input$strategy)
-    })
-  })
+  # output$inside_tabs <- renderUI({
+  #   tabsetPanel(
+  #     
+  #     tabPanel(
+  #       "Sample distance",
+  #       plotOutput("distance",
+  #                  width = "100%"
+  #       )
+  #     ),
+  #     # tabPanel("Stability", plotOutput("stability", width = "100%")),
+  #     
+  #     tabPanel("Biomarkers", plotOutput("loadingHeatmap", width = "100%"), 
+  #              plotOutput("plot_biomarkers", width = "100%")),
+  #     id = "main_panel",
+  #     type = "pills"
+  #   )
+  # })
   
   # Heatmap of loadings for all features
-  output$loadingHeatmap <- renderPlot({
-    gt <- reactiveLoadingHeatmap()
-    print(gt)
-  })
-  reactiveLoadingHeatmap <- reactive({withProgress(
-    message = "Plotting...",
-    value = 0, {
-      set.seed(1234567)
-      heatmapFactor(values$bce, strategy = input$strategy, type = "loading",
-                    ordering = input$featOrder, 
-                    colNames = input$featNames)
-    }
-  )})
+  # output$loadingHeatmap <- renderPlot({
+  #   gt <- reactiveLoadingHeatmap()
+  #   print(gt)
+  # })
+  # reactiveLoadingHeatmap <- reactive({withProgress(
+  #   message = "Plotting...",
+  #   value = 0, {
+  #     set.seed(1234567)
+  #     heatmapFactor(values$bce, strategy = input$strategy, type = "loading",
+  #                   ordering = input$featOrder, 
+  #                   colNames = input$featNames)
+  #   }
+  # )})
   
   # Plot of feature loadings for one bicluster
-  output$plot_biomarkers <- renderPlot({
-    reactiveMarkers()
-  })
-  reactiveMarkers <- reactive({
-    withProgress(message = "Plotting...", value = 0, {
-      set.seed(1234567)
-      plotMarkers(values$bce, strategy = input$strategy, 
-                  bicluster = input$cluster,
-                  ordering = input$featOrder)
-    })
-  })
+  # output$plot_biomarkers <- renderPlot({
+  #   reactiveMarkers()
+  # })
+  # reactiveMarkers <- reactive({
+  #   withProgress(message = "Plotting...", value = 0, {
+  #     set.seed(1234567)
+  #     plotMarkers(values$bce, strategy = input$strategy, 
+  #                 bicluster = input$cluster,
+  #                 ordering = input$featOrder)
+  #   })
+  # })
   
   # PANEL DESCRIPTIONS
-  output$explanation <- renderUI({
-    res <- ""
-    if (length(input$main_panel) > 0) {
-      if ("Abundance" == input$main_panel) {
-        res <- HTML(
-          "Abundance shows a Z-score heatmap of the original matrix
-          of metabolite peaks. Default ordering is distance-based by
-          cluster membership. Sidebar options allow reordering
-          of rows to highlight samples that are members of the
-          currently selected cluster.
-          Currently the annotations 'species' and 'tissue' are fictitious."
-        )
-      }
-      # if ("Stability" == input$main_panel) {
-      #   res <- HTML(
-      #     "Stability index shows how stable each cluster
-      #     is accross the selected range of <i>k</i>s.
-      #     The stability index varies between 0 and 1, where
-      #     1 means that the same cluster appears in every
-      #     solution for different <i>k</i>."
-      #   )
-      # }
-      if ("Biomarkers" == input$main_panel) {
-        res <- HTML(
-          paste0(
-            "This is a plot of loading, a statistic that
-            quantifies the importance of each feature in distinguishing
-            samples that are members of this bicluster."
-          )
-          )
-      }
-      if ("Bicluster members" == input$main_panel) {
-        res <- HTML(
-          "This is a score thresholding plot, showing which
-          samples are above the threshold. The user should be
-          told which thresholding method was used."
-        )
-      }
-      return(res)
-      }
-      })
+  # output$explanation <- renderUI({
+  #   res <- ""
+  #   if (length(input$main_panel) > 0) {
+  #     if ("Abundance" == input$main_panel) {
+  #       res <- HTML(
+  #         "Abundance shows a Z-score heatmap of the original matrix
+  #         of metabolite peaks. Default ordering is distance-based by
+  #         cluster membership. Sidebar options allow reordering
+  #         of rows to highlight samples that are members of the
+  #         currently selected cluster.
+  #         Currently the annotations 'species' and 'tissue' are fictitious."
+  #       )
+  #     }
+  # if ("Stability" == input$main_panel) {
+  #   res <- HTML(
+  #     "Stability index shows how stable each cluster
+  #     is accross the selected range of <i>k</i>s.
+  #     The stability index varies between 0 and 1, where
+  #     1 means that the same cluster appears in every
+  #     solution for different <i>k</i>."
+  #   )
+  # }
+  # if ("Biomarkers" == input$main_panel) {
+  #   res <- HTML(
+  #     paste0(
+  #       "This is a plot of loading, a statistic that
+  #       quantifies the importance of each feature in distinguishing
+  #       samples that are members of this bicluster."
+  #     )
+  #     )
+  # }
+  # if ("Bicluster members" == input$main_panel) {
+  #   res <- HTML(
+  #     "This is a score thresholding plot, showing which
+  #     samples are above the threshold. The user should be
+  #     told which thresholding method was used."
+  #   )
+  # }
+  # return(res)
+  # }
+  # })
   
   # plotHeightMark <- function() {
   #   return(150 + 10.8 * nrow(values$mark.res))
@@ -454,4 +553,4 @@ function(input, output, session) {
   })
   # 
   # outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
-    }
+}
