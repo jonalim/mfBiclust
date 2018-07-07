@@ -169,11 +169,8 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
   }
 
   # Determine the union of all biclustered matrix elements
-  biclustered <- matrix(0, nrow = nrow(RowxBicluster), 
-                        ncol = ncol(BiclusterxCol))
-  sapply(which(chosen), function(bicluster) {
-    biclustered[RowxBicluster[ , bicluster], BiclusterxCol[bicluster, ]] <<- 1
-  })
+  biclustered <- union.biclust(RowxBicluster, BiclusterxCol, chosen)
+  
   list(RowxBicluster = RowxBicluster[, chosen, drop = FALSE], 
        BiclusterxCol = BiclusterxCol[chosen, , drop = FALSE],
        biclustered = biclustered, chosen = chosen)
@@ -234,6 +231,21 @@ setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, MARGIN = 2, t
   threshold(m, MARGIN, as.numeric(th))
 }
 )
+
+#' Create a binary matrix containing a union of biclusters
+#'
+#' @param RowxBiclust a boolean score matrix
+#' @param BiclustxCol a boolean loading matrix
+#' @param choose a vector of indexes of biclusters, should be the same length as
+#'   the width of RowxBiclust
+union.biclust <- function(RowxBiclust, BiclustxCol, 
+                          choose = rep(TRUE, ncol(RowxBiclust))) {
+  biclustered <- matrix(0, nrow = nrow(RowxBiclust), 
+                        ncol = ncol(BiclustxCol))
+  lapply(which(choose), function(bicluster) {
+    biclustered[RowxBiclust[ , bicluster], BiclustxCol[bicluster, ]] <<- 1
+  })
+}
 
 validateBiclustNames <- function(biclustNames, bcs) {
   if (length(biclustNames) > 0) {
