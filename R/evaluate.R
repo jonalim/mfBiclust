@@ -46,20 +46,20 @@ libGostats <- function() {
 calcFE <- function(dataset, algorithm, cutoffs) {
   # Perform biclustering for 300 biclusters
   bce <- BiclusterExperiment(t(as.matrix(dataset)))
-
+  
   bce <- addStrat(bce, 500, method = algorithm, duplicable = FALSE)
   
   # filter down to a list of 100 biclusters / gene lists
   bc <- threshold(loading(getStrat(bce, 1)), MARGIN = 1, 
                   loadingThresh(getStrat(bce, 1)))
   res <- filter.biclust(RowxBicluster = pred(getStrat(bce, 1)),
-                              BiclusterxCol = bc,
-                              max = 100, overlap = 0.25)
+                        BiclusterxCol = bc,
+                        max = 100, overlap = 0.25)
   biclustered <- res[[3]]
   geneLists <- lapply(seq_len(nrow(res[[2]])), function(index) {
     rownames(bce)[res[[2]][index, ]]
   })
-
+  
   if(tolower(method(getStrat(bce, 1))) != tolower(algorithm)) {
     termCount = as.data.frame(matrix(rep(NA, length(cutoffs)), nrow = 1))
     colnames(termCount) <- as.character(cutoffs)
@@ -69,7 +69,8 @@ calcFE <- function(dataset, algorithm, cutoffs) {
     
     # get a table where each column is a p-value cutoff; each row is a
     # bicluster
-    termCount <- do.call(rbind, lapply(geneLists, function(geneList) {
+    lapp <- if(requireNamespace("BiocParallel")) bplapply else lapply
+    fun <- function(geneList, universe, cutoffs) {
       # Molecular Function ontology
       mf <- GOstats::hyperGTest(new("GOHyperGParams",
                                     geneIds = geneList,
@@ -97,12 +98,11 @@ calcFE <- function(dataset, algorithm, cutoffs) {
       
       names(termCounts) <- as.character(cutoffs)
       termCounts
-    }))
-
+    }
+    termCount <- do.call(rbind, lapp(geneLists, fun, universe, cutoffs))
     list(bce = bce, biclustered = biclustered, geneLists = geneLists, 
          termCounts = termCount)
   }
-
 }
 
 testFE <- function(rep = 30) {
@@ -113,19 +113,19 @@ testFE <- function(rep = 30) {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
   # change to TRUE to save biclustering results
   saveMe <- TRUE
-  save.file <- "plots/yeast_benchmark_results/trial1_"
-
+  save.file <- "plots/yeast_benchmark_results/"
+  
   methods.nondet <- c("plaid", "spectral")
   methods.det <- c("als-nmf", "svd-pca")
   
   extractBest <- function(solutions) {
     best <- which.max(sapply(solutions, function(solution) {
-        sum(solution$termCount[, length(cutoffs)] > 0) / length(solution$geneLists)
-      }))
-      if(length(best) == 0) best <- 1
-      best <- solutions[[best]]
-      # number of enriched biclusters at various cutoffs
-      best$enriched <- colSums(best$termCount > 0)
+      sum(solution$termCount[, length(cutoffs)] > 0) / length(solution$geneLists)
+    }))
+    if(length(best) == 0) best <- 1
+    best <- solutions[[best]]
+    # number of enriched biclusters at various cutoffs
+    best$enriched <- colSums(best$termCount > 0)
     best
   }
   
@@ -145,13 +145,13 @@ testFE <- function(rep = 30) {
   })
   
   if(saveMe) save(solutions.nondet, file = paste0(save.file, "solutions.nondet.Rda")) # save at each step!
-
+  
   # find biclusters using deterministic methods
   solutions.det <- lapply(methods.det, function(algo) {
-     solutions <- lapply(datasets.all, function(dataset) {
-       solution <- calcFE(dataset, algorithm = algo, cutoffs)
-       solution$enriched <- solution$termCount > 0
-       solution
+    solutions <- lapply(datasets.all, function(dataset) {
+      solution <- calcFE(dataset, algorithm = algo, cutoffs)
+      solution$enriched <- solution$termCount > 0
+      solution
     })
   })
   
@@ -163,16 +163,16 @@ testFE <- function(rep = 30) {
     # total enriched at each cutoff
     enriched <- colSums(do.call(rbind, lapply(solutions.algo, function(solution.dataset) {
       solution.dataset$enriched
-      })), na.rm = TRUE)
+    })), na.rm = TRUE)
     total <- sum(sapply(solutions.algo, function(x) {
       length(x$geneLists)
-      })) # total
+    })) # total
     scores <- enriched / total * 100
     pctBiclustered <- sum(solution.dataset$biclustered == 1) / length(solution.dataset$biclustered) * 100
     list(enriched = enriched[1], total = total, pctEnriched = scores, pctBiclustered = pctBiclustered)
   })
   if(!inherits(res, "matrix")) res <- cbind(res)
-
+  
   methods.all <- c(methods.det, methods.nondet)
   colnames(res) <- methods.all
   
