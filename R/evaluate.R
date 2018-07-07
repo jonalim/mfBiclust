@@ -57,10 +57,10 @@ calcFE <- function(dataset, algorithm, cutoffs) {
                               max = 100, overlap = 0.25)
   biclustered <- res[[3]]
   geneLists <- lapply(seq_len(nrow(res[[2]])), function(index) {
-    rownames(bce)[geneLists[index, ]]
+    rownames(bce)[res[[2]][index, ]]
   })
 
-  if(method(getStrat(bce, 1)) != algorithm) {
+  if(tolower(method(getStrat(bce, 1))) != tolower(algorithm)) {
     termCount = as.data.frame(matrix(rep(NA, length(cutoffs)), nrow = 1))
     colnames(termCount) <- as.character(cutoffs)
     list(biclusters = list(), termCount = termCount)
@@ -113,7 +113,7 @@ testFE <- function(rep = 30) {
   datasets.all <- loadBenchmark("data/yeast_benchmark/", classes = FALSE)
   # change to TRUE to save biclustering results
   saveMe <- TRUE
-  save.file <- "plots/yeast_benchmark_results/"
+  save.file <- "plots/yeast_benchmark_results/trial1_"
 
   methods.nondet <- c("plaid", "spectral")
   methods.det <- c("als-nmf", "svd-pca")
@@ -128,6 +128,8 @@ testFE <- function(rep = 30) {
       best$enriched <- colSums(best$termCount > 0)
     best
   }
+  
+  # JNL Use the 1st and 5th datasets to test
   
   # Find biclusters using nondeterministic algorithms
   solutions.nondet <- lapply(methods.nondet, function(algo) {
