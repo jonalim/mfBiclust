@@ -11,7 +11,7 @@ setClass(
   slots = list(
     factors = "ANY",
     scoreThresh = "matrix",
-    loadingThresh = "matrix",
+    loadingThresh = "matrix", # FIXME can we convert to 1 loading threshold and 1 score threshold>
     scoreThreshAlgo = "character",
     loadingThreshAlgo = "character",
     pred = "matrix",
@@ -302,7 +302,6 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
   }
   else {
     # Capitalize 
-    # als-nmf is not a valid name for a switch case
     bca <- capitalize(method(bcs))
     sta <- capitalize(bcs@scoreThreshAlgo)
     lta <- capitalize(bcs@loadingThreshAlgo)

@@ -19,11 +19,12 @@ biclusterNumber2scoreLoading <- function(biclusterNumber, m, k) {
 #### capitalize ####
 capitalize <- Vectorize(function(s) {
   # Use this function whenever names will be displayed in plots or gui
-  if (s == "als-nmf") { "ALS-NMF" }
-  if (s == "nipals-pca") { "NIPALS-PCA" }
-  if (s == "svd-pca") { "SVD-PCA" }
-  else { switch(s, snmf = "SNMF", pca = "PCA", otsu = "Otsu", 
-                paste0(toupper(substring(s, 1,1)), substring(s, 2))) }
+  if (s == "als-nmf") { return("ALS-NMF") }
+  if (s == "nipals-pca") { return("NIPALS-PCA") }
+  if (s == "svd-pca") { return("SVD-PCA") }
+  else { switch(s, snmf = return("SNMF"), pca = return("PCA"), 
+                otsu = return("Otsu"), 
+                return(paste0(toupper(substring(s, 1,1)), substring(s, 2)))) }
 })
 
 #' Create annotations dataframe for heatmaps

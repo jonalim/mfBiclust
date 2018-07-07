@@ -27,7 +27,8 @@ setMethod("biclusterGUI", definition = function(obj) {
     ui = fluidPage(
       shinyjs::useShinyjs(),
       #### UI ##################################################################
-      tags$head(tags$style()),
+      tags$head(tags$style(type="text/css", # Enables auto width for rendered image1
+      "#image1 img {max-width: 100%; width: 100%; height: 100%}")),
       navbarPage(
         "mfBiclust UI",
         tabPanel( #### Data tabpanel ####
@@ -42,12 +43,27 @@ setMethod("biclusterGUI", definition = function(obj) {
                                               "SNMF", "Plaid", "Spectral")
                       ),
                       uiOutput("kSlider"),
-                      actionButton("bicluster", "Run")
+                      actionButton("bicluster", "Run", )
                     ),
                     mainPanel(
                       tabsetPanel(
                         tabPanel("Summary", {
-                          # filled heatmap
+                          # filled interactive heatmap
+                          # In a imageOutput, passing values for click, dblclick, hover, or brush
+                          # will enable those interactions.
+                          imageOutput("image1",
+                                      # Equivalent to: click = clickOpts(id = "image_click")
+                                      click = "image_click",
+                                      dblclick = dblclickOpts(
+                                        id = "image_dblclick"
+                                      ),
+                                      hover = hoverOpts(
+                                        id = "image_hover"
+                                      ),
+                                      brush = brushOpts(
+                                        id = "image_brush"
+                                      )
+                          )
                         }),
                         tabPanel("Inspect samples", {
                           sidebarLayout(
@@ -68,7 +84,7 @@ setMethod("biclusterGUI", definition = function(obj) {
                       )
                     )
                   )
-        ), collapsible = FALSE, fluid = FALSE
+        ), collapsible = FALSE, fluid = FALSE, id = "navbar"
       )
     ),
     

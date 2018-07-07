@@ -4,7 +4,7 @@ sidebarLayout( #### sidebar ####
                  checkboxInput("sampleCols", "Samples as columns"),
                  checkboxInput("row_names", "Row names?", FALSE),
                  checkboxInput("header", "Header?", FALSE),
-                 numericInput("skiplines", "Skip additional lines", 0),
+                 numericInput("skiplines", "Skip additional lines", 0, min = 0),
                  textInput("sepchar", "Sep. (empty = whitespace)", ""),
                  textInput("quotechar", "Quote", ""),
                  textInput("decchar", "Decimal", "."),
