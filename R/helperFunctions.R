@@ -245,6 +245,7 @@ union.biclust <- function(RowxBiclust, BiclustxCol,
   lapply(which(choose), function(bicluster) {
     biclustered[RowxBiclust[ , bicluster], BiclustxCol[bicluster, ]] <<- 1
   })
+  biclustered
 }
 
 validateBiclustNames <- function(biclustNames, bcs) {
