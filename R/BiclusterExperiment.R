@@ -169,7 +169,6 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               # to my knowledge, this is the only method so far that needs cleaning
               bce <- clean(bce, maxNa)
             }
-            
             mat <- t(as.matrix(bce))
             
             # do this so that the recursive calls with a NULL method are also silent

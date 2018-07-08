@@ -293,12 +293,10 @@ function(input, output, session) {
         arr[xrange, yrange, 3] <<- cols["blue", bicluster] / 255
       })
     }
-    browser()
     arr
   })
-  
+
   output$image1 <- renderImage({
-    browser()
     arr <- imageArr()
     validate(need(inherits(arr, "array") && 
                     mode(arr) == "numeric" &&
@@ -344,6 +342,20 @@ function(input, output, session) {
       shinyjs::runjs("document.getElementById('image1_brush').remove()")
     }
   })
+  
+  overlapWarn <- reactive({
+    validate(need(inherits(values$strategy, "BiclusterStrategy")))
+    bcs <- values$strategy
+    bc <- threshold(loading(bcs), MARGIN = 1,
+                    loadingThresh(bcs))
+    nonOverlap <- filter.biclust(pred(values$strategy), bcs, overlap = 0)$chosen
+    if(!all(nonOverlap)) {
+      showNotification(paste(
+        paste(names(bcs)[!nonOverlap], sep = ", "),
+        "overlap. Please interpret the heatmap annotations with care."))
+    }
+  })
+  
   
   #### Scores ####
   # output$selectCluster <- renderUI({
