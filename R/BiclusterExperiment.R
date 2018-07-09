@@ -540,14 +540,14 @@ setMethod(
 #' @rdname plotMarkers
 #' @aliases plotMarkers
 #' @export
-setGeneric("plotMarkers", signature = "obj", function(obj, thresholds = NULL, ...) {
+setGeneric("plotMarkers", signature = "obj", function(obj, threshold = NULL, ...) {
   standardGeneric("plotMarkers")
 })
 
 #' cluster must be numeric
 #' @export
 setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
-          function(obj, thresholds, strategy = "", bicluster = "Bicluster.1", 
+          function(obj, threshold, strategy = "", bicluster = "Bicluster.1", 
                    ordering = c("input", "cluster")) {
             
             bcs <- getStrat(obj, strategy)
@@ -556,11 +556,11 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
               stop("Argument \"bicluster\" was not valid.")
             }
             # User is allowed to provide custom threshold when this function is called outside GUI
-            if (is.null(thresholds)) {
-              thresholds <- bcs@loadingThresh[bicluster, ]
-              names(thresholds) <- colnames(bcs@loadingThresh)
-            } else if (inherits(thresholds, "numeric")) {
-              names(thresholds) <- as.character(thresholds)
+            if (is.null(threshold)) {
+              threshold <- bcs@loadingThresh[bicluster, ]
+              names(threshold) <- colnames(bcs@loadingThresh)
+            } else if (inherits(threshold, "numeric")) {
+              names(threshold) <- as.character(threshold)
             } else {
               stop("Argument \"thresholds\" must be numeric. Use this argument only if
                    you want to replce mfBiclust thresholds with your own.")
@@ -568,50 +568,50 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             
             # Define colors
             cols <- RColorBrewer::brewer.pal(
-              if (length(thresholds) < 3) {3}
-              else {length(thresholds)}, 
+              if (length(threshold) < 3) {3}
+              else {length(threshold)}, 
               "Dark2"
             )
             
             data <- t(loading(bcs))[, bicluster]
             ordering <- match.arg(ordering)
             
+            # Define point types
+            if(length(threshold) == 1) {
+              pch <- sapply(data, function(x) {
+                return(if(x > threshold) 19 else 20)
+              })
+            } else pch <- 20
+            
             # FIXME ADD ACCURACY, RECOVERY, etc. on
             # PLOT. ALLOW TO HIGHLIGHT KNOWN FEATURES.
             # Plot
             if(ordering == "input") {
               plot(1:ncol(t(as.matrix(obj))), data,
-                   xlab = "Feature", ylab = "Loading", main = bicluster)
+                   xlab = "Feature", ylab = "Loading", main = bicluster, pch = pch)
             } else if (ordering == "distance") {
               ord <- hclust(dist(t(as.matrix(obj)), method = "euclidean"))$order
               plot(1:ncol(t(as.matrix(obj))), data[ord],
-                   xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster)
+                   xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster, pch = pch)
               axis(1, at = 1:ncol(t(as.matrix(obj))), labels = as.character(ord))
             } else if (ordering == "cluster") {
               ord <- order(data, decreasing = TRUE)
               plot(1:ncol(t(as.matrix(obj))), data[ord],
-                   xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster)
+                   xlab = "Feature", ylab = "Loading", xaxt = "n", main= bicluster, pch = pch)
               axis(1, at = 1:ncol(as.matrix(obj)), labels = as.character(ord))
             }
             
             mapply(function(y, color) {abline(h = y, col = color, lwd = 2)},
-                   y = thresholds, color = cols[seq_along(thresholds)]
+                   y = threshold, color = cols[seq_along(threshold)]
             )
             
-            legend("topright", legend = capitalize(names(thresholds)), col = cols[seq_along(names(thresholds))], lty = 1, 
+            legend("topright", legend = capitalize(names(threshold)), col = cols[seq_along(names(threshold))], lty = 1, 
                    lwd = 2, cex = 0.8
             )
           }
 )
 
 #### PCA Plot ##################################################################
-#' Biomarker plot
-#'
-#' Plot features with some measure of relevance on the y-axis
-#'
-#' @rdname plotMarkers
-#' @aliases plotMarkers
-#' @export
 setGeneric("pca", signature = "bce", function(bce) {
   standardGeneric("pca")
 })

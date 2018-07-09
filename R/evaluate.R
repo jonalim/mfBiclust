@@ -115,7 +115,7 @@ testFE <- function(rep = 30) {
   saveMe <- TRUE
   save.file <- "plots/yeast_benchmark_results/"
   
-  methods.nondet <- c("plaid", "spectral")
+  methods.nondet <- c("nipals-pca", "plaid", "spectral")
   methods.det <- c("als-nmf", "svd-pca")
   
   extractBest <- function(solutions) {
