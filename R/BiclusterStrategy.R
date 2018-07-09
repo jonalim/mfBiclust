@@ -66,8 +66,15 @@ BiclusterStrategy <-
     #### Matrix factorization ###################################################
     bc <- NULL
     
-    if(!any(is.na(m))) {
-      
+    if(any(is.na(m)) || method == "nipals-pca") {
+      if (method != "nipals-pca") {
+        warning(paste("Switching to the NIPALS-PCA method because the input",
+                      "matrix has missing data"))
+        method <- "nipals-pca"
+      }
+      bc <- nipals_pca(m, k, ...) # Prone to errors if cleaning needed
+    } else {
+    
       # These three are only valid when m is complete
       switch(
         method,
@@ -109,13 +116,6 @@ BiclusterStrategy <-
           bc <- spectral(m, k, ...)
         }
       )
-    } else {
-      if (method != "nipals-pca") {
-        warning(paste("Switching to the NIPALS-PCA method because the input",
-                      "matrix has missing data"))
-        method <- "nipals-pca"
-      }
-      bc <- nipals_pca(m, k, ...) # Prone to errors if cleaning needed
     }
     
     k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
@@ -144,7 +144,7 @@ BiclusterStrategy <-
       # leave thresholds NULL? still to be implemented
     }
     #### Results #############################################################
-    if(!any(is.na(st))) { pred <- threshold(bc@fit@W, MARGIN = 2, st) }
+    if(!any(is.na(st))) { pred <- threshold(m = bc@fit@W, th = st, MARGIN = 2) }
     else { 
       pred <- matrix(rep(FALSE, length(bc@fit@W)), nrow(bc@fit@W))
       dimnames(pred) <- dimnames(bc@fit@W)
