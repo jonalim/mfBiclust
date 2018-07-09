@@ -210,11 +210,11 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
             bce@strategies[[name]] <- bcs
             if(validObject(bce)) {
               message(paste("Added BiclusterStrategy named", name))
-              bce
+              return(bce)
             }
           })
 
-# FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed
+# FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed?
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
@@ -226,9 +226,9 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object, maxNa) {
   # [[1]] contains the cleaned matrix itself
   bce <- object[results[[2]][[2]], results[[2]][[1]]]
   distance(bce) <- dist(results[[1]], method = "euclidean")
-  strategies(bce) <- list()
+  strategies(bce) <- bce@strategies
   
-  if(validObject(bce, test = FALSE)) bce
+  if(validObject(bce, test = FALSE)) return(bce)
 })
 
 setMethod("distance", c(bce = "BiclusterExperiment"), function(bce) {

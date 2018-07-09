@@ -27,17 +27,6 @@ capitalize <- Vectorize(function(s) {
                 return(paste0(toupper(substring(s, 1,1)), substring(s, 2)))) }
 })
 
-
-#### clean ####
-#' Cleans a matrix by removing NAs
-#'
-#' @export
-setGeneric("clean", function(object, maxNa = 0, dimsRemain = FALSE) {
-  if(!(maxNa <= 1 && maxNa >= 0)) {
-    stop("Arg \"maxNa\" must be in the range of 0 to 1.")
-  }
-  standardGeneric("clean")
-})
 setMethod("clean", c(object = "matrix"), function(object, maxNa, dimsRemain) {
   maxNaPerRow <- round(maxNa * ncol(object))
   maxNaPerCol <- round(maxNa * nrow(object))
@@ -232,7 +221,7 @@ overlap <- function(BiclusterRows, BiclusterCols, matrix = FALSE) {
 }
 pseudovalues <- function(m) {
   if(any(m < 0)) {
-    warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
+    message(paste("Converting to pseudovalues (x + abs(min(x))) just for",
                   "this BiclusterStrategy because",
                   "negative values are not allowed."))
     m <- m + abs(min(m))
@@ -248,36 +237,42 @@ pseudovalues <- function(m) {
 #'
 #' If th is a vector, the first element of th will be used as threshold for the
 #' first col/row in m, etc.
-setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {standardGeneric("threshold")})
+setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {
+  standardGeneric("threshold")
+  })
 
 #' @export
-setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, MARGIN = 2, th) {
+setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, th, MARGIN = 2) {
+  # Get all values further from 0 than the provided threshold
   if(length(th) == 1) {
+    if(th < 0) compare <- `<` else compare <- `>` 
     mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
-    mat[m < th] <- FALSE
-    mat
+    mat[!compare(m, th)] <- FALSE
+    return(mat)
   }
   else {
     if(MARGIN == 1) {
       if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
       mat <- do.call(rbind, lapply(seq_len(nrow(m)), function(row) {
-        m[row, ] > th[row]
+        if(th[row] < 0) compare <- `<` else compare <- `>` 
+        compare(m[row, ], th[row])
       }))
     } else {
       if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
       mat <- do.call(cbind, lapply(seq_len(ncol(m)), function(col) {
-        m[, col] > th[col]
+        if(th[col] < 0) compare <- `<` else compare <- `>` 
+        compare(m[, col], th[col])
       }))
     }
     colnames(mat) <- colnames(m)
     rownames(mat) <- rownames(m)
-    mat
+    return(mat)
   }
 }
 )
 
-setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, MARGIN = 2, th) {
-  threshold(m, MARGIN, as.numeric(th))
+setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, th, MARGIN = 2) {
+  threshold(m, MARGIN = MARGIN, th = as.numeric(th))
 }
 )
 

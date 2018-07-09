@@ -137,7 +137,6 @@ nipals_pca <- function(m, k, reps = 1, duplicable = FALSE) {
       stop(e)
     }
   })
-  
   new("genericFit", fit = new("genericFactorization",
                               W = np$scores,
                               H = t(np$loadings)),
