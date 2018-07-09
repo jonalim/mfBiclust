@@ -115,7 +115,7 @@ BiclusterStrategy <-
                       "matrix has missing data"))
         method <- "nipals-pca"
       }
-      bc <- nipals_pca_helper(m, k, ...) # Prone to errors if cleaning needed
+      bc <- nipals_pca(m, k, ...) # Prone to errors if cleaning needed
     }
     
     k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
