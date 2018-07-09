@@ -131,33 +131,21 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
     chosen = rep(TRUE, ncol(RowxBicluster))
   } else {
     # Create lists of rows and columns contained in biclusters
-    BiclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
-    BiclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
+    biclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
+    biclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
     
     chosen <- rep(FALSE, each = k)
     pool <- rep(TRUE, each = k)
     sizes <- sapply(seq_len(k), function(biclus) {
-      length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
+      length(biclusterRows[[biclus]]) * length(biclusterCols[[biclus]])
     })
     names(sizes) <- seq_len(k)
     
     # exclude empty biclusters and whole-dataset biclusters
     pool[sizes == 0 | sizes == nrow(RowxBicluster) * ncol(BiclusterxCol)] <- FALSE
-    
     # For each bicluster, calculate its overlap with all other biclusters
-    overlaps <- lapply(seq_len(k), function(biclus1) {
-      sapply(seq_len(k), function(biclus2) {
-        intersection1 <- base::intersect(BiclusterRows[[biclus1]], BiclusterRows[[biclus2]])
-        intersection1 <- if(length(intersection1) > 0) length(intersection1)
-        else 0
-        intersection2 <- base::intersect(BiclusterCols[[biclus1]], BiclusterCols[[biclus2]])
-        intersection2 <- if(length(intersection2) > 0) length(intersection2)
-        else 0
-        intersection <- intersection1 * intersection2
-        overlap <- intersection / sizes[biclus1]
-      })
-    })
-    browser()
+    overlaps <- overlap(biclusterRows, biclusterCols, FALSE)
+    
     # Evaluates to TRUE even if argument max was missing
     while(all(sum(chosen) < max) && sum(pool) > 0) {
       chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
@@ -181,6 +169,37 @@ is.wholenumber <-
     abs(x - round(x)) < tol
   }
 
+#' Calculate overlaps between every pair of biclusters.
+#' 
+#' @param BiclusterRows a list, each element containing row indices in the
+#'  bicluster
+#' @param BiclusterCols a list, each element containing column indices in the
+#'  bicluster
+#' @param matrix if true, returns a matrix where element i, j is the proportion
+#'  of bicluster i overlapping with bicluster j
+overlap <- function(BiclusterRows, BiclusterCols, matrix = FALSE) {
+  sizes <- sapply(seq_along(BiclusterRows), function(biclus) {
+    length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
+  })
+  
+  overlaps <- lapply(seq_along(BiclusterRows), function(biclus1) {
+    sapply(seq_along(BiclusterRows), function(biclus2) {
+      intersection1 <- base::intersect(BiclusterRows[[biclus1]], BiclusterRows[[biclus2]])
+      intersection1 <- if(length(intersection1) > 0) length(intersection1)
+      else 0
+      intersection2 <- base::intersect(BiclusterCols[[biclus1]], BiclusterCols[[biclus2]])
+      intersection2 <- if(length(intersection2) > 0) length(intersection2)
+      else 0
+      intersection <- intersection1 * intersection2
+      overlap <- intersection / sizes[biclus1]
+    })
+  })
+  if(matrix) {
+    return(as.matrix(rbind(overlaps)))
+  } else {
+    return(overlaps)
+  }
+}
 pseudovalues <- function(m) {
   if(any(m < 0)) {
     warning(paste("Converting to pseudovalues (x + abs(min(x))) just for",
