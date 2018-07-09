@@ -119,30 +119,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
   return(invisible(res))
 }
 
-nipals_pca <- function(m, k, cleanParam = 0, duplicable = FALSE) {
-  if(duplicable) {
-    oldSeed <- duplicable("biclus") # do not modify the R global environment
-    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-  }
-  
-  cleanRes <- clean(m, cleanParam, index = TRUE)
-  mClean <- cleanRes$obj
-  indexRem <- cleanRes$indexRemaining
-  
-  tryCatch({
-    list(m = mClean, nipals_pca_helper(mClean, k, duplicabledebug(NMF::nmf)), indexRemaining = indexRem)
-  }, error = function(e) {
-    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
-      cleanParam <- cleanParam + (1 - cleanParam) / 2
-      message(paste("Too many NA in the data. Cleaning with maxNAs at",
-                    cleanParam))
-      # pass the original m so indexRemaining is valid for the user's matrix
-      autoNipals(m, k, cleanParam, duplicable)
-    } else { stop(e) }
-  })
-}
-
-nipals_pca_helper <- function(m, k, reps = 1, duplicable = FALSE) {
+nipals_pca <- function(m, k, reps = 1, duplicable = FALSE) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -165,6 +142,29 @@ nipals_pca_helper <- function(m, k, reps = 1, duplicable = FALSE) {
                               W = np$scores,
                               H = t(np$loadings)),
       method = "nipals-pca")
+}
+
+nipals_pca_helper <- function(m, k, cleanParam = 0, duplicable = FALSE) {
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
+  
+  cleanRes <- clean(m, cleanParam, dimsRemain = TRUE)
+  mClean <- cleanRes$obj
+  indexRem <- cleanRes$dimsRemain
+  
+  tryCatch({
+    list(m = mClean, nipals_pca(mClean, k), indexRemaining = indexRem)
+  }, error = function(e) {
+    if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
+      cleanParam <- cleanParam + (1 - cleanParam) / 2
+      message(paste("Too many NA in the data. Cleaning with maxNAs at",
+                    cleanParam))
+      # pass the original m so indexRemaining is valid for the user's matrix
+      nipals_pca(m, k, cleanParam, duplicable)
+    } else { stop(e) }
+  })
 }
 
 plaid <- function(m, k, duplicable = FALSE) {
