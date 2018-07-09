@@ -147,17 +147,17 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
     # For each bicluster, calculate its overlap with all other biclusters
     overlaps <- lapply(seq_len(k), function(biclus1) {
       sapply(seq_len(k), function(biclus2) {
-        intersection1 <- base::intersect(BiclusterRows[biclus1], BiclusterRows[biclus2])
-        intersection1 <- if(length(intersection1) > 0) length(intersection1[[1]])
+        intersection1 <- base::intersect(BiclusterRows[[biclus1]], BiclusterRows[[biclus2]])
+        intersection1 <- if(length(intersection1) > 0) length(intersection1)
         else 0
-        intersection2 <- base::intersect(BiclusterCols[biclus1], BiclusterCols[biclus2])
-        intersection2 <- if(length(intersection2) > 0) length(intersection2[[1]])
+        intersection2 <- base::intersect(BiclusterCols[[biclus1]], BiclusterCols[[biclus2]])
+        intersection2 <- if(length(intersection2) > 0) length(intersection2)
         else 0
         intersection <- intersection1 * intersection2
         overlap <- intersection / sizes[biclus1]
       })
     })
-    
+    browser()
     # Evaluates to TRUE even if argument max was missing
     while(all(sum(chosen) < max) && sum(pool) > 0) {
       chooseMe <- as.numeric(names(which.max(sizes[which(pool)])))
