@@ -12,7 +12,7 @@
 #' results.
 #'
 #' @param Y the input matrix
-#' @param kLimit the maximum number of biclusters to consider
+#' @param ks a vector of bicluster quantities to consider
 #' @param maxIter maximum number of iterations
 #' @param tol tolerance used to determine convergence
 #' @param bestOnly if FALSE, both the predicted number of biclusters and a table
@@ -21,9 +21,10 @@
 #' @export
 auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
                      verbose = TRUE) {
-  oldSeed <- duplicable() # do not modify the R global environment
+  oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
+  # set up variables for testing convergence of the results
   distr <- rep(1, each = length(ks))
   names(distr) <- as.character(ks)
   distrOld <- distr
@@ -32,7 +33,7 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
   dold <- 0
   converged <- FALSE
   while(!converged && i < maxIter) {
-    bcvRes <- which.min(bcv(Y, ks))
+    bcvRes <- which.min(bcv(Y, ks, duplicable = FALSE))
     distr[bcvRes] <- distr[bcvRes] + 1
     # all -> 340
     # sqrt(.Machine$double.eps) -> 230
@@ -40,16 +41,15 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
     resid <- unlist(mapply(function(d, dOld) {
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
-    if(verbose) print(resid)
+    if(verbose) {
+      print(paste("Iteration", i + 1)) 
+      print("BCV result distribution:")
+      print(distr - 1)
+    }
     converged <- all(resid < tol)
     
     distrOld <- distr
     i <- i + 1
-    
-    if(i %% 10 == 0) { 
-      print(paste("Iteration", i)) 
-      print(paste("Highest residual was", max(resid)))
-      }
   }
   if(i == maxIter) {
     warning("BCV results did not converge after", maxIter, "iterations")
@@ -71,20 +71,30 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
 #' biclusters evaluated.
 #'
 #' @param Y the input matrix
-#' @param kLimit the maximum number of biclusters to evaluate
+#' @param ks the range of biclusters to evaluate
 #' @param holdouts the number of holdouts to perform along each dimension of
 #'   matrix \code{Y}
 #'
 #' @export
-bcv <- function(Y, ks, holdouts = 10) {
-  oldSeed <- duplicable() # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
+  if(duplicable) {
+    oldSeed <- duplicable("bcv") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  }
   
   Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   
-  ks <- ks[ks < min(nrow(Y) - 1, ncol(Y) - 1)]
+  kLimit <- floor((holdouts - 1L) / holdouts * min(nrow(Y), ncol(Y)))
+  if(sum(ks < kLimit) < length(ks)) {
+    stop(paste("Due to holdouts, some of the highest requested ks will not be",
+               "tested."))
+    }
+  ks <- ks[ks < kLimit]
+  if(length(ks) < 1) { stop(paste("ks must be a range of integers less than the",
+                                 "smaller matrix dimension"))
+  }
   
   result.list <- bcvGivenKs(Y, ks, holdouts)
   names(result.list) <- as.character(ks)
@@ -109,9 +119,15 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
 
   # Try NIPALS-PCA if any NA values
   if(any(is.na(Y))) {
-    pca <- function(Y, k) { nipals_pca(Y, k)$fit }
+    pca <- function(Y, k) { 
+      res <- nipals_pca_helper(Y, k)$fit
+      list(scores = res$W, loadings = res$H)
+           }
   } else {
-    pca <- function(Y, k) { prcomp(Y, rank. = k, retx = TRUE, center = FALSE) }
+    pca <- function(Y, k) {
+      res <- prcomp(Y, rank. = k, retx = TRUE, center = FALSE)
+      list(scores = res$x, loadings = t(res$rotation))
+      }
   }
   
   # Perform PCA on the whole matrix
