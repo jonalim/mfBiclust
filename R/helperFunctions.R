@@ -1,3 +1,20 @@
+#' Convert logical matrices to two lists of rows and columns
+#'
+#' Given two logical matrices m x k and k x n showing which rows and columns are
+#' in bicluster k, create two lists. The first lists the rows in each bicluster.
+#' The second lists the columns in each bicluster.
+#' 
+#' @param rowxBicluster an m x k logical matrix
+#' @param biclusterxCol a k x n logical matrix
+#' @export 
+biclusterMatrix2List <- function(rowxBicluster, biclusterxCol) {
+  biclusterRows <- lapply(seq_len(ncol(rowxBicluster)), 
+                          function(k) which(rowxBicluster[, k]))
+  biclusterCols <- lapply(seq_len(nrow(biclusterxCol)), 
+                          function(k) which(biclusterxCol[k, ]))
+  list(biclusterRows, biclusterCols)
+}
+
 biclusterNumber2scoreLoading <- function(biclusterNumber, m, k) {
   scores <- do.call(cbind, lapply(seq_len(k), function(i) {
     bicluster <- biclusterNumber[[i]]
@@ -139,33 +156,33 @@ error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
   suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
-filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL, 
+#' @export
+filter.biclust <- function(rowxBicluster, biclusterxCol, max = NULL, 
                            overlap = 0.25) {
-  if(ncol(RowxBicluster) != nrow(BiclusterxCol)) { # validate
+  if(ncol(rowxBicluster) != nrow(biclusterxCol)) { # validate
     stop(paste0("RowxBicluster must have the same number of columns as",
                 "BiclusterxCol"))
   }
   
-  k <- ncol(RowxBicluster)
+  k <- ncol(rowxBicluster)
   if(k == 0) {
-    chosen = rep(FALSE, ncol(RowxBicluster))
+    chosen = rep(FALSE, ncol(rowxBicluster))
   } else if(k == 1 ) {
     # no filtering needed
-    chosen = rep(TRUE, ncol(RowxBicluster))
+    chosen = rep(TRUE, ncol(rowxBicluster))
   } else {
     # Create lists of rows and columns contained in biclusters
-    biclusterRows <- apply(RowxBicluster, MARGIN = 2, which)
-    biclusterCols <- apply(BiclusterxCol, MARGIN = 1, which)
+    rc <- biclusterMatrix2List(rowxBicluster, biclusterxCol)
+    biclusterRows <- rc[[1]]
+    biclusterCols <- rc[[2]]
     
     chosen <- rep(FALSE, each = k)
     pool <- rep(TRUE, each = k)
-    sizes <- sapply(seq_len(k), function(biclus) {
-      length(biclusterRows[[biclus]]) * length(biclusterCols[[biclus]])
-    })
+    sizes <- sizes(biclusterRows, biclusterCols)
     names(sizes) <- seq_len(k)
     
     # exclude empty biclusters and whole-dataset biclusters
-    pool[sizes == 0 | sizes == nrow(RowxBicluster) * ncol(BiclusterxCol)] <- FALSE
+    pool[sizes == 0 | sizes == nrow(rowxBicluster) * ncol(biclusterxCol)] <- FALSE
     # For each bicluster, calculate its overlap with all other biclusters
     overlaps <- overlap(biclusterRows, biclusterCols, FALSE)
     
@@ -180,10 +197,10 @@ filter.biclust <- function(RowxBicluster, BiclusterxCol, max = NULL,
   }
 
   # Determine the union of all biclustered matrix elements
-  biclustered <- union.biclust(RowxBicluster, BiclusterxCol, chosen)
+  biclustered <- union.biclust(rowxBicluster, biclusterxCol, chosen)
   
-  list(RowxBicluster = RowxBicluster[, chosen, drop = FALSE], 
-       BiclusterxCol = BiclusterxCol[chosen, , drop = FALSE],
+  list(RowxBicluster = rowxBicluster[, chosen, drop = FALSE], 
+       BiclusterxCol = biclusterxCol[chosen, , drop = FALSE],
        biclustered = biclustered, chosen = chosen)
 }
 
@@ -200,6 +217,7 @@ is.wholenumber <-
 #'  bicluster
 #' @param matrix if true, returns a matrix where element i, j is the proportion
 #'  of bicluster i overlapping with bicluster j
+#' @export
 overlap <- function(BiclusterRows, BiclusterCols, matrix = FALSE) {
   sizes <- sapply(seq_along(BiclusterRows), function(biclus) {
     length(BiclusterRows[[biclus]]) * length(BiclusterCols[[biclus]])
@@ -233,6 +251,19 @@ pseudovalues <- function(m) {
   return(m)
 }
 
+#' Calculate the size of all biclusters
+#' 
+#' Provide biclusters as a list of rows in each bicluster, and a list of columns
+#' in each bicluster.
+#' 
+#' @export
+sizes <- function(biclusterRows, biclusterCols) {
+  size <- sapply(seq_along(biclusterRows), function(biclus) {
+    length(biclusterRows[[biclus]]) * length(biclusterCols[[biclus]])
+  })
+  return(size)
+}
+
 #### threshold ####
 #' Apply threshold to a score or loading matrix
 #'
@@ -241,6 +272,8 @@ pseudovalues <- function(m) {
 #'
 #' If th is a vector, the first element of th will be used as threshold for the
 #' first col/row in m, etc.
+#' 
+#' @export
 setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {
   standardGeneric("threshold")
   })
@@ -286,6 +319,8 @@ setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, th, MARGIN = 
 #' @param BiclustxCol a boolean loading matrix
 #' @param choose a vector of indexes of biclusters, should be the same length as
 #'   the width of RowxBiclust
+#'   
+#' @export
 union.biclust <- function(RowxBiclust, BiclustxCol, 
                           choose = rep(TRUE, ncol(RowxBiclust))) {
   biclustered <- matrix(0, nrow = nrow(RowxBiclust), 
