@@ -2,10 +2,10 @@
 % Please edit documentation in R/containerGenerics.R
 \name{clean}
 \alias{clean}
-\title{Cleans a matrix or BiclusterExperiment}
+\title{Cleans a matrix by removing NAs}
 \usage{
 clean(object, maxNa = 0, dimsRemain = FALSE)
 }
 \description{
-Cleans a matrix or BiclusterExperiment
+Cleans a matrix by removing NAs
 }

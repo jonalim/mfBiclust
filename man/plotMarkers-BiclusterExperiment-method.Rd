@@ -5,7 +5,7 @@
 \alias{plotMarkers,BiclusterExperiment-method}
 \title{cluster must be numeric}
 \usage{
-\S4method{plotMarkers}{BiclusterExperiment}(obj, thresholds, strategy = "",
+\S4method{plotMarkers}{BiclusterExperiment}(obj, threshold, strategy = "",
   bicluster = "Bicluster.1", ordering = c("input", "cluster"))
 }
 \description{

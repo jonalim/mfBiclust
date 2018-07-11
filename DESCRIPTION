@@ -35,14 +35,15 @@ Collate:
     'bcv.R'
     'bicluster.R'
     'biclusterGUI.R'
+    'biclusterUI.R'
     'evaluate.R'
+    'fileUI.R'
     'genBiclusters.R'
     'helperClasses.R'
     'mfBiclust.R'
     'mfbc.R'
     'readFile.R'
     'server.R'
-    'ui.R'
 Suggests: 
     testthat,
     mclust,

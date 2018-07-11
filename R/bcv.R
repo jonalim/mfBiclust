@@ -42,9 +42,9 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
     if(verbose) {
-      print(paste("Iteration", i + 1)) 
-      print("BCV result distribution:")
-      print(distr - 1)
+      cat(paste("Iteration", i + 1)) 
+      cat("BCV result distribution:")
+      message(distr - 1)
     }
     converged <- all(resid < tol)
     
