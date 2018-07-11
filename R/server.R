@@ -11,7 +11,6 @@ function(input, output, session) {
     bce = if(is.null(userBce)) {
       NULL
     } else userBce,
-    rawmat = if(!is.null(userBce)) as.matrix(userBce) else NULL,
     strategy = NULL,
     zoom = c(0, 1, 0, 1)
   )
@@ -44,9 +43,9 @@ function(input, output, session) {
       shinyjs::disable("sepchar")
       shinyjs::disable("quotechar")
       shinyjs::disable("decchar")
-      validate(need(exists("user") && !is.null(userBce), 
+      validate(need(inherits(userBce, "BiclusterExperiment"), 
                     "You may import your dataset."))
-      as.data.frame(t(as.matrix(userBce)))
+      t(as.matrix(userBce))
     }
     # If the user has chosen a file, read it and update
     else {
@@ -191,8 +190,7 @@ function(input, output, session) {
     })
   })
   
-  #### BICLUSTER ####
-  
+  #### BICLUSTER TAB ####
   output$kSlider <- renderUI({
     bce <- values$bce
     withProgress({
@@ -393,64 +391,82 @@ function(input, output, session) {
   
   
   #### Scores ####
-  output$scoreBicluster <- renderUI({
-    selectInput("scoreBicluster", "Select bicluster:",
-                choices = names(values$strategy))
+  output$scorePanel <- renderUI({
+    fluidRow(
+      column(9,
+             plotOutput("scoreHeatmap", width = "100%"), 
+             plotOutput("scorePlot", width = "100%")),
+      column(3,
+             uiOutput("scoreBicluster"),
+             checkboxInput("scoreReorder", "Reorder"),
+             checkboxInput("sampNames", "Sample names"))
+    )
   })
-  # 
-  # reactiveHeatmapHeight300 <- reactive({
-  #   bce <- values$bce
-  #   max(300, length(input$annots) * 33 +
-  #         sum(unlist(lapply(input$annots, function(annot) {
-  #           length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
-  #                               pred(getStrat(bce, input$strategy))
-  #           )[, annot]))
-  #         }))) * 22 - 106)})
+  
+  output$scoreBicluster <- renderUI({
+    choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
+      names(values$strategy)
+    } else { list() }
+    selectInput("scoreBicluster", "Select bicluster:",
+                choices = choices)
+  })
+  
+  reactiveHeatmapHeight300 <- reactive({
+    bce <- values$bce
+    max(300, length(input$annots) * 33 +
+          sum(unlist(lapply(input$annots, function(annot) {
+            length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
+                                pred(getStrat(bce, input$strategy))
+            )[, annot]))
+          }))) * 22 - 106)})
   
   # heatmap of scores for all samples
   # using renderUI prevents overlapping plots
-  # output$uiScoreHeatmap <- renderUI({
-  #   height = reactiveHeatmapHeight300()
-  #   plotOutput("scoreHeatmap", height = height)
-  # })
-  # output$scoreHeatmap <- renderPlot({
-  #   gt <- reactiveScoreHeatmap()
-  #   print(gt)
-  # }, 
-  # height = function() { reactiveHeatmapHeight300() })
-  # reactiveScoreHeatmap <- reactive({
-  #   bce <- values$bce
-  #   withProgress(
-  #     message = "Plotting...",
-  #     value = 0, {
-  #       set.seed(1234567)
-  #       phenoLabels <- intersect(input$annots, 
-  #                                colnames(Biobase::phenoData(bce)))
-  #       biclustLabels <- intersect(input$annots, 
-  #                                  names(getStrat(values$bce, 
-  #                                                 input$strategy)))
-  #       heatmapFactor(bce, strategy = input$strategy, type = "score",
-  #                     phenoLabels = phenoLabels, 
-  #                     biclustLabels = biclustLabels, 
-  #                     ordering = if(input$scoreReorder) { "cluster" }
-  #                     else { "input" }, 
-  #                     colNames = input$sampNames)
-  #     })
-  # })
+  output$scoreHeatmap <- renderUI({
+    height = reactiveHeatmapHeight300()
+    plotOutput("scoreHeatmap", height = height)
+  })
+  output$scoreHeatmap <- renderPlot({
+    gt <- reactiveScoreHeatmap()
+    print(gt)
+  },
+  height = function() { reactiveHeatmapHeight300() })
+  reactiveScoreHeatmap <- reactive({
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
+    bce <- values$bce
+    withProgress(
+      message = "Plotting...",
+      value = 0, {
+        set.seed(1234567)
+        # Create the annotation selector
+        phenoLabels <- intersect(input$annots,
+                                 colnames(Biobase::phenoData(bce)))
+        biclustLabels <- intersect(input$annots,
+                                   names(getStrat(values$bce,
+                                                  values$strategy)))
+        heatmapFactor(bce, strategy = input$strategy, type = "score",
+                      phenoLabels = phenoLabels,
+                      biclustLabels = biclustLabels,
+                      ordering = if(input$scoreReorder) { "cluster" }
+                      else { "input" },
+                      colNames = input$sampNames)
+      })
+  })
   
   # Plot of sample scores for one bicluster
-  # output$score_threshold <- renderPlot({
-  #   reactive_score_threshold()
-  # })
-  # reactive_score_threshold <- reactive({
-  #   withProgress(message = "Plotting...", value = 0, {
-  #     set.seed(1234567)
-  #     plotSamples(values$bce, strategy = input$strategy, 
-  #                 bicluster = input$cluster,
-  #                 ordering = if(input$sampOrder) { "input" }
-  #                 else { "distance" })
-  #   })
-  # })
+  output$scorePlot <- renderPlot({
+    scorePlotHelper()
+  })
+  scorePlotHelper <- reactive({
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    withProgress(message = "Plotting...", value = 0, {
+      set.seed(1234567)
+      plotSamples(values$bce, strategy = values$strategy,
+                  bicluster = input$scoreBicluster,
+                  ordering = if(input$sampOrder) { "input" }
+                  else { "distance" })
+    })
+  })
   
   
   # render the top tab panel
@@ -482,13 +498,13 @@ function(input, output, session) {
   #### Loading ####
   output$loadingPanel <- renderUI({
     fluidRow(
-    column(3,
-          uiOutput("loadingBicluster"),
-          checkboxInput("loadingReorder", "Reorder"),
-          checkboxInput("featNames", "Feature names")),
     column(9,
         plotOutput("loadingHeatmap", width = "100%"), 
-        plotOutput("plot_biomarkers", width = "100%"))
+        plotOutput("plot_biomarkers", width = "100%")),
+    column(3,
+           uiOutput("loadingBicluster"),
+           checkboxInput("loadingReorder", "Reorder"),
+           checkboxInput("featNames", "Feature names"))
     )
   })
   
@@ -499,12 +515,11 @@ function(input, output, session) {
   
   # Heatmap of loadings for all features
   output$loadingHeatmap <- renderPlot({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
     gt <- reactiveLoadingHeatmap()
     print(gt)
   })
   reactiveLoadingHeatmap <- reactive({
-    browser()
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
     withProgress(
     message = "Plotting...",
     value = 0, {
@@ -518,10 +533,10 @@ function(input, output, session) {
   # Plot of feature loadings for one bicluster
   output$plot_biomarkers <- renderPlot({
     validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    # validate(need(inherits(input$loadingBicluster, "
     reactiveMarkers()
   })
   reactiveMarkers <- reactive({
-    browser()
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
       plotMarkers(values$bce, strategy = name(values$strategy),
@@ -529,6 +544,25 @@ function(input, output, session) {
                   ordering = "input")
     })
   })
+  
+  # output$bcvtext <- renderText({ "hOI iM tEMMIE"})
+  
+  #### BI-CROSS-VALIDATION ####
+  observeEvent(
+    input$bcvButton,
+    {
+      shinyjs::html("bcvtext", "hOI iM tEMMIE")
+    #   withCallingHandlers({
+    #     shinyjs::html("bcvtext", "hOI iM tEMMIE")
+    #     browser()
+    #     auto_bcv(Y = rawmat(), ks = seq_len(nrow(rawmat())), bestOnly = TRUE, verbose = TRUE)
+    #   },
+    #   message = function(m) {
+    #     browser()
+    #     shinyjs::html(id = "bcvtext", html = m$message, add = TRUE)
+    # })
+    }
+  )
   
   # PANEL DESCRIPTIONS
   # output$explanation <- renderUI({
