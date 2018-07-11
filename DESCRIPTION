@@ -41,6 +41,8 @@ Collate:
     'mfBiclust.R'
     'mfbc.R'
     'readFile.R'
+    'server.R'
+    'ui.R'
 Suggests: 
     testthat,
     mclust,

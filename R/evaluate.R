@@ -106,7 +106,8 @@ calcFE <- function(dataset, algorithm, cutoffs) {
 }
 
 testFE <- function(rep = 30) {
-  oldSeed <- duplicable("evalua") # do not modify the R global environment
+  oldSeed <- .Random.seed # do not modify the R global environment
+  set.seed(12345)
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
   cutoffs <- c(0.05, 0.01, 0.005, 0.0001, 0.00001)
@@ -186,7 +187,8 @@ testFE <- function(rep = 30) {
   par(old.par)
 }
 
-loadBenchmark <- function(dir, classes = FALSE) {
+#' @export
+loadBenchmark <- function(dir = "data/yeast_benchmark/", classes = FALSE) {
   files <- list.files(path = dir)
   if(classes) {
     lapply(

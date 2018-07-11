@@ -14,4 +14,7 @@ that the chosen biclustering method was overridden.
 Also, if any matrix elements of abund(BiclusterExperiment) are missing, then
 the BiclusterExperiment returned is not guaranteed to have the same number of
 samples and features.
+
+Optional boolean argument duplicable can force Spectral, Plaid, NIPALS, and
+SNMF to be duplicable. Alternatively, can allow ALS-NMF to be non-duplicable.
 }
