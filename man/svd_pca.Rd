@@ -4,7 +4,7 @@
 \alias{svd_pca}
 \title{Wrapper for prcomp}
 \usage{
-svd_pca(m, k)
+svd_pca(m, k, duplicable = NULL)
 }
 \arguments{
 \item{m}{the target matrix}

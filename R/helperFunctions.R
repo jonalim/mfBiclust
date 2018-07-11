@@ -110,11 +110,15 @@ createAnnots <-
     annots
   }
 
+#' @export
 duplicable <- function(str) {
   if (!exists(".Random.seed", mode="numeric")) sample(NA)
   oldSeed <- .Random.seed
   newSeed <- strtoi(str, 35L)
-  if(inherits(newSeed, "numeric")) set.seed(newSeed) else set.seed(12345)
+  if(!is.na(newSeed)) set.seed(newSeed) else {
+    set.seed(12345)
+    warning("Argument could not be encoded as numeric. Seed set to 12345")
+  }
   oldSeed
 }
 

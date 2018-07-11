@@ -4,7 +4,7 @@
 \alias{snmf}
 \title{Wrapper for NMF::nmf(method = "snmf/l")}
 \usage{
-snmf(m, k, beta = 0.01, verbose = FALSE)
+snmf(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE)
 }
 \arguments{
 \item{m}{the target matrix}

@@ -10,14 +10,14 @@ auto_bcv(Y, ks, maxIter = 100, tol = (10^-4), bestOnly = TRUE,
 \arguments{
 \item{Y}{the input matrix}
 
+\item{ks}{a vector of bicluster quantities to consider}
+
 \item{maxIter}{maximum number of iterations}
 
 \item{tol}{tolerance used to determine convergence}
 
 \item{bestOnly}{if FALSE, both the predicted number of biclusters and a table
 of result counts is returned}
-
-\item{kLimit}{the maximum number of biclusters to consider}
 }
 \description{
 Performs BCV until the the distribution of results has converged. Often this
