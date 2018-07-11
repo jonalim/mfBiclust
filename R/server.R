@@ -201,7 +201,8 @@ function(input, output, session) {
         m <- as.matrix(bce)
         min(nrow(m), ncol(m))
       }
-      sliderInput("k", "Number biclusters", value = 2, min = 1,
+      sliderInput("k", "Number biclusters", min = 1, 
+                  value = if(is.null(input$k)) 2 else input$k,
                   max = maxk, step = 1)
     },
     message = "Loading...",
@@ -209,20 +210,23 @@ function(input, output, session) {
   }
   )
   
-  observeEvent({values$bce
-    input$k
-  },
-  {if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "numeric"))) {
-    shinyjs::disable("bicluster")
-  } else {
-    shinyjs::enable("bicluster")
-  }
-  }
-  )
+  # observeEvent({values$bce
+  #   input$k
+  # },
+  # {if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "numeric"))) {
+  #   shinyjs::disable("bicluster")
+  # } else {
+  #   shinyjs::enable("bicluster")
+  # }
+  # }
+  # )
   
   observeEvent(input$bicluster, {
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
     validate(need(inherits(input$k, "integer"), ""))
+    shinyjs::disable("bicluster")
+    try(removeNotification("overlapNotif"))
+    
     bce <- values$bce
     # Look for an existing BiclusterStrategy with the same parameters
     stratName <- name(list(bca = capitalize(input$algo), 
@@ -232,24 +236,46 @@ function(input, output, session) {
       withProgress({
         bce <- addStrat(bce, k = input$k, method = tolower(input$algo))
         newStrat <- names(bce)[length(names(bce))]
-        algo <- strsplit(newStrat, split = " | ")[[1]]
+        algo <- strsplit(newStrat, split = " | ")[[1]][1]
         if(algo != input$algo) {
           updateSelectInput(session, inputId = "algo", selected = algo)
           showNotification(
             paste(input$algo, "failed on your dataset, so the", algo,
                   "algorithm was used instead."), duration = 5)
         }
+        # Whatever the new BiclusterStrategy is, set it as the active strategy
         values$strategy <- getStrat(bce, newStrat)
+        values$bce <- bce
       }, message = "Biclustering...", value = 0.2)
     } else {
       values$strategy <- getStrat(bce, matchStrats[1])
     }
-    shinyjs::disable("bicluster")
   })
+  
+  # Manage everything that happens when the parameters are changed
   observeEvent({values$bce
     input$algo
     input$k
-  }, shinyjs::enable("bicluster")
+  }, {
+    # Disable the Run button if the data isn't in the right format
+    if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "integer"))) {
+      shinyjs::disable("bicluster") 
+    } else {
+      # Enable the run button if the Bicluster strategy hasn't been run yet.
+      bce <- values$bce
+      stratName <- name(list(bca = capitalize(input$algo), 
+                             sta = capitalize("otsu"), lta = capitalize("otsu"), k = input$k))
+      matchStrats <- which(names(bce) == stratName)
+      if(length(matchStrats) == 0) {
+        shinyjs::enable("bicluster")
+      } else {
+        # If the BiclusterStrategy has been run already, activate it and disable
+        # the Run button
+        shinyjs::disable("bicluster")
+        values$strategy <- strategies(bce)[[stratName]]
+      }
+    }
+  }
   )
   
   #### Summary ####
@@ -272,7 +298,6 @@ function(input, output, session) {
     m <- mat / max(mat)
     width <- ncol(m)
     height <- nrow(m)
-    
     # Convert the vector to an array with 3 planes for R, G, B
     arr <- array(c(m, m, m), dim = c(height, width, 3))
     
@@ -284,7 +309,7 @@ function(input, output, session) {
                   fixup = TRUE)
       cols <- col2rgb(cols) # RGB as rows; each column a different color
       # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
-      # hovering mouse over. Give warning when biclusters are overlapping.
+      # hovering mouse over.
       lapply(seq_len(nclust(bcs)), function(bicluster) {
         yrange <- which(loading(bcs)[bicluster, ] > bcs@loadingThresh[1, 1])
         xrange <- which(pred(bcs)[, bicluster])
@@ -330,7 +355,6 @@ function(input, output, session) {
   # If the user uses the brush, zoom in. Clearing the brush simply allows the
   # GUI to await another brush input.
   observeEvent(input$image_brush, {
-    browser()
     brush <- input$image_brush
     zoom <- values$zoom
     if(!is.null(brush)) {
@@ -343,29 +367,36 @@ function(input, output, session) {
     }
   })
   
-  overlapWarn <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy")))
+  # Warn if biclusters overlap
+  overlapWarn <- observeEvent(values$strategy,
+                         {
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
     bcs <- values$strategy
     bc <- threshold(loading(bcs), MARGIN = 1,
                     loadingThresh(bcs))
-    nonOverlap <- filter.biclust(pred(values$strategy), bcs, overlap = 0)$chosen
+    # Create lists of rows and columns contained in biclusters
+    rc <- biclusterMatrix2List(pred(values$strategy), bc)
+    biclusterRows <- rc[[1]]
+    biclusterCols <- rc[[2]]
+    
+    # Check for overlaps with any other biclusters. Since a bicluster
+    # always overlaps with itself completely, test sum(l) == 1
+    overlaps <- overlap(biclusterRows, biclusterCols)
+    nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
     if(!all(nonOverlap)) {
-      showNotification(paste(
-        paste(names(bcs)[!nonOverlap], sep = ", "),
-        "overlap. Please interpret the heatmap annotations with care."))
+      showNotification(id = "overlapNotif", paste(
+        do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
+        "overlap. Please interpret the heatmap annotations with care."), 
+      duration = NULL)
     }
   })
   
   
   #### Scores ####
-  # output$selectCluster <- renderUI({
-  #   stratName <- name(list(bca = capitalize(input$algo), 
-  #                          sta = capitalize("otsu"), 
-  #                          lta = capitalize("otsu"), k = input$k))
-  #   selectInput("cluster", "Select bicluster:", 
-  #               choices = names(getStrat(values$bce, stratName))
-  #   )
-  # })
+  output$scoreBicluster <- renderUI({
+    selectInput("scoreBicluster", "Select bicluster:",
+                choices = names(values$strategy))
+  })
   # 
   # reactiveHeatmapHeight300 <- reactive({
   #   bce <- values$bce
@@ -448,34 +479,56 @@ function(input, output, session) {
   #     type = "pills"
   #   )
   # })
+  #### Loading ####
+  output$loadingPanel <- renderUI({
+    fluidRow(
+    column(3,
+          uiOutput("loadingBicluster"),
+          checkboxInput("loadingReorder", "Reorder"),
+          checkboxInput("featNames", "Feature names")),
+    column(9,
+        plotOutput("loadingHeatmap", width = "100%"), 
+        plotOutput("plot_biomarkers", width = "100%"))
+    )
+  })
+  
+  output$loadingBicluster <- renderUI({
+    selectInput("loadingBicluster", "Select bicluster:",
+                choices = names(values$strategy))
+  })
   
   # Heatmap of loadings for all features
-  # output$loadingHeatmap <- renderPlot({
-  #   gt <- reactiveLoadingHeatmap()
-  #   print(gt)
-  # })
-  # reactiveLoadingHeatmap <- reactive({withProgress(
-  #   message = "Plotting...",
-  #   value = 0, {
-  #     set.seed(1234567)
-  #     heatmapFactor(values$bce, strategy = input$strategy, type = "loading",
-  #                   ordering = input$featOrder, 
-  #                   colNames = input$featNames)
-  #   }
-  # )})
+  output$loadingHeatmap <- renderPlot({
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    gt <- reactiveLoadingHeatmap()
+    print(gt)
+  })
+  reactiveLoadingHeatmap <- reactive({
+    browser()
+    withProgress(
+    message = "Plotting...",
+    value = 0, {
+      set.seed(1234567) # FIXME: use duplicable()
+      heatmapFactor(values$bce, strategy = name(values$strategy), type = "loading",
+                    ordering = input$featOrder,
+                    colNames = input$featNames)
+    }
+  )})
   
   # Plot of feature loadings for one bicluster
-  # output$plot_biomarkers <- renderPlot({
-  #   reactiveMarkers()
-  # })
-  # reactiveMarkers <- reactive({
-  #   withProgress(message = "Plotting...", value = 0, {
-  #     set.seed(1234567)
-  #     plotMarkers(values$bce, strategy = input$strategy, 
-  #                 bicluster = input$cluster,
-  #                 ordering = input$featOrder)
-  #   })
-  # })
+  output$plot_biomarkers <- renderPlot({
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    reactiveMarkers()
+  })
+  reactiveMarkers <- reactive({
+    browser()
+    withProgress(message = "Plotting...", value = 0, {
+      set.seed(1234567)
+      plotMarkers(values$bce, strategy = name(values$strategy),
+                  bicluster = input$loadingBicluster,
+                  ordering = "input")
+    })
+  })
   
   # PANEL DESCRIPTIONS
   # output$explanation <- renderUI({
