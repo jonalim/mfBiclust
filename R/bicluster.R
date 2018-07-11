@@ -3,8 +3,8 @@
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
-                    eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, duplicable = TRUE){
-  # if(duplicable) {
+                    eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, ...){
+  # if(duplicable) { User may not override!
   oldSeed <- duplicable("biclus") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   # } else { reps <- 1 }
