@@ -82,18 +82,27 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
-  Y <- as.matrix(Y)
+  #validate input
+  if(!inherits(Y, "matrix")) Y <- as.matrix(Y)
   p <- ncol(Y)
   n <- nrow(Y)
   
-  kLimit <- floor((holdouts - 1L) / holdouts * min(nrow(Y), ncol(Y)))
+  kLimit <- floor((holdouts - 1L) / holdouts * min(p, n))
   if(sum(ks < kLimit) < length(ks)) {
-    stop(paste("Due to holdouts, some of the highest requested ks will not be",
+    warning(paste("Due to holdouts, some of the highest requested ks will not be",
                "tested."))
     }
   ks <- ks[ks < kLimit]
   if(length(ks) < 1) { stop(paste("ks must be a range of integers less than the",
                                  "smaller matrix dimension"))
+  }
+  
+  # Automatically decrease the number of holdouts if necessary
+  # Ex: for dimension = 8, holdouts = 10, the result is 8
+  if(holdouts > min(p, n)) {
+    holdouts <- min(p, n)
+    warning(paste("Using", holdouts, "holdouts to ensure non-zero holdout",
+                "size."))
   }
   
   result.list <- bcvGivenKs(Y, ks, holdouts)
@@ -105,7 +114,7 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
 ###% Algorithm by A.B. Owen, P.O. Perry. Bi-cross-validation of the SVD and the 
 ###% nonnegative matrix factorization. Ann. Appl. Stat., 3 (2009), pp. 564-594
 # Helper function
-bcvGivenKs <- function(Y, ks, holdouts = 10) {
+bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   # initialize...
   p <- ncol(Y)
   n <- nrow(Y)
@@ -119,6 +128,8 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
 
   # Try NIPALS-PCA if any NA values
   if(any(is.na(Y))) {
+    warning(paste("Using NIPALS-PCA because some matrix elements are NA",
+                  "This feature might fail if too many elements are NA."))
     pca <- function(Y, k) { 
       res <- nipals_pca_helper(Y, k)$fit
       list(scores = res$W, loadings = res$H)
@@ -171,7 +182,9 @@ bcvGivenKs <- function(Y, ks, holdouts = 10) {
   rcvs <- rowSums(rowHoldoutResults)
   names(rcvs) <- as.character(ks)
   
-  rcvVals <- rcvs / holdouts / holdouts # normalize for the number of holdouts
+  # In all, we took the sum of residuals of A - estA, for holdouts covering A
+  # exactly once. Therefore, we normalize to the size of the matrix here.
+  rcvVals <- rcvs / p / n
   
   # subtract <- c(0, cumsum(var_k[1:(length(var_k) - 1)]))
   # frob_square_x <- sum(Y ^ 2)
