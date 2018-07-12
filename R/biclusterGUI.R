@@ -26,27 +26,32 @@ setMethod("biclusterGUI", definition = function(obj) {
   
   shinyApp(
     ui = {
-      shinyjs::useShinyjs()
-      #### UI ##################################################################
-      navbarPage(
-        theme = shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
-        #### Data tabpanel ####
-        tabPanel("Data", 
-                 tags$head(tags$style(type="text/css", # Enables auto width for rendered image1
-                                      "#image1 img {max-width: 100%; width: 100%; height: 100%}")),
-                 source("R/fileUI.R", local = TRUE)$value),
-        #### Bicluster tabpanel ####
-        source("R/biclusterUI.R", local = TRUE)$value,
-        tabPanel(
-          "Optimize",
-          sidebarLayout(
-            sidebarPanel(
-              actionButton("bcvButton", "Perform BCV", ),
-              p(id = "bcvtext", "Watch what happens to me"),
-              width = 3),
-            mainPanel(width = 9),
-          position = "left")
-          )
+      tagList(
+        shinyjs::useShinyjs(),
+        #### UI ##################################################################
+        navbarPage(
+          theme = shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
+          #### Data tabpanel ####
+          tabPanel("Data", 
+                   tags$head(tags$style(type="text/css", # Enables auto width for rendered image1
+                                        "#image1 img {max-width: 100%; width: 100%; height: 100%}")),
+                   source("R/fileUI.R", local = TRUE)$value),
+          #### Bicluster tabpanel ####
+          source("R/biclusterUI.R", local = TRUE)$value,
+          tabPanel(
+            "Optimize",
+            sidebarLayout(
+              sidebarPanel(
+                actionButton("bcvButton", "Perform BCV", ),
+                actionButton("bcvAndBiclusterButton", "Perform BCV and bicluster", ),
+                width = 3),
+              mainPanel(
+                p(id = "bcvtable", ""),
+                plotOutput("bcvPlot"),
+                width = 9),
+              position = "left")
+          ), id = "navbarpage"
+        )
       )
     },
     

@@ -22,5 +22,5 @@ number of biclusters.
 }
 \details{
 A named vector of BCV values corresponding to the various numbers of
-biclusters evaluated.
+biclusters evaluated. The range of biclusters may be non-contiguous.
 }

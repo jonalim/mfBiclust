@@ -12,7 +12,10 @@ function(input, output, session) {
       NULL
     } else userBce,
     strategy = NULL,
-    zoom = c(0, 1, 0, 1)
+    zoom = c(0, 1, 0, 1),
+    bcvRes = numeric(0),
+    bcvBest = 0,
+    bcvValid = FALSE
   )
   
   #### DATA I/O ####
@@ -25,16 +28,6 @@ function(input, output, session) {
   }
   )
   
-  # observeEvent({ # read the raw input as a data.frame
-  #   input$input_df
-  #   input$row_names
-  #   input$header
-  #   input$sepchar
-  #   input$quotechar
-  #   input$decchar
-  #   input$skiplines
-  #   input$sampleCols
-  # }, 
   rawmat <- reactive({ # If the user has not chosen a file yet, look for a BiclusterExperiment in the execution environment of biclusterGUI
     if(is.null(input$input_df)) {
       shinyjs::disable("row_names")
@@ -77,9 +70,10 @@ function(input, output, session) {
     }
   })
   
-  # Always keep the BiclusterExperiment synchronized with the global data-matrix
+  # When the raw data matrix changes, trigger other reactive updates
   observeEvent(rawmat(), {
     values$bce <- BiclusterExperiment(rawmat())
+    bcvValid <- FALSE
   })
   
   # Render an interactive data.table for the user's benefit
@@ -191,6 +185,10 @@ function(input, output, session) {
   })
   
   #### BICLUSTER TAB ####
+  # FIXME need to initialize the sliderInput before even navigating to this tab.
+  # That way, BCV and Bicluster can modify the sliderInput.
+  # TODO initialize the slidreInput in the UI, then use an observer on values$bce
+  # to modify the max and value ASAP
   output$kSlider <- renderUI({
     bce <- values$bce
     withProgress({
@@ -280,14 +278,14 @@ function(input, output, session) {
   # Reset zoom when the user's input data changes or upon double-click  
   observeEvent({rawmat()
     input$image_dblclick
-    }, {
+  }, {
     mat <- rawmat()
     
     if(inherits(mat, "matrix") && mode(mat) == "numeric") {
       values$zoom <- c(0, 1, 0, 1)
     }
   })
-
+  
   # Re-render the bicluster plot when raw data OR BiclusterStrategy OR selected biclusters changes
   imageArr <- reactive({
     # render the whole heatmap
@@ -303,7 +301,7 @@ function(input, output, session) {
     bcs <- values$strategy
     if(!is.null(bcs)) {
       cols <- hcl(h = seq(0, (nclust(bcs) - 1) / (nclust(bcs)),
-                                length = nclust(bcs)) * 360, c = 100, l = 65,
+                          length = nclust(bcs)) * 360, c = 100, l = 65,
                   fixup = TRUE)
       cols <- col2rgb(cols) # RGB as rows; each column a different color
       # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
@@ -318,36 +316,36 @@ function(input, output, session) {
     }
     arr
   })
-
+  
   output$image1 <- renderImage({
     arr <- imageArr()
     validate(need(inherits(arr, "array") && 
                     mode(arr) == "numeric" &&
                     !is.null(dim(arr)),
-      "Data for heatmap has not been parsed yet. Try switching revisiting the 'Data' tab momentarily."))
+                  "Data for heatmap has not been parsed yet. Try switching revisiting the 'Data' tab momentarily."))
     temp <- tempfile(fileext = ".png")
     # if(inherits(arr, "array") && mode(arr) == "numeric") {
-      
-      # subset the PNG and re-render
-      rangeY <- c(floor(values$zoom[3] * dim(arr)[1]) + 1, round(values$zoom[4] * dim(arr)[1]))
-      rangeX <- c(floor(values$zoom[1] * dim(arr)[2]) + 1, round(values$zoom[2] * dim(arr)[2]))
-      # bug; it's possible to zoom in so much that rangeY[2] - rangeY[1]< 1 similarly for rangeX
-      
-      arr <- arr[rangeY[1]:rangeY[2], rangeX[1]:rangeX[2], ]
+    
+    # subset the PNG and re-render
+    rangeY <- c(floor(values$zoom[3] * dim(arr)[1]) + 1, round(values$zoom[4] * dim(arr)[1]))
+    rangeX <- c(floor(values$zoom[1] * dim(arr)[2]) + 1, round(values$zoom[2] * dim(arr)[2]))
+    # bug; it's possible to zoom in so much that rangeY[2] - rangeY[1]< 1 similarly for rangeX
+    
+    arr <- arr[rangeY[1]:rangeY[2], rangeX[1]:rangeX[2], ]
     # } else {
     #   arr <- array(1, dim = c(1, 1, 1)) # one white pixel
     #   
     # }
-   tryCatch(png::writePNG(arr,
-             target = temp), error = function(e) {
-               browser()}
-   )
-      # Return a list containing information about the zoomed image
-      list(
-        src = temp,
-        contentType = "image/png",
-        title = "Click and drag to zoom in; double-click to reset"
-      )
+    tryCatch(png::writePNG(arr,
+                           target = temp), error = function(e) {
+                             browser()}
+    )
+    # Return a list containing information about the zoomed image
+    list(
+      src = temp,
+      contentType = "image/png",
+      title = "Click and drag to zoom in; double-click to reset"
+    )
   })
   
   # If the user uses the brush, zoom in. Clearing the brush simply allows the
@@ -367,27 +365,27 @@ function(input, output, session) {
   
   # Warn if biclusters overlap
   overlapWarn <- observeEvent(values$strategy,
-                         {
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
-    bcs <- values$strategy
-    bc <- threshold(loading(bcs), MARGIN = 1,
-                    loadingThresh(bcs))
-    # Create lists of rows and columns contained in biclusters
-    rc <- biclusterMatrix2List(pred(values$strategy), bc)
-    biclusterRows <- rc[[1]]
-    biclusterCols <- rc[[2]]
-    
-    # Check for overlaps with any other biclusters. Since a bicluster
-    # always overlaps with itself completely, test sum(l) == 1
-    overlaps <- overlap(biclusterRows, biclusterCols)
-    nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
-    if(!all(nonOverlap)) {
-      showNotification(id = "overlapNotif", paste(
-        do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
-        "overlap. Please interpret the heatmap annotations with care."), 
-      duration = NULL)
-    }
-  })
+                              {
+                                validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+                                bcs <- values$strategy
+                                bc <- threshold(loading(bcs), MARGIN = 1,
+                                                loadingThresh(bcs))
+                                # Create lists of rows and columns contained in biclusters
+                                rc <- biclusterMatrix2List(pred(values$strategy), bc)
+                                biclusterRows <- rc[[1]]
+                                biclusterCols <- rc[[2]]
+                                
+                                # Check for overlaps with any other biclusters. Since a bicluster
+                                # always overlaps with itself completely, test sum(l) == 1
+                                overlaps <- overlap(biclusterRows, biclusterCols)
+                                nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
+                                if(!all(nonOverlap)) {
+                                  showNotification(id = "overlapNotif", paste(
+                                    do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
+                                    "overlap. Please interpret the heatmap annotations with care."), 
+                                    duration = NULL)
+                                }
+                              })
   
   
   #### Scores ####
@@ -498,13 +496,13 @@ function(input, output, session) {
   #### Loading ####
   output$loadingPanel <- renderUI({
     fluidRow(
-    column(9,
-        plotOutput("loadingHeatmap", width = "100%"), 
-        plotOutput("plot_biomarkers", width = "100%")),
-    column(3,
-           uiOutput("loadingBicluster"),
-           checkboxInput("loadingReorder", "Reorder"),
-           checkboxInput("featNames", "Feature names"))
+      column(9,
+             plotOutput("loadingHeatmap", width = "100%"), 
+             plotOutput("plot_biomarkers", width = "100%")),
+      column(3,
+             uiOutput("loadingBicluster"),
+             checkboxInput("loadingReorder", "Reorder"),
+             checkboxInput("featNames", "Feature names"))
     )
   })
   
@@ -521,14 +519,14 @@ function(input, output, session) {
   reactiveLoadingHeatmap <- reactive({
     validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
     withProgress(
-    message = "Plotting...",
-    value = 0, {
-      set.seed(1234567) # FIXME: use duplicable()
-      heatmapFactor(values$bce, strategy = name(values$strategy), type = "loading",
-                    ordering = input$featOrder,
-                    colNames = input$featNames)
-    }
-  )})
+      message = "Plotting...",
+      value = 0, {
+        set.seed(1234567) # FIXME: use duplicable()
+        heatmapFactor(values$bce, strategy = name(values$strategy), type = "loading",
+                      ordering = input$featOrder,
+                      colNames = input$featNames)
+      }
+    )})
   
   # Plot of feature loadings for one bicluster
   output$plot_biomarkers <- renderPlot({
@@ -545,24 +543,99 @@ function(input, output, session) {
     })
   })
   
-  # output$bcvtext <- renderText({ "hOI iM tEMMIE"})
-  
   #### BI-CROSS-VALIDATION ####
+  guiBCV <- function() {
+    if(values$bcvValid == FALSE) {
+      withProgress(
+        message = "Performing bi-cross-validation...",
+        value = 0, {
+          i <- 2
+          res <- withCallingHandlers({
+            shinyjs::html("bcvtext", "")
+            suppressWarnings(
+              auto_bcv(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
+                       bestOnly = FALSE, verbose = TRUE, maxIter = 3))
+          },
+          message = function(m) {
+            shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
+                          add = FALSE)
+            setProgress(1 - 1/i)
+            i <<- i + 1
+          })
+          values$bcvRes <- res$counts
+          values$bcvBest <- res$best
+          values$bcvValid <- TRUE
+        })
+    }
+  }
+  
   observeEvent(
     input$bcvButton,
     {
-      shinyjs::html("bcvtext", "hOI iM tEMMIE")
-    #   withCallingHandlers({
-    #     shinyjs::html("bcvtext", "hOI iM tEMMIE")
-    #     browser()
-    #     auto_bcv(Y = rawmat(), ks = seq_len(nrow(rawmat())), bestOnly = TRUE, verbose = TRUE)
-    #   },
-    #   message = function(m) {
-    #     browser()
-    #     shinyjs::html(id = "bcvtext", html = m$message, add = TRUE)
-    # })
+      shinyjs::disable("bcvButton")
+      shinyjs::disable("bcvAndBiclusterButton")
+      guiBCV()
     }
   )
+  
+  observeEvent(input$bcvAndBiclusterButton, {
+    shinyjs::disable("bcvButton")
+    shinyjs::disable("bcvAndBiclusterButton")
+    guiBCV()
+    updateSliderInput(session, inputId = "k", value = as.integer(values$bcvBest))
+    shinyjs::click("bicluster")
+    updateNavbarPage(session, inputId = "navbarpage", 
+                     selected = "Bicluster")
+  })
+  
+  # A barplot of BCV results
+  output$bcvPlot <- renderPlot({
+    validate(need(length(values$bcvRes) > 0 && values$bcvBest > 0, ""))
+    bcvPlotHelper()
+  })
+  bcvPlotHelper <- reactive({
+    bcvRes <- values$bcvRes
+    cols <- rep("#000000", length(bcvRes))
+    cols[as.integer(values$bcvBest)] <- "#2ca25f"
+    # assume that bcvRes is for k = 1:length(bcvRes
+    barplot(bcvRes, xlab = "# Biclusters", ylab = "Times chosen as optimal", col = cols,
+            axes = FALSE)
+    axis(2, at = 0:4 * (ceiling(max(bcvRes) / 4)), 
+         labels = as.integer(0:4 * (ceiling(max(bcvRes) / 4))))
+  })
+  
+  observeEvent(values$bcvValid,
+               {
+                 if(values$bcvValid == FALSE) {
+                   shinyjs::enable("bcvButton")
+                   shinyjs::enable("bcvAndBiclusterButton")
+                   shinyjs::show("bcvtable")
+                   shinyjs::hide("bcvPlot")
+                 } else {
+                   shinyjs::hide("bcvtable")
+                   shinyjs::show("bcvPlot")
+                 }
+               }
+  )
+  
+  tableHelper <- function(str, nrow) {
+    elements <- scan(text = str)
+    ncol <- ceiling(length(elements) / nrow)
+    open <- "<table class=\"table table-hover\">\n<thead>\n"
+    content <- do.call(paste0, lapply(seq_len(nrow), function(row) { # to produce each row
+      paste0("<tr>\n", 
+             do.call(paste0, lapply(seq_len(ncol), function(col) {
+               # each th tag in the row
+               paste0("<th>", elements[(row - 1) * ncol + col],  "</th>\n")
+             })),
+             # end of row or row header
+             if(row == 1) "</tr>\n</thead>\n" else "</tr>\n"
+      )
+    }))
+    close <- "</table>"
+    paste0(open, content, close)
+  }
+  
   
   # PANEL DESCRIPTIONS
   # output$explanation <- renderUI({
