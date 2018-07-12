@@ -19,43 +19,49 @@
 #'   of result counts is returned
 #'
 #' @export
-auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
+auto_bcv <- function(Y, ks, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
                      verbose = TRUE) {
   oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
   # set up variables for testing convergence of the results
-  distr <- rep(1, each = length(ks))
+  distr <- rep(1L, each = length(ks))
   names(distr) <- as.character(ks)
   distrOld <- distr
-  change <- 1
-  i <- 0
-  dold <- 0
+  i <- 0L
   converged <- FALSE
   while(!converged && i < maxIter) {
-    bcvRes <- which.min(bcv(Y, ks, duplicable = FALSE))
-    distr[bcvRes] <- distr[bcvRes] + 1
-    # all -> 340
-    # sqrt(.Machine$double.eps) -> 230
+    # Get the number of biclusters with lowest bcv value
+    res <- bcv(Y, ks, duplicable = FALSE)
+    bcvRes <- as.numeric(names(which.min(res)))
+    distr[bcvRes] <- distr[bcvRes] + 1L
+    
+    # In case some of the highest ks were not tested by bcv, amend distr.
+    # This should occur on the first iteration only.
+    if(length(distr) > length(res)) distr <- distr[seq_along(res)]
+    names(distr) <- names(res)
 
     resid <- unlist(mapply(function(d, dOld) {
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
     if(verbose) {
-      cat(paste("Iteration", i + 1)) 
-      cat("BCV result distribution:")
-      message(distr - 1)
+      cat(paste("Iteration", i + 1L, "\n")) 
+      cat("BCV result distribution:\n")
+      message(paste(do.call(paste, as.list(names(distr))), "\n",
+                    do.call(paste, as.list(distr - 1L))))
     }
     converged <- all(resid < tol)
     
     distrOld <- distr
-    i <- i + 1
+    i <- i + 1L
   }
   if(i == maxIter) {
     warning("BCV results did not converge after", maxIter, "iterations")
   }
   
-  med <- min(which(cumsum(distr) > (sum(distr) / 2)))
+  distr <- distr - 1 # remove the pseudocount that was added
+  
+  med <- names(distr[min(which(cumsum(distr) > (sum(distr) / 2)))])
   if(bestOnly) { med }
   else { list(best = med, counts = distr) }
 }
@@ -68,7 +74,7 @@ auto_bcv <- function(Y, ks, maxIter = 100, tol = (10 ^ -4), bestOnly = TRUE,
 #' number of biclusters.
 #'
 #' A named vector of BCV values corresponding to the various numbers of
-#' biclusters evaluated.
+#' biclusters evaluated. The range of biclusters may be non-contiguous.
 #'
 #' @param Y the input matrix
 #' @param ks the range of biclusters to evaluate
@@ -120,10 +126,10 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   n <- nrow(Y)
 
   # Set up bi-cross-validation folds
-  nHoldoutInd <- (seq_len(n) %% holdouts) + 1
+  nHoldoutInd <- (seq_len(n) %% holdouts) + 1L
   nHoldoutInd <- sample(nHoldoutInd, size = n)
   
-  pHoldoutInd <- (seq_len(p) %% holdouts) + 1
+  pHoldoutInd <- (seq_len(p) %% holdouts) + 1L
   pHoldoutInd <- sample(pHoldoutInd, size = p)
 
   # Try NIPALS-PCA if any NA values
@@ -166,7 +172,7 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
       # Returns k norms. Must sum these up to obtain rcvs
       holdoutRes <- sapply(ks, function(k) {
         # PCA-based approximation of the hold-in quadrant
-        estD_k <- MASS::ginv(tcv[, 1:k, drop = FALSE] %*% pcv[1:k, , drop = FALSE])
+        estD_k <- MASS::ginv(tcv[, 1L:k, drop = FALSE] %*% pcv[1L:k, , drop = FALSE])
         
         # Approximation of the hold-out quadrant
         estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
