@@ -105,7 +105,7 @@ calcFE <- function(dataset, algorithm, cutoffs) {
   }
 }
 
-testFE <- function(rep = 30) {
+evaluateFE <- function(rep = 30) {
   oldSeed <- .Random.seed # do not modify the R global environment
   set.seed(12345)
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
