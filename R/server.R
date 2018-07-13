@@ -8,14 +8,14 @@ function(input, output, session) {
   
   values <- reactiveValues(
     # Initialize as the user's BiclusterExperiment.
-    bce = if(is.null(userBce)) {
-      NULL
-    } else userBce,
+    bce = if(inherits(userBce, "BiclusterExperiment")) userBce else NULL,
     strategy = NULL,
     zoom = c(0, 1, 0, 1),
     bcvRes = numeric(0),
     bcvBest = 0,
-    bcvValid = FALSE
+    bcvValid = FALSE,
+    goRes = numeric(0),
+    goValid = FALSE
   )
   
   #### DATA I/O ####
@@ -191,19 +191,18 @@ function(input, output, session) {
   # to modify the max and value ASAP
   output$kSlider <- renderUI({
     bce <- values$bce
-    withProgress({
-      maxk <- if(is.null(bce)) { 2 }
+    val <- if(inherits(values$strategy, "BiclusterStrategy")) {
+      nclust(values$strategy)
+    } else { 2 }
+    maxk <- if(is.null(bce)) { 2 }
       else {
         m <- as.matrix(bce)
         min(nrow(m), ncol(m))
       }
       sliderInput("k", "Number biclusters", min = 1, 
-                  value = if(is.null(input$k)) 2 else input$k,
+                  value = val,
                   max = maxk, step = 1)
-    },
-    message = "Loading...",
-    value = 0)
-  }
+    }
   )
   
   # observeEvent({values$bce
@@ -636,7 +635,68 @@ function(input, output, session) {
     paste0(open, content, close)
   }
   
+  #### GO ENRICHMENT ####
+  output$goSigPlot <- renderPlot({
+    goRes <- values$goRes
+    validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
+
+    # get the lowest adj. p-value for each bicluster
+    significance <- sapply(goRes, min)
+    significance <- sort(-log10(significance), decreasing = TRUE)
+    bp <- barplot(height = significance, xaxs = "i", yaxs = "i", xaxt = "n",
+                  ylab = "-log10[p-value]")
+    # xlim <- bp[c(1, length(bp))]
+    # xlim[2] <- xlim[2] + xlim[1]
+    # xlim[1] <- 0
+    las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
+    axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
+    abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
+  })
   
+  observeEvent(
+    input$go,
+    {
+      shinyjs::disable("go")
+      validate(need(inherits(values$bce, "BiclusterExperiment") &&
+                      inherits(values$strategy, "BiclusterStrategy"),
+                    ""))
+      withProgress(
+        message = "Searching for Gene Ontology enrichment...",
+      value = 0, max = nclust(values$strategy),
+      {
+      values$goRes <- withCallingHandlers({
+        testFE(bce = values$bce, strategy = values$strategy)
+      },
+      message = function(m) {
+        incProgress(1)
+        showNotification(conditionMessage(m), duration = 1)
+      })
+      values$goValid = TRUE
+      })
+    })
+  
+  output$goTermTable <- renderDataTable({
+    validate(need(length(values$goRes) > 0, !is.null(names(values$goRes)), ""))
+    return(
+      # DT::datatable(
+      head(cbind(names(values$goRes[[1]]), values$goRes[[1]]))
+      # ,
+      #         options = list(paging = FALSE, orderable = TRUE))
+    )
+  })
+  
+  observeEvent({
+    values$goValid
+    values$strategy
+    }, { 
+      if(values$goValid == FALSE && inherits(values$strategy, 
+                                             "BiclusterStrategy")) {
+        shinyjs::enable("go")
+      } else {
+        shinyjs::disable("go")
+      }
+    }
+  )
   # PANEL DESCRIPTIONS
   # output$explanation <- renderUI({
   #   res <- ""

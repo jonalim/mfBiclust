@@ -32,10 +32,7 @@ setMethod("biclusterGUI", definition = function(obj) {
         navbarPage(
           theme = shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
           #### Data tabpanel ####
-          tabPanel("Data", 
-                   tags$head(tags$style(type="text/css", # Enables auto width for rendered image1
-                                        "#image1 img {max-width: 100%; width: 100%; height: 100%}")),
-                   source("R/fileUI.R", local = TRUE)$value),
+          source("R/fileUI.R", local = TRUE)$value,
           #### Bicluster tabpanel ####
           source("R/biclusterUI.R", local = TRUE)$value,
           tabPanel(
@@ -50,9 +47,22 @@ setMethod("biclusterGUI", definition = function(obj) {
                 plotOutput("bcvPlot"),
                 width = 9),
               position = "left")
-          ), id = "navbarpage"
+          ), 
+          tabPanel(
+            "Functional Annotation",
+            sidebarLayout(
+              sidebarPanel(
+                actionButton("go", "Search for GO enrichment", disabled = TRUE),
+                width = 3),
+              mainPanel(
+                plotOutput("goSigPlot"),
+                # column(width = 12, 
+                p(id = "hello", "HERE@S SOME TEXT"),
+                fluidRow(DT::DTOutput("goTermTable")),
+                       # style = "overflow-y: scroll"),
+                width = 9), position = "left")),
+          id = "navbarpage")
         )
-      )
     },
     
     #### SERVER ##################################################################

@@ -195,7 +195,7 @@ filter.biclust <- function(rowxBicluster, biclusterxCol, max = NULL,
       pool[chooseMe] <- FALSE
     }
   }
-
+  
   # Determine the union of all biclustered matrix elements
   biclustered <- union.biclust(rowxBicluster, biclusterxCol, chosen)
   
@@ -264,6 +264,83 @@ sizes <- function(biclusterRows, biclusterCols) {
   return(size)
 }
 
+# RETURN list of named vectors of BH-adjusted p-values
+# Each list element should be named after a bicluster
+testFE <- function(bce, strategy, OrgDb = NULL, duplicable = TRUE) {
+  if(length(strategy) != 1) {
+    stop(paste("Provide exactly one BiclusterStrategy object, name or index. Run",
+               "names(strategies(bce)) to see BiclusterStrategy objects."))
+  }
+  
+  mapp <- if(requireNamespace("BiocParallel")) { # use BiocParallel if available
+    BiocParallel::bpmapply
+  } else mapply
+  
+  # Change this to use method dispatch
+  bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)
+  
+  if(duplicable) { duplicable("testFE") }
+
+  # thresholded loading matrix
+  biclusterxCol <- threshold(loading(bcs), MARGIN = 1, th = loadingThresh(bcs))
+  
+  geneLists <- lapply(seq_len(nrow(biclusterxCol)), function(biclust) {
+    rownames(bce)[biclusterxCol[biclust, ] == 1]
+  })
+  names(geneLists) <- names(strategy)
+  
+  universe <- rownames(bce) # these must be ENSEMBL
+  
+  mapp(hyperGeoGO, geneLists, names(geneLists), MoreArgs = list(universe),
+  SIMPLIFY = FALSE, USE.NAMES = TRUE)
+}
+
+# get a table where each column is a p-value cutoff; each row is a
+# bicluster
+hyperGeoGO <- function(geneList, name, universe) {
+  message(paste("Testing", name, "for Gene Ontology term enrichment")
+          )
+  # haveGo <- sapply(geneList, function(x) {
+  #   cat(x)
+  #   ids <- try(suppressMessages(select(org.Sc.sgd.db, keys = x, keytype = "ORF",
+  #                                  columns = "GO")["GO"]))
+  #   if(is.null(ids)) {
+  #     ids <- try(suppressMessages(select(org.Sc.sgd.db, keys = x, keytype = "ENSEMBL",
+  #                                        columns = "GO")["GO"]))
+  #   }
+  #   if(is.null(ids)) return(FALSE) 
+  #   else if(length(ids) == 1 && is.na(ids)) return(FALSE) else return(TRUE)
+  #   })
+  # if(!all(haveGo)) browser()
+  # Molecular Function ontology
+  mf <- suppressPackageStartupMessages(
+    GOstats::hyperGTest(new("GOHyperGParams",
+                                geneIds = geneList,
+                                universeGeneIds = universe,
+                                annotation = "org.Sc.sgd.db",
+                                ontology = "MF",
+                                pvalueCutoff = 1,
+                                testDirection = "over", 
+                                conditional = TRUE))
+  )
+  
+  # Biological Process ontology
+  bp <- suppressPackageStartupMessages(
+    GOstats::hyperGTest(new("GOHyperGParams",
+                                geneIds = geneList,
+                                universeGeneIds = universe,
+                                annotation = "org.Sc.sgd.db",
+                                ontology = "BP",
+                                pvalueCutoff = 1,
+                                testDirection = "over",
+                                conditional = TRUE))
+  )
+  
+  pvals <- c(GOstats::pvalues(bp), GOstats::pvalues(mf))
+  pvals <- p.adjust(pvals, method = "BH")
+  pvals
+}
+
 #### threshold ####
 #' Apply threshold to a score or loading matrix
 #'
@@ -276,7 +353,7 @@ sizes <- function(biclusterRows, biclusterCols) {
 #' @export
 setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {
   standardGeneric("threshold")
-  })
+})
 
 #' @export
 setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, th, MARGIN = 2) {
