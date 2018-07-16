@@ -14,6 +14,7 @@ function(input, output, session) {
     bcvRes = numeric(0),
     bcvBest = 0,
     bcvValid = FALSE,
+    # a named list containing results for each bicluster
     goRes = numeric(0),
     goValid = FALSE
   )
@@ -636,23 +637,6 @@ function(input, output, session) {
   }
   
   #### GO ENRICHMENT ####
-  output$goSigPlot <- renderPlot({
-    goRes <- values$goRes
-    validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
-
-    # get the lowest adj. p-value for each bicluster
-    significance <- sapply(goRes, min)
-    significance <- sort(-log10(significance), decreasing = TRUE)
-    bp <- barplot(height = significance, xaxs = "i", yaxs = "i", xaxt = "n",
-                  ylab = "-log10[p-value]")
-    # xlim <- bp[c(1, length(bp))]
-    # xlim[2] <- xlim[2] + xlim[1]
-    # xlim[1] <- 0
-    las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
-    axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
-    abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
-  })
-  
   observeEvent(
     input$go,
     {
@@ -675,16 +659,66 @@ function(input, output, session) {
       })
     })
   
-  output$goTermTable <- renderDataTable({
-    validate(need(length(values$goRes) > 0, !is.null(names(values$goRes)), ""))
+  goDF <- reactive({
+    goRes <- values$goRes
+    validate(need(length(goRes) > 0, ""))
+    # a list of dataframes, one per bicluster
+    lapply(goRes, function(listOfHyperGs) {
+      p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
+      adj.p.value <- p.adjust(p.value, method = "BH")
+      odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
+      expected.genes <- do.call(c, lapply(listOfHyperGs, 
+                                          GOstats::expectedCounts))
+      mapped.gene.ids <- do.call(c, lapply(listOfHyperGs, 
+                                        Category::geneIdsByCategory))
+      mapped.genes <- unlist(lapply(mapped.gene.ids, length))
+      
+      df <- data.frame(mapped.genes, expected.genes, odds.ratio, p.value, adj.p.value)
+      df$mapped.gene.ids <- mapped.gene.ids
+      df
+    })
+  })
+  
+  output$goSigPlot <- renderPlot({
+    goRes <- values$goRes
+    validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
+    # get the lowest adj. p-value for each bicluster
+    significance <- sapply(goDF(), function(df) min(df$adj.p.value))
+    if(any(significance == 0)) {
+      significance <- significance + .Machine$double.eps
+    }
+    significance <- sort(-log10(significance), decreasing = TRUE)
+    bp <- barplot(height = significance, xaxs = "i", yaxs = "i", xaxt = "n",
+                  ylab = "-log10[p-value]")
+    las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
+    axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
+    abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
+  })
+  
+  output$goTermTable <- DT::renderDT({
+    validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
+                    !is.null(input$goBicluster), ""))
+    browser()
     return(
-      # DT::datatable(
-      head(cbind(names(values$goRes[[1]]), values$goRes[[1]]))
-      # ,
-      #         options = list(paging = FALSE, orderable = TRUE))
+      DT::datatable(goDF()[[input$goBicluster]], options = list(paging = FALSE)
+                                                 # orderable = TRUE,
+                                                 # server = FALSE, selection = "none")
+                                                 )
     )
   })
   
+  output$goBicluster <- renderUI({
+    choices <- if(!is.null(goDF())) names(goDF()) else list()
+    selectInput("goBicluster", "Select bicluster:",
+                choices = choices)
+  })
+  
+  # pvals <- c(GOstats::pvalues(bp), GOstats::pvalues(mf))
+  # pvals.adjust <- p.adjust(pvals, method = "BH")
+  # or <- c(GOstats::oddsRatios(bp), GOstats::oddsRatios(mf))
+  # mappedGenes <- GOstats::geneIdsByCategory(bp) + GOstats::geneMappedCount(mf)
+  # expGenes <- c(GOstats::expectedCounts(bp), GOstats::expectedCounts(mf))
+  # 
   observeEvent({
     values$goValid
     values$strategy
