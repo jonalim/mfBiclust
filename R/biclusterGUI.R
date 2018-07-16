@@ -41,6 +41,7 @@ setMethod("biclusterGUI", definition = function(obj) {
               sidebarPanel(
                 actionButton("bcvButton", "Perform BCV", ),
                 actionButton("bcvAndBiclusterButton", "Perform BCV and bicluster", ),
+                renderUI("goBicluster"),
                 width = 3),
               mainPanel(
                 p(id = "bcvtable", ""),
@@ -55,10 +56,12 @@ setMethod("biclusterGUI", definition = function(obj) {
                 actionButton("go", "Search for GO enrichment", disabled = TRUE),
                 width = 3),
               mainPanel(
-                plotOutput("goSigPlot"),
+                tabsetPanel(
+                  tabPanel("Biclusters",  plotOutput("goSigPlot")),
+                  tabPanel("Terms", fluidRow(DT::DTOutput("goTermTable")))),
                 # column(width = 12, 
-                p(id = "hello", "HERE@S SOME TEXT"),
-                fluidRow(DT::DTOutput("goTermTable")),
+                # p(id = "hello", "HERE@S SOME TEXT"),
+                # fluidRow(DT::DTOutput("goTermTable")),
                        # style = "overflow-y: scroll"),
                 width = 9), position = "left")),
           id = "navbarpage")

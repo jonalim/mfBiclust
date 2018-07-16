@@ -266,7 +266,7 @@ sizes <- function(biclusterRows, biclusterCols) {
 
 # RETURN list of named vectors of BH-adjusted p-values
 # Each list element should be named after a bicluster
-testFE <- function(bce, strategy, OrgDb = NULL, duplicable = TRUE) {
+testFE <- function(bce, strategy, OrgDb = NULL, go = c("BP", "MF"), duplicable = TRUE) {
   if(length(strategy) != 1) {
     stop(paste("Provide exactly one BiclusterStrategy object, name or index. Run",
                "names(strategies(bce)) to see BiclusterStrategy objects."))
@@ -275,6 +275,9 @@ testFE <- function(bce, strategy, OrgDb = NULL, duplicable = TRUE) {
   mapp <- if(requireNamespace("BiocParallel")) { # use BiocParallel if available
     BiocParallel::bpmapply
   } else mapply
+  
+  lapp <- if(requireNamespace("BiocParallel")) { BiocParallel::bplapply 
+    } else { lapply }
   
   # Change this to use method dispatch
   bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)
@@ -290,55 +293,36 @@ testFE <- function(bce, strategy, OrgDb = NULL, duplicable = TRUE) {
   names(geneLists) <- names(strategy)
   
   universe <- rownames(bce) # these must be ENSEMBL
-  
-  mapp(hyperGeoGO, geneLists, names(geneLists), MoreArgs = list(universe),
-  SIMPLIFY = FALSE, USE.NAMES = TRUE)
+
+  # Returns a list of results for each bicluster: a list with one element per
+  # ontology
+  if(length(go) > 0) {
+    return(# Test every bicluster for enrichment
+      mapp(function(geneList, name, universe, ontology, fun) {
+        # test each requested GO
+        lapp(go, fun, 
+             geneList = geneList, name = name, universe = universe)
+      },
+      geneLists, names(geneLists),
+      MoreArgs = list(universe = universe, ontology = go, fun = hyperGGO),
+      SIMPLIFY = FALSE, USE.NAMES = TRUE)
+    )
+  }
 }
 
-# get a table where each column is a p-value cutoff; each row is a
-# bicluster
-hyperGeoGO <- function(geneList, name, universe) {
+hyperGGO <- function(ontology, geneList, name, universe) {
   message(paste("Testing", name, "for Gene Ontology term enrichment")
           )
-  # haveGo <- sapply(geneList, function(x) {
-  #   cat(x)
-  #   ids <- try(suppressMessages(select(org.Sc.sgd.db, keys = x, keytype = "ORF",
-  #                                  columns = "GO")["GO"]))
-  #   if(is.null(ids)) {
-  #     ids <- try(suppressMessages(select(org.Sc.sgd.db, keys = x, keytype = "ENSEMBL",
-  #                                        columns = "GO")["GO"]))
-  #   }
-  #   if(is.null(ids)) return(FALSE) 
-  #   else if(length(ids) == 1 && is.na(ids)) return(FALSE) else return(TRUE)
-  #   })
-  # if(!all(haveGo)) browser()
-  # Molecular Function ontology
-  mf <- suppressPackageStartupMessages(
+  return(suppressPackageStartupMessages(
     GOstats::hyperGTest(new("GOHyperGParams",
                                 geneIds = geneList,
                                 universeGeneIds = universe,
                                 annotation = "org.Sc.sgd.db",
-                                ontology = "MF",
+                                ontology = ontology,
                                 pvalueCutoff = 1,
                                 testDirection = "over", 
                                 conditional = TRUE))
-  )
-  
-  # Biological Process ontology
-  bp <- suppressPackageStartupMessages(
-    GOstats::hyperGTest(new("GOHyperGParams",
-                                geneIds = geneList,
-                                universeGeneIds = universe,
-                                annotation = "org.Sc.sgd.db",
-                                ontology = "BP",
-                                pvalueCutoff = 1,
-                                testDirection = "over",
-                                conditional = TRUE))
-  )
-  
-  pvals <- c(GOstats::pvalues(bp), GOstats::pvalues(mf))
-  pvals <- p.adjust(pvals, method = "BH")
-  pvals
+  ))
 }
 
 #### threshold ####
