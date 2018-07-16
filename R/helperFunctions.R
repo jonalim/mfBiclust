@@ -272,12 +272,20 @@ testFE <- function(bce, strategy, OrgDb = NULL, go = c("BP", "MF"), duplicable =
                "names(strategies(bce)) to see BiclusterStrategy objects."))
   }
   
-  mapp <- if(requireNamespace("BiocParallel")) { # use BiocParallel if available
-    BiocParallel::bpmapply
-  } else mapply
+  # FIXME how to allow BiocParallel thru Windows Firewall when user accidentally
+  # Chose to deny?
+  mapp <- 
+  #   if(requireNamespace("BiocParallel")) { # use BiocParallel if available
+  #   BiocParallel::bpmapply
+  # } else { 
+    mapply
+  # }
   
-  lapp <- if(requireNamespace("BiocParallel")) { BiocParallel::bplapply 
-    } else { lapply }
+  lapp <- 
+    # if(requireNamespace("BiocParallel")) { BiocParallel::bplapply 
+    # } else { 
+      lapply
+      # }
   
   # Change this to use method dispatch
   bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)

@@ -9,7 +9,11 @@ function(input, output, session) {
   values <- reactiveValues(
     # Initialize as the user's BiclusterExperiment.
     bce = if(inherits(userBce, "BiclusterExperiment")) userBce else NULL,
-    strategy = NULL,
+    strategy = if(inherits(userBce, "BiclusterExperiment")) {
+      if(length(strategies(userBce)) > 0) {
+        getStrat(userBce, 1)
+      }
+    } else NULL,
     zoom = c(0, 1, 0, 1),
     bcvRes = numeric(0),
     bcvBest = 0,
@@ -192,18 +196,23 @@ function(input, output, session) {
   # to modify the max and value ASAP
   output$kSlider <- renderUI({
     bce <- values$bce
-    val <- if(inherits(values$strategy, "BiclusterStrategy")) {
-      nclust(values$strategy)
-    } else { 2 }
-    maxk <- if(is.null(bce)) { 2 }
-      else {
-        m <- as.matrix(bce)
-        min(nrow(m), ncol(m))
-      }
-      sliderInput("k", "Number biclusters", min = 1, 
-                  value = val,
-                  max = maxk, step = 1)
+    val <- input$k
+    if(is.null(val)) {
+      # Initialize everything on the Bicluster tab
+      if(inherits(values$strategy, "BiclusterStrategy")) {
+        # Assume a BiclusterStrategy has a method listed in biclusterUI.R
+        updateSelectInput(session, "algo", selected = method(values$strategy))
+        val <- nclust(values$strategy)
+      } else val <- 2
     }
+    maxk <- if(is.null(bce)) { 2 } else {
+      m <- as.matrix(bce)
+      min(nrow(m), ncol(m))
+    }
+    sliderInput("k", "Number biclusters", min = 1, 
+                value = val,
+                max = maxk, step = 1)
+  }
   )
   
   # observeEvent({values$bce
@@ -431,6 +440,7 @@ function(input, output, session) {
   height = function() { reactiveHeatmapHeight300() })
   reactiveScoreHeatmap <- reactive({
     validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
+    browser()
     bce <- values$bce
     withProgress(
       message = "Plotting...",
@@ -440,8 +450,7 @@ function(input, output, session) {
         phenoLabels <- intersect(input$annots,
                                  colnames(Biobase::phenoData(bce)))
         biclustLabels <- intersect(input$annots,
-                                   names(getStrat(values$bce,
-                                                  values$strategy)))
+                                   names(values$strategy))
         heatmapFactor(bce, strategy = input$strategy, type = "score",
                       phenoLabels = phenoLabels,
                       biclustLabels = biclustLabels,
@@ -475,40 +484,20 @@ function(input, output, session) {
     )
   })
   
-  # render the inside tab panel
-  # output$inside_tabs <- renderUI({
-  #   tabsetPanel(
-  #     
-  #     tabPanel(
-  #       "Sample distance",
-  #       plotOutput("distance",
-  #                  width = "100%"
-  #       )
-  #     ),
-  #     # tabPanel("Stability", plotOutput("stability", width = "100%")),
-  #     
-  #     tabPanel("Biomarkers", plotOutput("loadingHeatmap", width = "100%"), 
-  #              plotOutput("plot_biomarkers", width = "100%")),
-  #     id = "main_panel",
-  #     type = "pills"
-  #   )
-  # })
-  #### Loading ####
-  output$loadingPanel <- renderUI({
-    fluidRow(
-      column(9,
-             plotOutput("loadingHeatmap", width = "100%"), 
-             plotOutput("plot_biomarkers", width = "100%")),
-      column(3,
-             uiOutput("loadingBicluster"),
-             checkboxInput("loadingReorder", "Reorder"),
-             checkboxInput("featNames", "Feature names"))
-    )
-  })
+  #### Loading #### 
   
+  #FIXME Invalidate these panels when user changes kSlider, but hasn't clicked
+  #"Run" yet
+  # output$loadingPanel <- renderUI({
+  #   
+  # })
+  # 
   output$loadingBicluster <- renderUI({
+    choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
+      names(values$strategy)
+    } else { list() }
     selectInput("loadingBicluster", "Select bicluster:",
-                choices = names(values$strategy))
+                choices = choices)
   })
   
   # Heatmap of loadings for all features
@@ -517,7 +506,7 @@ function(input, output, session) {
     print(gt)
   })
   reactiveLoadingHeatmap <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please bicluster first."))
     withProgress(
       message = "Plotting...",
       value = 0, {
@@ -530,8 +519,8 @@ function(input, output, session) {
   
   # Plot of feature loadings for one bicluster
   output$plot_biomarkers <- renderPlot({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
-    # validate(need(inherits(input$loadingBicluster, "
+    validate(need(inherits(values$strategy, "BiclusterStrategy") &&
+                    !is.null(input$loadingBicluster), ""))
     reactiveMarkers()
   })
   reactiveMarkers <- reactive({
@@ -541,6 +530,28 @@ function(input, output, session) {
                   bicluster = input$loadingBicluster,
                   ordering = "input")
     })
+  })
+  
+  # Get gene list for selected bicluster
+  output$biclusterGeneList <- renderText({
+    bce <- values$bce
+    bcs <-  values$strategy
+    bicluster <- input$loadingBicluster
+    validate(need(inherits(bce, "BiclusterExperiment") && 
+                    !is.null(input$loadingBicluster) &&
+                    inherits(bcs, "BiclusterStrategy"), ""))
+
+    geneI <- which(loading(bcs)[bicluster, ] > bcs@loadingThresh[bicluster, 1])
+    genes <- featureNames(bce)[geneI]
+    paste(unlist(genes), collapse = "\n")
+  })
+  
+  output$biclusterGeneListLabel <- renderUI({
+    bicluster <- input$loadingBicluster
+    desc <- if(is.null(bicluster)) { "Markers:" } else {
+      paste(bicluster, "markers:")
+    }
+    tags$h6(desc)
   })
   
   #### BI-CROSS-VALIDATION ####
@@ -646,42 +657,60 @@ function(input, output, session) {
                     ""))
       withProgress(
         message = "Searching for Gene Ontology enrichment...",
-      value = 0, max = nclust(values$strategy),
-      {
-      values$goRes <- withCallingHandlers({
-        testFE(bce = values$bce, strategy = values$strategy)
-      },
-      message = function(m) {
-        incProgress(1)
-        showNotification(conditionMessage(m), duration = 1)
-      })
-      values$goValid = TRUE
-      })
+        value = 0, max = nclust(values$strategy),
+        {
+          values$goRes <- withCallingHandlers({
+            testFE(bce = values$bce, strategy = values$strategy)
+          },
+          message = function(m) {
+            incProgress(1)
+            showNotification(conditionMessage(m), duration = 1)
+          })
+          values$goValid = TRUE
+        })
     })
   
+  observeEvent({
+    values$goValid
+    values$strategy
+  }, { 
+    if(values$goValid == FALSE && inherits(values$strategy, 
+                                           "BiclusterStrategy")) {
+      shinyjs::enable("go")
+    } else {
+      shinyjs::disable("go")
+    }
+  }
+  )
+  
+  # a list of hypergeometric test result dataframes, one per bicluster
   goDF <- reactive({
     goRes <- values$goRes
-    validate(need(length(goRes) > 0, ""))
-    # a list of dataframes, one per bicluster
-    lapply(goRes, function(listOfHyperGs) {
-      p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
-      adj.p.value <- p.adjust(p.value, method = "BH")
-      odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
-      expected.genes <- do.call(c, lapply(listOfHyperGs, 
-                                          GOstats::expectedCounts))
-      mapped.gene.ids <- do.call(c, lapply(listOfHyperGs, 
-                                        Category::geneIdsByCategory))
-      mapped.genes <- unlist(lapply(mapped.gene.ids, length))
-      
-      df <- data.frame(mapped.genes, expected.genes, odds.ratio, p.value, adj.p.value)
-      df$mapped.gene.ids <- mapped.gene.ids
-      df
-    })
+    return(
+      if(length(goRes) > 0) {
+        lapply(goRes, function(listOfHyperGs) {
+          p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
+          adj.p.value <- p.adjust(p.value, method = "BH")
+          odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
+          expected.genes <- do.call(c, lapply(listOfHyperGs, 
+                                              GOstats::expectedCounts))
+          mapped.gene.ids <- do.call(c, lapply(listOfHyperGs, 
+                                               Category::geneIdsByCategory))
+          mapped.genes <- unlist(lapply(mapped.gene.ids, length))
+          
+          df <- data.frame(mapped.genes, expected.genes, odds.ratio, p.value, adj.p.value)
+          df$mapped.gene.ids <- mapped.gene.ids
+          df
+        })
+      } else list()
+    )
   })
   
+  # Plot of bicluster significance values
   output$goSigPlot <- renderPlot({
     goRes <- values$goRes
     validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
+    
     # get the lowest adj. p-value for each bicluster
     significance <- sapply(goDF(), function(df) min(df$adj.p.value))
     if(any(significance == 0)) {
@@ -695,128 +724,153 @@ function(input, output, session) {
     abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
   })
   
+  # Get input bicluster to display results for
+  output$goBicluster <- renderUI({
+    choices <- if(length(goDF()) > 0) names(goDF()) else list()
+    val <- if(length(choices) > 0) choices[[1]] else NULL
+    selectInput("goBicluster", label = "Select bicluster:",
+                choices = choices, selected = val, multiple = FALSE)
+  })
+  
+  # Display detailed GO results for one bicluster
   output$goTermTable <- DT::renderDT({
     validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
-                    !is.null(input$goBicluster), ""))
-    browser()
+                    !is.null(input$goBicluster), "Please test GO enrichment"))
+    df <- goDF()[[input$goBicluster]][, 1:5] # don't include gene list
     return(
-      DT::datatable(goDF()[[input$goBicluster]], options = list(paging = FALSE)
-                                                 # orderable = TRUE,
-                                                 # server = FALSE, selection = "none")
-                                                 )
+      DT::datatable(df, options = list(paging = FALSE), selection = 'single')
     )
   })
   
-  output$goBicluster <- renderUI({
-    choices <- if(!is.null(goDF())) names(goDF()) else list()
-    selectInput("goBicluster", "Select bicluster:",
-                choices = choices)
-  })
-  
-  # pvals <- c(GOstats::pvalues(bp), GOstats::pvalues(mf))
-  # pvals.adjust <- p.adjust(pvals, method = "BH")
-  # or <- c(GOstats::oddsRatios(bp), GOstats::oddsRatios(mf))
-  # mappedGenes <- GOstats::geneIdsByCategory(bp) + GOstats::geneMappedCount(mf)
-  # expGenes <- c(GOstats::expectedCounts(bp), GOstats::expectedCounts(mf))
-  # 
-  observeEvent({
-    values$goValid
-    values$strategy
-    }, { 
-      if(values$goValid == FALSE && inherits(values$strategy, 
-                                             "BiclusterStrategy")) {
-        shinyjs::enable("go")
-      } else {
-        shinyjs::disable("go")
-      }
+  observeEvent(
+    input$goTabGenes,
+    {selection <- input$goTermTable_rows_selected
+    browser()
+    if(length(selection) > 0) {
+      # assumes goDF() has not changed since goTermTable was rendered
+      selection <- row.names(goDF()[[input$goBicluster]])[selection]
+      
+      # FIXME does not work if GO terms are not already choices for selectInput "goTerm"
+      updateSelectInput(session, inputId = "goTerm", selected = selection)
     }
-  )
-  # PANEL DESCRIPTIONS
-  # output$explanation <- renderUI({
-  #   res <- ""
-  #   if (length(input$main_panel) > 0) {
-  #     if ("Abundance" == input$main_panel) {
-  #       res <- HTML(
-  #         "Abundance shows a Z-score heatmap of the original matrix
-  #         of metabolite peaks. Default ordering is distance-based by
-  #         cluster membership. Sidebar options allow reordering
-  #         of rows to highlight samples that are members of the
-  #         currently selected cluster.
-  #         Currently the annotations 'species' and 'tissue' are fictitious."
-  #       )
-  #     }
-  # if ("Stability" == input$main_panel) {
-  #   res <- HTML(
-  #     "Stability index shows how stable each cluster
-  #     is accross the selected range of <i>k</i>s.
-  #     The stability index varies between 0 and 1, where
-  #     1 means that the same cluster appears in every
-  #     solution for different <i>k</i>."
-  #   )
-  # }
-  # if ("Biomarkers" == input$main_panel) {
-  #   res <- HTML(
-  #     paste0(
-  #       "This is a plot of loading, a statistic that
-  #       quantifies the importance of each feature in distinguishing
-  #       samples that are members of this bicluster."
-  #     )
-  #     )
-  # }
-  # if ("Bicluster members" == input$main_panel) {
-  #   res <- HTML(
-  #     "This is a score thresholding plot, showing which
-  #     samples are above the threshold. The user should be
-  #     told which thresholding method was used."
-  #   )
-  # }
-  # return(res)
-  # }
-  # })
+    updateTabsetPanel(session, inputId = "goTab", selected = "Genes")
+    })
   
-  # plotHeightMark <- function() {
-  #   return(150 + 10.8 * nrow(values$mark.res))
-  # }
-  
-  # REACTIVE BUTTONS
-  # is_biology <- reactive({
-  #   return(biology)
-  # })
-  #
-  
-  #### REACTIVE DATA #######################################################
-  
-  # observer for marker genes
-  # observe({
-  #   if (FALSE) {
-  #     # biology) {
-  #     # get all marker genes
-  #     markers <- organise_marker_genes(object, input$strategy, 
-  #                                      as.numeric(input$pValMark), 
-  #                                      as.numeric(input$auroc.threshold))
-  #     user$n.markers <- nrow(markers)
-  #     # get top 10 marker genes of each cluster
-  #     markers <- markers_for_heatmap(markers)
-  #     clusts <- unique(markers[, 1])
-  #     if (is.null(clusts)) {
-  #       clusts <- "None"
-  #     }
-  #     user$mark.res <- markers
-  #     updateSelectInput(session, "cluster", choices = clusts)
-  #   } else {
-  #     user$n.markers <- 0
-  #   }
-  # })
-  # 
-  # 
-  # output$has_biomarkers <- reactive({
-  #   return(TRUE)
-  # })
-  
-  # stop App on closing the browser
-  session$onSessionEnded(function() {
-    stopApp()
+  # Keep the choices in input$goTerm updated so that the "Inspect Genes"
+  # button works.
+  observeEvent({
+    goDF()
+    input$goBicluster
+  }, {
+    bicluster <- input$goBicluster
+    if(!is.null(bicluster) && bicluster %in% names(goDF())) {
+      choices <- row.names(goDF()[[bicluster]])
+        updateSelectInput(session, inputId = "goTerm",
+                          choices = choices,
+                          selected = choices[1])
+    }
   })
-  # 
-  # outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
+  
+  output$goBiclusterGenes <- renderText({
+    validate(need(length(goDF()) > 0, "Please test GO enrichment"))
+    validate(need(!is.null(input$goTerm), "Please select a goTerm"))
+    validate(need(input$goBicluster %in% names(goDF()), 
+                  "Please select a valid bicluster"))
+    
+    genes <- goDF()[[input$goBicluster]][input$goTerm, "mapped.gene.ids"]
+    paste(unlist(genes), collapse = "\n")
+  })
+  
+  output$goUniverseGenes <- renderText({
+    return("universegenes here")
+  })
+  
+      # PANEL DESCRIPTIONS
+      # output$explanation <- renderUI({
+      #   res <- ""
+      #   if (length(input$main_panel) > 0) {
+      #     if ("Abundance" == input$main_panel) {
+      #       res <- HTML(
+      #         "Abundance shows a Z-score heatmap of the original matrix
+      #         of metabolite peaks. Default ordering is distance-based by
+      #         cluster membership. Sidebar options allow reordering
+      #         of rows to highlight samples that are members of the
+      #         currently selected cluster.
+      #         Currently the annotations 'species' and 'tissue' are fictitious."
+      #       )
+      #     }
+      # if ("Stability" == input$main_panel) {
+      #   res <- HTML(
+      #     "Stability index shows how stable each cluster
+      #     is accross the selected range of <i>k</i>s.
+      #     The stability index varies between 0 and 1, where
+      #     1 means that the same cluster appears in every
+      #     solution for different <i>k</i>."
+      #   )
+      # }
+      # if ("Biomarkers" == input$main_panel) {
+      #   res <- HTML(
+      #     paste0(
+      #       "This is a plot of loading, a statistic that
+      #       quantifies the importance of each feature in distinguishing
+      #       samples that are members of this bicluster."
+      #     )
+      #     )
+      # }
+      # if ("Bicluster members" == input$main_panel) {
+      #   res <- HTML(
+      #     "This is a score thresholding plot, showing which
+      #     samples are above the threshold. The user should be
+      #     told which thresholding method was used."
+      #   )
+      # }
+      # return(res)
+      # }
+      # })
+      
+      # plotHeightMark <- function() {
+      #   return(150 + 10.8 * nrow(values$mark.res))
+      # }
+      
+      # REACTIVE BUTTONS
+      # is_biology <- reactive({
+      #   return(biology)
+      # })
+      #
+      
+      #### REACTIVE DATA #######################################################
+      
+      # observer for marker genes
+      # observe({
+      #   if (FALSE) {
+      #     # biology) {
+      #     # get all marker genes
+      #     markers <- organise_marker_genes(object, input$strategy, 
+      #                                      as.numeric(input$pValMark), 
+      #                                      as.numeric(input$auroc.threshold))
+      #     user$n.markers <- nrow(markers)
+      #     # get top 10 marker genes of each cluster
+      #     markers <- markers_for_heatmap(markers)
+      #     clusts <- unique(markers[, 1])
+      #     if (is.null(clusts)) {
+      #       clusts <- "None"
+      #     }
+      #     user$mark.res <- markers
+      #     updateSelectInput(session, "cluster", choices = clusts)
+      #   } else {
+      #     user$n.markers <- 0
+      #   }
+      # })
+      # 
+      # 
+      # output$has_biomarkers <- reactive({
+      #   return(TRUE)
+      # })
+      
+      # stop App on closing the browser
+      session$onSessionEnded(function() {
+        stopApp()
+      })
+      # 
+      # outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
 }
