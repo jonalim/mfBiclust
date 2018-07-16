@@ -242,14 +242,21 @@ setReplaceMethod("distance", signature(object = "BiclusterExperiment",
                  return(object)}
 )
 
+#' Access a BiclusterStrategy contained by a BiclusterExperiment
+#' 
+#' Returns one BiclusterStrategy. Alternatively, a list of BiclusterStrategy
+#' objects contained by a BiclusterExperiment can be retrieved using
+#' \code{strategies(bce)}.
+#' 
+#' @param bce A BiclusterExperiment to access
+#' @param id Either the integer index or the name of the BiclusterStrategy to 
+#'   get
+#' @export
+setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
 setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
-  # if (inherits(id, "character")) { 
   bce@strategies[[id]] 
-  # }
-  # else {bce@strategies[idL]}
 })
 
-#### names ####
 #' Names of BiclusterStrategies in this BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))

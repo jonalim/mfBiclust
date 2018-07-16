@@ -18,12 +18,6 @@ setGeneric("clean", function(object, maxNa = 0, dimsRemain = FALSE) {
 #' @export
 setGeneric("distance", signature = "bce", function(bce, ...) {standardGeneric("distance")})
 
-#' @param bce A BiclusterExperiment to access
-#' @param id Either the integer index or the name of the BiclusterStrategy to 
-#'   get
-#' @export
-setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
-
 #' @export
 setGeneric("name", signature = "bcs", function(bcs) {standardGeneric("name")})
 

@@ -39,7 +39,7 @@ tabPanel(
                     )
         )
       }),
-      tabPanel("Inspect samples",
+      tabPanel("Samples",
                column(9,
                       plotOutput("scoreHeatmap", width = "100%"), 
                       plotOutput("scorePlot", width = "100%")
@@ -51,8 +51,20 @@ tabPanel(
                  checkboxInput("sampNames", "Sample names"))
                # Score-thresholded heatmap (try empty heatmap with annotations?)
       ),
-      tabPanel("Inspect features", {
-        uiOutput("loadingPanel")
+      tabPanel("Features", {
+        fluidRow(
+          column(9,
+                 plotOutput("loadingHeatmap", width = "100%"), 
+                 plotOutput("plot_biomarkers", width = "100%")),
+          column(3,
+                 uiOutput("loadingBicluster"),
+                 checkboxInput("loadingReorder", "Reorder"),
+                 checkboxInput("featNames", "Feature names"),
+                 uiOutput("biclusterGeneListLabel"),
+                 fluidRow(verbatimTextOutput("biclusterGeneList"), 
+                          style = "height:500px; overflow-y: scroll"))
+        )
+        # uiOutput("loadingPanel")
       })),
       width = 9
     ),

@@ -735,10 +735,18 @@ Requires: R6, crayon, digest, htmltools, httpuv, jsonlite, later, mime,
     promises, rlang, sourcetools, xtable
 
 Package: shinyjs
-Source: CRAN
-Version: 1.0
-Hash: ea95f751025e50227a96100be35e970b
+Source: github
+Version: 1.0.1.9003
+Hash: a4eeee3636434262fa1db1f9c23becc3
 Requires: digest, htmltools, jsonlite, shiny
+GithubRepo: shinyjs
+GithubUsername: daattali
+GithubRef: master
+GithubSha1: f5f57c6c2098d712c0e2cae8ba6c24db52d50fbe
+RemoteHost: https://api.github.com
+RemoteRepo: shinyjs
+RemoteUsername: daattali
+RemoteSha: f5f57c6c2098d712c0e2cae8ba6c24db52d50fbe
 
 Package: shinythemes
 Source: CRAN
