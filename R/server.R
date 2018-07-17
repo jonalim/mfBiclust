@@ -248,15 +248,19 @@ function(input, output, session) {
     matchStrats <- which(names(bce) == stratName)
     if(length(matchStrats) == 0) {
       withProgress({
-        browser()
         if("withinVar" %in% names(params$biclusterargs)) {
           params$biclusterargs$withinVar <- params$biclusterargs$withinVar * 
             nrow(bce)
         }
         # append any optional debug-mode arguments
-        bce <- do.call(addStrat, c(bce = bce, k = input$k, 
-                                   method = tolower(input$algo), 
-                                   params$biclusterargs))
+        withCallingHandlers(
+          bce <- do.call(addStrat,
+                         c(bce = bce, k = input$k, method = tolower(input$algo),
+                                     duplicable = TRUE, params$biclusterargs)),
+        warning = function(w) {
+          # In case less than the requested number of biclusters was found
+          showNotification(w$message, duration = NULL)
+        })
         newStrat <- names(bce)[length(names(bce))]
         algo <- strsplit(newStrat, split = " | ")[[1]][1]
         if(algo != input$algo) {

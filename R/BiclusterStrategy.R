@@ -53,7 +53,7 @@ BiclusterStrategy <-
            k,
            method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid", "spectral"),
            scoreThresh = c("otsu"),
-           loadingThresh = c("otsu"), ...) {
+           loadingThresh = c("otsu"), duplicable = TRUE, ...) {
     method = match.arg(method)
     if (!"matrix" %in% class(m)) {
       warning(paste0(
@@ -72,51 +72,28 @@ BiclusterStrategy <-
                       "matrix has missing data"))
         method <- "nipals-pca"
       }
-      bc <- nipals_pca(m, k, ...) # Prone to errors if cleaning needed
-    } else {
-    
-      # These three are only valid when m is complete
-      switch(
-        method,
-        `svd-pca` = {
-          # use R default pca.
-          bc <- svd_pca(m, k, ...)
-        },
-        `als-nmf` = {
-          m <- pseudovalues(m)
-          tryCatch(
-            # Use helper function adapted from the NMF package
-            bc <- als_nmf(m, k, ...),
-            error = function(c) {
-              warning("ALS-NMF failed, switching to PCA.")
-              bc <<- svd_pca(m, k) # fallback to PCA
-              method <<- "svd-pca"
-              return(NULL)
-            }
-          )
-        },
-        snmf = {
-          m <- pseudovalues(m)
-          tryCatch(
-            bc <- snmf(m, k, ...), # Use wrapper for NMF::nmf(method = "snmf/l")
-            error = function(c) {
-              warning("Sparse NMF failed, switching to PCA.")
-              bc <<- svd_pca(m, k, ...) # fallback to PCA
-              method <<- "svd-pca"
-              return(NULL)
-            }
-          )
-        },
-        plaid = {
-          # use wrapper for biclust::biclust(method = biclust::BCPlaid())
-          bc <- plaid(m, k, ...)
-        }, 
-        spectral = {
-          # use wrapper for biclust::biclust(method = biclust::BCSpectral())
-          bc <- spectral(m, k, ...)
-        }
-      )
+      # If still too many NAs, an error will be thrown back to addStrat
+      bc <- nipals_pca(biclustArgs)
     }
+    
+    # Simply shift all values to be >= 0, if necessary for the algorithm
+    if(method == "als-nmf" || method == "snmf") m <- pseudovalues(m)
+    
+    # Same arguments regardless of algorithm
+    biclustArgs <- c(list(A = m, k = k, duplicable = duplicable), list(...))
+    
+    # Function names here have underscores instead of hyphens
+    hyphen <- regexpr(pattern = "-", text = method)[[1]]
+    if(hyphen > 0) substr(method, start = hyphen, stop = hyphen) <- "_"
+    
+    tryCatch(bc <- do.call(get(method), biclustArgs), # Bicluster
+             error = function(c) {
+               warning(paste(method, "failed, switching to PCA."))
+               bc <<- svd_pca(m, k) # fallback to PCA
+               method <<- "svd-pca"
+               return(NULL)
+             }
+    )
     
     k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
     # k biclusters
