@@ -1,4 +1,13 @@
 function(input, output, session) {
+  
+  params <- list(
+    biclusterargs = if(debug) {
+      list(maxIter = 100L, shuffle = 1, withinVar = 10)
+      } else list(),
+    bcvMaxIter = if(debug) 3L else 100L, # how many iterations of bcv to run
+    annotateBiclusters = if(debug) 3L else NA # how many biclusters to annotate
+  )
+
   #### REACTIVE VALUES #### 
   dep <- reactiveValues(
     pheatmap = requireNamespace("pheatmap", quietly = TRUE),
@@ -239,7 +248,15 @@ function(input, output, session) {
     matchStrats <- which(names(bce) == stratName)
     if(length(matchStrats) == 0) {
       withProgress({
-        bce <- addStrat(bce, k = input$k, method = tolower(input$algo))
+        browser()
+        if("withinVar" %in% names(params$biclusterargs)) {
+          params$biclusterargs$withinVar <- params$biclusterargs$withinVar * 
+            nrow(bce)
+        }
+        # append any optional debug-mode arguments
+        bce <- do.call(addStrat, c(bce = bce, k = input$k, 
+                                   method = tolower(input$algo), 
+                                   params$biclusterargs))
         newStrat <- names(bce)[length(names(bce))]
         algo <- strsplit(newStrat, split = " | ")[[1]][1]
         if(algo != input$algo) {
@@ -559,19 +576,17 @@ function(input, output, session) {
     if(values$bcvValid == FALSE) {
       withProgress(
         message = "Performing bi-cross-validation...",
-        value = 0, {
-          i <- 2
+        value = 0, max = params$bcvMaxIter, {
           res <- withCallingHandlers({
             shinyjs::html("bcvtext", "")
             suppressWarnings(
               auto_bcv(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
-                       bestOnly = FALSE, verbose = TRUE, maxIter = 3))
+                       bestOnly = FALSE, verbose = TRUE, maxIter = params$bcvMaxIter))
           },
           message = function(m) {
             shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
                           add = FALSE)
-            setProgress(1 - 1/i)
-            i <<- i + 1
+            incProgress(1)
           })
           values$bcvRes <- res$counts
           values$bcvBest <- res$best

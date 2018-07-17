@@ -142,8 +142,10 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' the BiclusterExperiment returned is not guaranteed to have the same number of
 #' samples and features.
 #' 
-#' Optional boolean argument duplicable can force Spectral, Plaid, NIPALS, and
-#' SNMF to be duplicable. Alternatively, can allow ALS-NMF to be non-duplicable.
+#' Optional boolean argument \code{duplicable} can force Spectral, Plaid, 
+#' NIPALS, and SNMF to be duplicable. Alternatively, can allow ALS-NMF to be 
+#' non-duplicable. Other arguments to specific functions in bicluster.R can be
+#' provided.
 #' 
 #' @export
 setGeneric("addStrat", function(bce, k, 
@@ -151,7 +153,6 @@ setGeneric("addStrat", function(bce, k,
                                 maxNa = 1, ...) {
   standardGeneric("addStrat")
 })
-
 setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric", 
                         method = "character"), 
           function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
@@ -169,15 +170,13 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
               # to my knowledge, this is the only method so far that needs cleaning
               bce <- clean(bce, maxNa)
             }
-            mat <- t(as.matrix(bce))
             
             # do this so that the recursive calls with a NULL method are also silent
             method.orig <- method
             
-            
             if(length(method) > 1) {
-              method <- "als-nmf"
-              bcs <- suppressWarnings(BiclusterStrategy(m = mat, 
+              method <- "als-nmf" # fix user mistakes...realy shouldn't be necessary
+              bcs <- suppressWarnings(BiclusterStrategy(m = m, 
                                                         k = k, method = method, ...))
               # User does not need any warnings regarding algorithm choice
               # (suppressing warnings is sensible only because the BiclusterStrategy
@@ -185,10 +184,10 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
             } else {
               method <- match.arg(method)
               
-              if (method == "nipals-pca") {
+              if (method == "nipals-pca") {# Special code for NIPALS
                 # Careful! because we're in tryCatch, warnings won't be printed.
                 bcs <- tryCatch({
-                  BiclusterStrategy(m = mat, k = k, method = method, ...)
+                  BiclusterStrategy(m = m, k = k, method = method, ...)
                 }, error = function(e) {
                   if(method == "nipals-pca" &&
                      grepl(pattern = paste0("replacement has length zero"), 
@@ -202,7 +201,8 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                 })
               } else {
                 # Here, warnings and errors are thrown, not handled
-                bcs <- BiclusterStrategy(m = mat, k = k, method = method, ...)
+                #### DEFUALT CALL ####
+                bcs <- BiclusterStrategy(m = m, k = k, method = method, ...)
               }
             }
             
