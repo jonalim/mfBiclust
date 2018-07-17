@@ -80,7 +80,7 @@ BiclusterStrategy <-
         method,
         `svd-pca` = {
           # use R default pca.
-          bc <- svd_pca(m, k)
+          bc <- svd_pca(m, k, ...)
         },
         `als-nmf` = {
           m <- pseudovalues(m)
@@ -101,7 +101,7 @@ BiclusterStrategy <-
             bc <- snmf(m, k, ...), # Use wrapper for NMF::nmf(method = "snmf/l")
             error = function(c) {
               warning("Sparse NMF failed, switching to PCA.")
-              bc <<- svd_pca(m, k) # fallback to PCA
+              bc <<- svd_pca(m, k, ...) # fallback to PCA
               method <<- "svd-pca"
               return(NULL)
             }

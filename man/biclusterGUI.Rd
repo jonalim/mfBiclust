@@ -6,9 +6,9 @@
 \alias{biclusterGUI,ANY-method}
 \title{Explore a BiclusterExperiment}
 \usage{
-biclusterGUI(obj = NULL)
+biclusterGUI(obj = NULL, ...)
 
-\S4method{biclusterGUI}{ANY}(obj = NULL)
+\S4method{biclusterGUI}{ANY}(obj, debug = FALSE)
 }
 \description{
 Opens a GUI to visualize analysis results contained in a BiclusterExperiment
