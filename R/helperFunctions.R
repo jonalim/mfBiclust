@@ -390,7 +390,7 @@ validateKM <- function(k, m = NULL, method) {
   k <- validateK(k)
   if(method == "als-nmf" || "method" == "svd-pca" || method == "nipals-pca" ||
      method == "snmf") {
-    if (k >= min(nrow(m), ncol(m))) {
+    if (k > min(nrow(m), ncol(m))) {
       warning(paste("Initializing k to the size of the smaller matrix",
                     "dimension."))
       return(min(nrow(m), ncol(m)))
