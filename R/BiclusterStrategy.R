@@ -130,19 +130,16 @@ BiclusterStrategy <-
     lt <- matrix()
     sta <- ""
     lta <- ""
-    if (inherits(bc, "NMFfit") || inherits(bc, "genericFit")) {
-      # thresholding needed if matrix-factorization is being performed
-      #### Score thresholds ####
-      st <-
-        generateThresholdMatrix(scoreThresh, bc@fit@W, biclustNames)
-      lt <-
-        generateThresholdMatrix(loadingThresh, t(bc@fit@H), biclustNames)
-      
-      sta <- colnames(st)[1]
-      lta <- colnames(lt)[1]
-    } else {
-      # leave thresholds NULL? still to be implemented
-    }
+    # thresholding needed if matrix-factorization is being performed
+    #### Score thresholds ####
+    st <-
+      generateThresholdMatrix(scoreThresh, bc@fit@W, biclustNames)
+    lt <-
+      generateThresholdMatrix(loadingThresh, t(bc@fit@H), biclustNames)
+    
+    sta <- colnames(st)[1]
+    lta <- colnames(lt)[1]
+    
     #### Results #############################################################
     if(!any(is.na(st))) { pred <- threshold(m = bc@fit@W, th = st, MARGIN = 2) }
     else { 

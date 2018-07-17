@@ -186,8 +186,8 @@ plaid <- function(m, k, duplicable = FALSE, ...) {
   while(number < k && release > 0) {
     dummy <- capture.output({
       bc <- do.call(biclust::biclust, 
-                    list(x = m, method = biclust::BCPlaid(), row.release = release,
-                      col.release = release, max.layers = k, args))
+                    c(list(x = m, method = biclust::BCPlaid(), row.release = release,
+                      col.release = release, max.layers = k), args))
     })
     if(bc@Number > number) {
       number <- bc@Number
@@ -236,8 +236,8 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE, ...) {
   tryCatch(
     {
       suppressMessages(
-        res <- do.call(NMF::nmf, list(x = m, rank = k,  method = "snmf/l", 
-                                      beta = beta, args)))
+        res <- do.call(NMF::nmf, c(list(x = m, rank = k,  method = "snmf/l", 
+                                      beta = beta), args)))
     },
     warning = function(w) {
       if (any(suppressWarnings(
