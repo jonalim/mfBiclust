@@ -33,12 +33,15 @@ Collate:
     'BiclusterExperiment.R'
     'RcppExports.R'
     'bcv.R'
+    'bcvUI.R'
     'bicluster.R'
     'biclusterGUI.R'
     'biclusterUI.R'
+    'data.R'
     'evaluate.R'
     'fileUI.R'
     'genBiclusters.R'
+    'goUI.R'
     'helperClasses.R'
     'mfBiclust.R'
     'mfbc.R'
@@ -50,3 +53,4 @@ Suggests:
     biclust,
     pheatmap,
     reticulate
+LazyData: true

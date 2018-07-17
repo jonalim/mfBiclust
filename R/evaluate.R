@@ -187,39 +187,39 @@ evaluateFE <- function(rep = 30) {
   par(old.par)
 }
 
-#' @export
-loadBenchmark <- function(dir = "data/yeast_benchmark/", classes = FALSE) {
-  files <- list.files(path = dir)
-  if(classes) {
-    lapply(
-      files, 
-      function(x) {
-        # Read without header because duplicate column names are not allowed
-        tab <- read.table(file = paste0(dir, x), sep = "",
-                          header = FALSE, stringsAsFactors = FALSE)
-        labels <- factor(as.character(tab[1, 2:ncol(tab)]))
-        tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
-        
-        # convert labels to classification matrix
-        classes <- levels(labels)
-        labels <- do.call(rbind, lapply(labels, function(lab) {
-          vec <- rep(0, length(classes))
-          names(vec) <- classes
-          vec[lab] <- 1
-          vec
-        }))
-        
-        list(data = tab, labels = labels)
-      }
-    )
-  } else {
-    lapply(files, function(x) {
-      tab <- read.table(file = paste0(dir, x), sep = "",
-                        header = FALSE, row.names = 2, stringsAsFactors = FALSE)
-      tab[, 2:ncol(tab)]
-    })
-  }
-}
+
+# loadBenchmark <- function(dir = "data/yeast_benchmark/", classes = FALSE) {
+#   files <- list.files(path = dir)
+#   if(classes) {
+#     lapply(
+#       files,
+#       function(x) {
+#         # Read without header because duplicate column names are not allowed
+#         tab <- read.table(file = paste0(dir, x), sep = "",
+#                           header = FALSE, stringsAsFactors = FALSE)
+#         labels <- factor(as.character(tab[1, 2:ncol(tab)]))
+#         tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
+# 
+#         # convert labels to classification matrix
+#         classes <- levels(labels)
+#         labels <- do.call(rbind, lapply(labels, function(lab) {
+#           vec <- rep(0, length(classes))
+#           names(vec) <- classes
+#           vec[lab] <- 1
+#           vec
+#         }))
+# 
+#         list(data = tab, labels = labels)
+#       }
+#     )
+#   } else {
+#     lapply(files, function(x) {
+#       tab <- read.table(file = paste0(dir, x), sep = "",
+#                         header = FALSE, row.names = 2, stringsAsFactors = FALSE)
+#       tab[, 2:ncol(tab)]
+#     })
+#   }
+# }
 
 testResidAgriCor <- function(rep = 30) {
   oldSeed <- duplicable("evalua") # do not modify the R global environment
