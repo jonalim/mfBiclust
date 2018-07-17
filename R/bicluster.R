@@ -3,19 +3,17 @@
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
-                    eps_conv = sqrt(.Machine$double.eps), verbose=FALSE, ...){
-  # if(duplicable) { User may not override!
-  oldSeed <- duplicable("biclus") # do not modify the R global environment
-  on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-  # } else { reps <- 1 }
+                    eps_conv = 1e-7, duplicable = TRUE, verbose=FALSE, ...){
+  if(duplicable) {
+    oldSeed <- duplicable("biclus") # do not modify the R global environment
+    on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  } else { reps <- 1 }
   
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
   # to do with sparsity constraints
   maxA=max(A); if ( eta<0 ) eta=maxA;
   eta2=eta^2;
-  
-  sqrteps <- sqrt(.Machine$double.eps)
   
   ## VALIDITY of parameters
   # eps_conv
@@ -32,7 +30,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     # initialize random W if no starting point is given
     
     # rank is given by k
-    message('# NOTE: Initialise W internally (runif)')
+    if(verbose) message('# NOTE: Initialise W internally (runif)')
     W <- matrix(runif(m*k), m,k)
     
     idxWold=rep(0, m); idxHold=rep(0, n); inc=0;
@@ -86,7 +84,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
       ###% Analysis, vol. 52, no. 1, pp. 155-173.
-      residNorm <- sum((A - W %*% H) ^ 2)
+      residNorm <- sum((A - W %*% H) ^ 2) / length(A)
       if(abs(residNormOld - residNorm) <= eps_conv) {
         message("Converged!")
         break
@@ -119,14 +117,14 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
   return(invisible(res))
 }
 
-nipals_pca <- function(m, k, duplicable = FALSE, ...) {
+nipals_pca <- function(A, k, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
   np <- tryCatch({
-    nipals::nipals(x = m, ncomp = k, center = FALSE, scale = FALSE, 
+    nipals::nipals(x = A, ncomp = k, center = FALSE, scale = FALSE, 
                    tol = 1e-6, ...)
   },
   error = function(e) {
@@ -143,13 +141,13 @@ nipals_pca <- function(m, k, duplicable = FALSE, ...) {
       method = "nipals-pca")
 }
 
-nipals_pca_helper <- function(m, k, cleanParam = 0, duplicable = FALSE) {
+nipals_pca_helper <- function(A, k, cleanParam = 0, duplicable = FALSE) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
-  cleanRes <- clean(m, cleanParam, dimsRemain = TRUE)
+  cleanRes <- clean(A, cleanParam, dimsRemain = TRUE)
   mClean <- cleanRes$obj
   indexRem <- cleanRes$dimsRemain
   
@@ -161,12 +159,12 @@ nipals_pca_helper <- function(m, k, cleanParam = 0, duplicable = FALSE) {
       message(paste("Too many NA in the data. Cleaning with maxNAs at",
                     cleanParam))
       # pass the original m so indexRemaining is valid for the user's matrix
-      nipals_pca(m, k, cleanParam, duplicable)
+      nipals_pca(A, k, cleanParam, duplicable)
     } else { stop(e) }
   })
 }
 
-plaid <- function(m, k, duplicable = FALSE, ...) {
+plaid <- function(A, k, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -186,7 +184,7 @@ plaid <- function(m, k, duplicable = FALSE, ...) {
   while(number < k && release > 0) {
     dummy <- capture.output({
       bc <- do.call(biclust::biclust, 
-                    c(list(x = m, method = biclust::BCPlaid(), row.release = release,
+                    c(list(x = A, method = biclust::BCPlaid(), row.release = release,
                       col.release = release, max.layers = k), args))
     })
     if(bc@Number > number) {
@@ -203,9 +201,9 @@ plaid <- function(m, k, duplicable = FALSE, ...) {
   
   scoreLoading <- if(k > 0) { 
     biclusters <- biclust::biclusternumber(best)
-    biclusterNumber2scoreLoading(biclusters, m, k) 
-  } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
-                matrix(rep(NA, ncol(m)), nrow = 1)) }
+    biclusterNumber2scoreLoading(biclusters, A, k) 
+  } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
+                matrix(rep(NA, ncol(A)), nrow = 1)) }
   
   new("genericFit", fit = new("genericFactorization",
                               W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "plaid")
@@ -223,7 +221,7 @@ plaid <- function(m, k, duplicable = FALSE, ...) {
 #' @param m the target matrix
 #' @param k the size of the reduced dimension
 #' @param beta the starting beta
-snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE, ...) {
+snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -233,11 +231,11 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE, ...) {
   args <- c(maxIter = args$maxIter, eta = args$eta,bi_conv = args$bi_conv, 
             eps_conv = args$eps_conv, .options = args$.options)
   
-  tryCatch(
+  res <- tryCatch(
     {
       suppressMessages(
-        res <- do.call(NMF::nmf, c(list(x = m, rank = k,  method = "snmf/l", 
-                                      beta = beta), args)))
+        do.call(NMF::nmf, c(list(x = A, rank = k,  method = "snmf/l", 
+                                      beta = beta, rng = .Random.seed), args)))
     },
     warning = function(w) {
       if (any(suppressWarnings(
@@ -250,30 +248,34 @@ snmf <- function(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE, ...) {
       ))) {
         beta <<- beta ^ 2
         message(paste0("Decreased beta (sparsity parameter) to ", beta))
-        res <<- snmf(m, k, beta, verbose, duplicable, ...)
+        res <<- snmf(A, k, beta, verbose, duplicable, ...)
       } else {
         warning(w)
       }
     },
     error = function(e) {
+      browser()
       stop(e)
-    },
-    finally = function() {
-      res
-    }
+    }#,
+    # finally = function() {
+    #   res
+    # }
   )
+  browser()
+  res@method <- "snmf"
+  return(res)
 }
 
 # spectral may find over k biclusters, but only k will be returned
 # minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
-spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE, ...) {
+spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
-  minx <- if(is.null(minSize)) 2 else floor(min(nrow(m), ncol(m)) * minSize)
-  if(nrow(m) < 6 || ncol(m) < 6) {
+  minx <- if(is.null(minSize)) 2 else floor(min(nrow(A), ncol(A)) * minSize)
+  if(nrow(A) < 6 || ncol(A) < 6) {
     stop("For Spectral the minimum size of m is 6x6")
   }
   number <- 0 # save the biclustering solution with the most clusters
@@ -285,27 +287,27 @@ spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE, ...) {
   # are samples. The user can, however, override withinVar. The GUI uses this
   # parameter in debug mode to limit running time.
   if(is.null(withinVar)) {
-    withinVar <- nrow(m)
+    withinVar <- nrow(A)
   }
   
   # the number of eigenvalues to consider. This can limit number of biclusters
   # found, so increase from the default if necessary.
   e <- 3
-  if(!nrow(m) / minx * ncol(m) / minx * e >= k) {
-    e <- ceiling(k / (nrow(m) / minx * ncol(m) / minx))
+  if(!nrow(A) / minx * ncol(A) / minx * e >= k) {
+    e <- ceiling(k / (nrow(A) / minx * ncol(A) / minx))
   }
   
   best <- NULL
-  while(number < k && withinVar <= 10L * nrow(m)) {
+  while(number < k && withinVar <= 10L * nrow(A)) {
     bc <- do.call(biclust::biclust,
-                  list(x = m, method = biclust::BCSpectral(),
+                  list(x = A, method = biclust::BCSpectral(),
                        normalization = "log", withinVar= withinVar, minr = minx,
                        minc = minx, numberOfEigenvalues = e))
     if(bc@Number > number) {
       number <- bc@Number
       best <- bc
     }
-    withinVar <- withinVar + nrow(m)
+    withinVar <- withinVar + nrow(A)
   }
   if(k > number) {
     k <- number
@@ -314,9 +316,9 @@ spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE, ...) {
   
   scoreLoading <- if(k > 0) { 
     biclusters <- biclust::biclusternumber(best)
-    biclusterNumber2scoreLoading(biclusters, m, k) 
-  } else { list(matrix(rep(NA, nrow(m)), ncol = 1), 
-                matrix(rep(NA, ncol(m)), nrow = 1)) }
+    biclusterNumber2scoreLoading(biclusters, A, k) 
+  } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
+                matrix(rep(NA, ncol(A)), nrow = 1)) }
   
   new("genericFit", fit = new("genericFactorization", W = scoreLoading[[1]], 
                               H = scoreLoading[[2]]),
@@ -329,8 +331,8 @@ spectral <- function(m, k, minSize = NULL, reps = 1, duplicable = FALSE, ...) {
 #'
 #' @param m the target matrix
 #' @param k the number of principal components
-svd_pca <- function(m, k, duplicable = NULL, ...) {
-  prcmp <- prcomp(m, rank. = k, retx = TRUE, center = FALSE)
+svd_pca <- function(A, k, duplicable = NULL, ...) {
+  prcmp <- prcomp(A, rank. = k, retx = TRUE, center = FALSE)
   new(
     "genericFit",
     fit = new(
