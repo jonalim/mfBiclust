@@ -408,23 +408,30 @@ setMethod("plotDist", signature(x = "BiclusterExperiment"),
 
 #### Factor matrix heatmap ###################################################
 #' @export
-setGeneric("heatmapFactor", signature = "obj", function(obj, ...) {
+setGeneric("heatmapFactor", signature = c("bce", "bcs"), function(bce, bcs, ...) {
   standardGeneric("heatmapFactor")
 })
-
+setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "character"),
+          function(bce, bcs, ...) {
+            heatmapFactor(bce, getStrat(bce, bcs))
+          })
+setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "numeric"),
+          function(bce, bcs, ...) {
+            heatmapFactor(bce, getStrat(bce, bcs))
+          })
 #' Factor matrix heatmap
 #' 
 #' Display scores for all clusters in one heatmap
-setMethod("heatmapFactor", c(obj = "BiclusterExperiment"), 
-          function(obj, strategy = "", type = c("score", "loading"), phenoLabels = c(), biclustLabels = c(), 
+setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"), 
+          function(bce, bcs, type = c("score", "loading"), phenoLabels = c(), biclustLabels = c(), 
                    ordering = c("input", "distance", "cluster"), 
                    colNames = FALSE) {
             type <- match.arg(type)
             if(type == "score") {
-              data <- t(score(getStrat(obj, strategy)))
-              annots <- createAnnots(obj, colnames(data), strategy, phenoLabels, biclustLabels)
+              data <- t(score(bcs))
+              annots <- createAnnots(bce, colnames(data), bcs, phenoLabels, biclustLabels)
             } else {
-              data <- loading(getStrat(obj, strategy))
+              data <- loading(bcs)
               annots <- NA
             }
             
@@ -447,14 +454,14 @@ setMethod("heatmapFactor", c(obj = "BiclusterExperiment"),
                                        show_colnames = colNames, 
                                        annotation_col = annots, silent = silent)
             } else if (ordering == "distance") {
-              distance <- dist(as.matrix(obj), method = "euclidean")
+              distance <- dist(as.matrix(bce), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE,
                                        clustering_distance_cols = distance,
                                        show_colnames = colNames,
                                        annotation_col = annots, silent = silent)
             } else {
               # FIXME this is not valid for loadings
-              clusterDist <- dist(pred(getStrat(obj, strategy)), method = "euclidean")
+              clusterDist <- dist(pred(bcs), method = "euclidean")
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
                                        clustering_distance_cols = clusterDist,
                                        show_colnames = colNames, 

@@ -19,7 +19,11 @@ tabPanel(
                            actionButton("goTabGenes",
                                         label = "Inspect genes")),
                   tabPanel("Genes", 
-                           column(6, verbatimTextOutput("goBiclusterGenes")),
-                           column(6, verbatimTextOutput("goUniverseGenes")))),
+                           column(6,
+                                  h6("Matched genes in bicluster:"),
+                                  verbatimTextOutput("goBiclusterGenes")),
+                           column(6,
+                                  h6("Matched genes in dataset:"),
+                                  verbatimTextOutput("goUniverseGenes")))),
       width = 9), 
     position = "left"))

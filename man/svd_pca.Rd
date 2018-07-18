@@ -4,12 +4,12 @@
 \alias{svd_pca}
 \title{Wrapper for prcomp}
 \usage{
-svd_pca(m, k, duplicable = NULL)
+svd_pca(A, k, duplicable = NULL, ...)
 }
 \arguments{
-\item{m}{the target matrix}
-
 \item{k}{the number of principal components}
+
+\item{m}{the target matrix}
 }
 \description{
 Returns a \code{\link{genericFit}} object.

@@ -4,7 +4,8 @@
 \alias{addStrat}
 \title{Add a BiclusterStrategy to a BiclusterExperiment}
 \usage{
-addStrat(bce, k, method, maxNa = 1, ...)
+addStrat(bce, k, method, maxNa = 1, duplicable = TRUE, silent = FALSE,
+  ...)
 }
 \description{
 Due to requirements of various biclustering methods, this function may warn
@@ -15,6 +16,8 @@ Also, if any matrix elements of abund(BiclusterExperiment) are missing, then
 the BiclusterExperiment returned is not guaranteed to have the same number of
 samples and features.
 
-Optional boolean argument duplicable can force Spectral, Plaid, NIPALS, and
-SNMF to be duplicable. Alternatively, can allow ALS-NMF to be non-duplicable.
+Optional boolean argument \code{duplicable} can force Spectral, Plaid, 
+NIPALS, and SNMF to be duplicable. Alternatively, can allow ALS-NMF to be 
+non-duplicable. Other arguments to specific functions in bicluster.R can be
+provided.
 }

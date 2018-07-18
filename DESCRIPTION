@@ -40,6 +40,7 @@ Collate:
     'data.R'
     'evaluate.R'
     'fileUI.R'
+    'functionalAnnotation.R'
     'genBiclusters.R'
     'goUI.R'
     'helperClasses.R'

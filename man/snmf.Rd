@@ -4,14 +4,14 @@
 \alias{snmf}
 \title{Wrapper for NMF::nmf(method = "snmf/l")}
 \usage{
-snmf(m, k, beta = 0.01, verbose = FALSE, duplicable = FALSE)
+snmf(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...)
 }
 \arguments{
-\item{m}{the target matrix}
-
 \item{k}{the size of the reduced dimension}
 
 \item{beta}{the starting beta}
+
+\item{m}{the target matrix}
 }
 \description{
 This wrapper explicitly enables use of the non-regularized alternating least
