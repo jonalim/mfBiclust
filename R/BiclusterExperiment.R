@@ -408,27 +408,29 @@ setMethod("plotDist", signature(x = "BiclusterExperiment"),
 
 #### Factor matrix heatmap ###################################################
 #' @export
-setGeneric("heatmapFactor", signature = c("bce", "bcs"), function(bce, bcs, ...) {
-  standardGeneric("heatmapFactor")
+setGeneric("factorHeatmap", signature = c("bce", "bcs"), function(bce, bcs, type, ...) {
+  standardGeneric("factorHeatmap")
 })
-setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "character"),
-          function(bce, bcs, ...) {
-            heatmapFactor(bce, getStrat(bce, bcs))
+setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "character"),
+          function(bce, bcs, type, ...) {
+            factorHeatmap(bce, getStrat(bce, bcs), type, ...)
           })
-setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "numeric"),
-          function(bce, bcs, ...) {
-            heatmapFactor(bce, getStrat(bce, bcs))
+setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "numeric"),
+          function(bce, bcs, type, ...) {
+            factorHeatmap(bce, getStrat(bce, bcs), type, ...)
           })
 #' Factor matrix heatmap
 #' 
 #' Display scores for all clusters in one heatmap
-setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"), 
-          function(bce, bcs, type = c("score", "loading"), phenoLabels = c(), biclustLabels = c(), 
+setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"), 
+          function(bce, bcs, type = c("score", "loading"), phenoLabels = c(), biclustLabels = c(),
                    ordering = c("input", "distance", "cluster"), 
                    colNames = FALSE) {
             type <- match.arg(type)
+
             if(type == "score") {
               data <- t(score(bcs))
+              # Validate requested annotations and parse into a dataframe
               annots <- createAnnots(bce, colnames(data), bcs, phenoLabels, biclustLabels)
             } else {
               data <- loading(bcs)
@@ -444,9 +446,8 @@ setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "BiclusterStrate
             if(is.null(colnames(data))) {
               colnames(data) <- seq_len(ncol(data))
             }
-            # Validate requested annotations and parse into a dataframe
-            
-            ordering <- match.arg(ordering)
+
+                        ordering <- match.arg(ordering)
             silent = TRUE
             if (ordering == "input") {
               ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
@@ -471,15 +472,26 @@ setMethod("heatmapFactor", c(bce = "BiclusterExperiment", bcs = "BiclusterStrate
           }
 )
 
-#### Score plot ################################################################
+#### Threshold plot ################################################################
 #' @param thresholds A single numeric, vector, or matrix of thresholds. See 
 #'   documentation
 #' @export
-setGeneric("plotSamples", signature = "obj", function(obj, thresholds = NULL, strategy, bicluster, ordering) {
+setGeneric("plotSamples", signature = c("bce", "bcs"),
+           function(bce, bcs, type, bicluster, ...) {
   standardGeneric("plotSamples")
 })
-
-
+setMethod("plotSamples",
+          signature(bce = "BiclusterExperiment", bcs = "character"),
+          function(bce, bcs, type, bicluster, ...) {
+            plotSamples(bce = bce, bcs = getStrat(bce, bcs), type, bicluster, ...)
+          }
+)
+setMethod("plotSamples",
+          signature(bce = "BiclusterExperiment", bcs = "numeric"),
+          function(bce, bcs, type, bicluster, ...) {
+            plotSamples(bce, getStrat(bce, bcs), type, bicluster, ...)
+          }
+)
 #' Score plot
 #'
 #' Plot cluster membership scores
@@ -487,18 +499,22 @@ setGeneric("plotSamples", signature = "obj", function(obj, thresholds = NULL, st
 #' @rdname plotSamples
 #' @aliases plotSamples
 setMethod(
-  "plotSamples", signature(obj = "BiclusterExperiment"),
-  function(obj, thresholds, strategy = "", bicluster = "Bicluster.1", 
+  "plotSamples", signature(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"),
+  function(bce, bcs, type = c("score", "loading"), thresholds, bicluster = "Bicluster.1", 
            ordering = c("input", "distance", "cluster")) {
-    bcs <- getStrat(obj, strategy)
     bicluster <- validateBiclustNames(biclustNames = bicluster, bcs = bcs)
     if(length(bicluster) != 1) {
       stop("Argument \"bicluster\" was not valid.")
     }
     # User is allowed to provide custom threshold when this function is called outside GUI
     if (is.null(thresholds)) {
-      thresholds <- bcs@scoreThresh[bicluster, ]
-      names(thresholds) <- colnames(bcs@scoreThresh)
+      if(type == "score") {
+      thresholds <- bcs@scoreThresh[bicluster]
+      names(thresholds) <- names(bcs@scoreThresh)
+      } else {
+        thresholds <- bcs@loadingThresh[bicluster]
+        names(thresholds) <- names(bcs@loadingThresh)
+      }
       # FIXME Try changing the BCE/BCS constructors so this check isn't necessary
     } else if (inherits(thresholds, "numeric")) {
       names(thresholds) <- as.character(thresholds)
@@ -514,22 +530,22 @@ setMethod(
       "Dark2"
     )
     
-    data <- score(bcs)[, bicluster]
+    data <- get(type)(bcs)[, bicluster]
     ordering <- match.arg(ordering)
     # Plot
     if(ordering == "input") {
-      plot(1:nrow(t(as.matrix(obj))), data,
+      plot(1:nrow(t(as.matrix(bce))), data,
            xlab = "Sample", ylab = "Score", main = bicluster)
     } else if (ordering == "distance") {
-      ord <- hclust(obj@distance)$order
-      plot(1:nrow(t(as.matrix(obj))), data[ord],
+      ord <- hclust(bce@distance)$order
+      plot(1:nrow(t(as.matrix(bce))), data[ord],
            xlab = "Sample", ylab = "Score", xaxt = "n", main= bicluster)
-      axis(1, at = 1:nrow(t(as.matrix(obj))), labels = as.character(ord))
+      axis(1, at = 1:nrow(t(as.matrix(bce))), labels = as.character(ord))
     } else if (ordering == "cluster") {
       ord <- order(data, decreasing = TRUE)
-      plot(1:nrow(t(as.matrix(obj))), data[ord],
+      plot(1:nrow(t(as.matrix(bce))), data[ord],
            xlab = "Sample", ylab = "Score", xaxt = "n", main= bicluster)
-      axis(1, at = 1:nrow(t(as.matrix(obj))), labels = as.character(ord))
+      axis(1, at = 1:nrow(t(as.matrix(bce))), labels = as.character(ord))
     }
     
     mapply(function(y, color) {abline(h = y, col = color, lwd = 2)},
@@ -567,8 +583,8 @@ setMethod("plotMarkers", signature(obj = "BiclusterExperiment"),
             }
             # User is allowed to provide custom threshold when this function is called outside GUI
             if (is.null(threshold)) {
-              threshold <- bcs@loadingThresh[bicluster, ]
-              names(threshold) <- colnames(bcs@loadingThresh)
+              threshold <- bcs@loadingThresh[bicluster]
+              names(threshold) <- names(bcs@loadingThresh)
             } else if (inherits(threshold, "numeric")) {
               names(threshold) <- as.character(threshold)
             } else {

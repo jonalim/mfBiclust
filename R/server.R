@@ -4,7 +4,7 @@ function(input, output, session) {
     biclusterargs = if(debug) {
       list(maxIter = 100L, shuffle = 1, withinVar = 10)
       } else list(),
-    bcvMaxIter = if(debug) 3L else 100L, # how many iterations of bcv to run
+    bcvArgs = if(debug) list(holdouts = 2L) else list(),
     annotateBiclusters = if(debug) 3L else NA # how many biclusters to annotate
   )
 
@@ -348,8 +348,8 @@ function(input, output, session) {
       # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
       # hovering mouse over.
       lapply(seq_len(nclust(bcs)), function(bicluster) {
-        yrange <- which(loading(bcs)[bicluster, ] > bcs@loadingThresh[1, 1])
-        xrange <- which(pred(bcs)[, bicluster])
+        yrange <- which(clusteredFeatures(bcs)[bicluster, ])
+        xrange <- which(clusteredSamples(bcs)[, bicluster])
         arr[xrange, yrange, 1] <<- cols["red", bicluster] / 255
         arr[xrange, yrange, 2] <<- cols["green", bicluster] / 255
         arr[xrange, yrange, 3] <<- cols["blue", bicluster] / 255
@@ -378,7 +378,7 @@ function(input, output, session) {
     #   
     # }
     tryCatch(png::writePNG(arr,
-                           target = temp), error = function(e) {
+                           target = temp), error = function(e) {.0
                              browser()}
     )
     # Return a list containing information about the zoomed image
@@ -405,28 +405,26 @@ function(input, output, session) {
   })
   
   # Warn if biclusters overlap
-  overlapWarn <- observeEvent(values$strategy,
-                              {
-                                validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
-                                bcs <- values$strategy
-                                bc <- threshold(loading(bcs), MARGIN = 1,
-                                                loadingThresh(bcs))
-                                # Create lists of rows and columns contained in biclusters
-                                rc <- biclusterMatrix2List(pred(values$strategy), bc)
-                                biclusterRows <- rc[[1]]
-                                biclusterCols <- rc[[2]]
-                                
-                                # Check for overlaps with any other biclusters. Since a bicluster
-                                # always overlaps with itself completely, test sum(l) == 1
-                                overlaps <- overlap(biclusterRows, biclusterCols)
-                                nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
-                                if(!all(nonOverlap)) {
-                                  showNotification(id = "overlapNotif", paste(
-                                    do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
-                                    "overlap. Please interpret the heatmap annotations with care."), 
-                                    duration = NULL)
-                                }
-                              })
+  overlapWarn <- observeEvent(values$strategy, {
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    bcs <- values$strategy
+    # Create lists of rows and columns contained in biclusters
+    rc <- biclusterMatrix2List(clusteredSamples(bcs),
+                               clusteredFeatures(bcs))
+    biclusterRows <- rc[[1]]
+    biclusterCols <- rc[[2]]
+    
+    # Check for overlaps with any other biclusters. Since a bicluster
+    # always overlaps with itself completely, test sum(l) == 1
+    overlaps <- overlap(biclusterRows, biclusterCols)
+    nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
+    if(!all(nonOverlap)) {
+      showNotification(id = "overlapNotif", paste(
+        do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
+        "overlap. Please interpret the heatmap annotations with care."), 
+        duration = NULL)
+    }
+  })
   
   
   #### Scores ####
@@ -482,7 +480,7 @@ function(input, output, session) {
                                  colnames(Biobase::phenoData(bce)))
         biclustLabels <- intersect(input$annots,
                                    names(values$strategy))
-        heatmapFactor(bce = bce, bcs = values$strategy, type = "score",
+        factorHeatmap(bce = bce, bcs = values$strategy, type = "score",
                       phenoLabels = phenoLabels,
                       biclustLabels = biclustLabels,
                       ordering = if(input$scoreReorder) { "cluster" }
@@ -499,7 +497,7 @@ function(input, output, session) {
     validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
-      plotSamples(values$bce, strategy = values$strategy,
+      plotSamples(bce = values$bce, bcs = values$strategy, type = "score",
                   bicluster = input$scoreBicluster,
                   ordering = if(input$sampOrder) { "input" }
                   else { "distance" })
@@ -542,7 +540,7 @@ function(input, output, session) {
       message = "Plotting...",
       value = 0, {
         set.seed(1234567) # FIXME: use duplicable()
-        heatmapFactor(bce = values$bce, bcs = values$strategy, type = "loading",
+        factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
                       ordering = input$featOrder,
                       colNames = input$featNames)
       }
@@ -594,8 +592,8 @@ function(input, output, session) {
           res <- withCallingHandlers({
             shinyjs::html("bcvtext", "")
             suppressWarnings(
-              auto_bcv(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
-                       bestOnly = FALSE, verbose = TRUE, maxIter = params$bcvMaxIter))
+              do.call(auto_bcv, c(list(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
+                       bestOnly = FALSE, verbose = TRUE), params$bcvArgs)))
           },
           message = function(m) {
             shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
@@ -725,6 +723,7 @@ function(input, output, session) {
     return(
       if(length(goRes) > 0) {
         lapply(goRes, function(listOfHyperGs) {
+          # list might contain results for MF, BP, CC
           p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
           adj.p.value <- p.adjust(p.value, method = "BH")
           odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
@@ -752,11 +751,13 @@ function(input, output, session) {
     goRes <- values$goRes
     if(length(goRes) > 1) {
       # summary data is same regardless of bicluster tested
-      myHyperGResult <- goRes[[1]]
+      browser()
+      listOfHyperGs <- goRes[[1]]
       # list of matched IDs for each GO term
-      matchedDatasetIds <- Category::geneIdUniverse(myHyperGResult)
+      matchedDatasetIds <- do.call(c, lapply(listOfHyperGs,
+                                             Category::geneIdUniverse))
       # how many in the dataset were actually GO-annotated
-      matchedDatasetSize <- length(unique(unlist(matched.dataset.ids)))
+      matchedDatasetSize <- length(unique(unlist(matchedDatasetIds)))
       
       # get the lowest adj. p-value for each bicluster
       significance <- sapply(goDF(), function(df) min(df$adj.p.value))
