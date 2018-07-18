@@ -13,6 +13,8 @@ tabPanel(
       textInput("sepchar", "Sep. (empty = whitespace)", ""),
       textInput("quotechar", "Quote", ""),
       textInput("decchar", "Decimal", "."),
+      textAreaInput("customRowNames", "Custom row names",
+                    placeholder = "Line-separated ENSEMBL IDs", resize = "vertical"),
       width = 3
     ),
     #### main panel and description column ####

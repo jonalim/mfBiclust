@@ -52,9 +52,10 @@ testFE <- function(bce, strategy, OrgDb = NULL, go = c("BP", "MF"), duplicable =
   }
 }
 
-hyperGGO <- function(ontology, geneList, name, universe) {
+hyperGGO <- function(ontology = c("MF", "BP", "CC"), geneList, name, universe) {
   message(paste("Testing", name, "for Gene Ontology term enrichment")
   )
+  ontology <- match.arg(ontology)
   return(suppressPackageStartupMessages(
     GOstats::hyperGTest(new("GOHyperGParams",
                             geneIds = geneList,

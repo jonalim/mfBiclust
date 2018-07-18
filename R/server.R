@@ -62,7 +62,7 @@ function(input, output, session) {
       shinyjs::enable("sepchar")
       shinyjs::enable("decchar")
       shinyjs::enable("quotechar")
-      
+
       # force character limits
       shinyjs::runjs("$('#sepchar').attr('maxlength', 1)")
       shinyjs::runjs("$('#quotechar').attr('maxlength', 1)")
@@ -79,10 +79,24 @@ function(input, output, session) {
         if(input$sampleCols) rawmat <- t(rawdf)
         incProgress(1/8)
       }, message = "Parsing data...", value = 0)
-      # rawmat() <- rawmat
       rawmat
     }
   })
+  # 
+  # customRowNames <- observeEvent(
+  #   input$customRowNames,
+  #   {
+  #     if(nchar(input$customRowNames) > 0) {
+  #       rn <- scan(text = input$customRowNames, what = "",
+  #            quiet = TRUE)
+  #       if(inherits(rawmat, "matrix")) {
+  #         try(rownames(rawmat) <- rn)
+  #       }
+  #       if(inherits(values$bce, BiclusterStrategy)) {
+  #         
+  #              } else return(character(0))
+  #              }
+  # )
   
   # When the raw data matrix changes, trigger other reactive updates
   observeEvent(rawmat(), {
@@ -94,9 +108,6 @@ function(input, output, session) {
   output$dt <- DT::renderDT({
     return(rawmat())
   }, server = FALSE, selection = "none")
-  reactiveDF <- reactive({
-    rawmat()
-  })
   
   # helper functions
   reactiveHeatmapHeight500 <- reactive({ 
@@ -461,7 +472,6 @@ function(input, output, session) {
   height = function() { reactiveHeatmapHeight300() })
   reactiveScoreHeatmap <- reactive({
     validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
-    browser()
     bce <- values$bce
     withProgress(
       message = "Plotting...",
@@ -472,7 +482,7 @@ function(input, output, session) {
                                  colnames(Biobase::phenoData(bce)))
         biclustLabels <- intersect(input$annots,
                                    names(values$strategy))
-        heatmapFactor(bce, strategy = input$strategy, type = "score",
+        heatmapFactor(bce = bce, bcs = values$strategy, type = "score",
                       phenoLabels = phenoLabels,
                       biclustLabels = biclustLabels,
                       ordering = if(input$scoreReorder) { "cluster" }
@@ -532,7 +542,7 @@ function(input, output, session) {
       message = "Plotting...",
       value = 0, {
         set.seed(1234567) # FIXME: use duplicable()
-        heatmapFactor(values$bce, strategy = name(values$strategy), type = "loading",
+        heatmapFactor(bce = values$bce, bcs = values$strategy, type = "loading",
                       ordering = input$featOrder,
                       colNames = input$featNames)
       }
@@ -649,7 +659,7 @@ function(input, output, session) {
   )
   
   tableHelper <- function(str, nrow) {
-    elements <- scan(text = str)
+    elements <- scan(text = str, quiet = TRUE)
     ncol <- ceiling(length(elements) / nrow)
     open <- "<table class=\"table table-hover\">\n<thead>\n"
     content <- do.call(paste0, lapply(seq_len(nrow), function(row) { # to produce each row
@@ -684,9 +694,16 @@ function(input, output, session) {
           message = function(m) {
             incProgress(1)
             showNotification(conditionMessage(m), duration = 1)
-          })
-          values$goValid = TRUE
+          },
+          warning = function(w) {
+            showNotification(w$message, duration = NULL)
+            },
+          error = function(e) {
+            showNotification(e$message, duration = NULL)
+            return(NULL)}
+          )
         })
+      if(length(values$goRes) > 0) values$goValid = TRUE
     })
   
   observeEvent({
@@ -713,16 +730,44 @@ function(input, output, session) {
           odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
           expected.genes <- do.call(c, lapply(listOfHyperGs, 
                                               GOstats::expectedCounts))
-          mapped.gene.ids <- do.call(c, lapply(listOfHyperGs, 
+          matched.bicluster.ids <- do.call(c, lapply(listOfHyperGs, 
                                                Category::geneIdsByCategory))
-          mapped.genes <- unlist(lapply(mapped.gene.ids, length))
-          
-          df <- data.frame(mapped.genes, expected.genes, odds.ratio, p.value, adj.p.value)
-          df$mapped.gene.ids <- mapped.gene.ids
+          matched.dataset.ids <- do.call(c, lapply(listOfHyperGs,
+                                                   Category::geneIdUniverse))
+          matched.bicluster.genes <- unlist(lapply(matched.bicluster.ids,
+                                                   length))
+          matched.dataset.genes <- unlist(lapply(matched.dataset.ids, length))
+
+          df <- data.frame(matched.bicluster.genes, matched.dataset.genes, 
+                           expected.genes, odds.ratio, p.value, adj.p.value)
+          df$matched.bicluster.ids <- matched.bicluster.ids
+          df$matched.dataset.ids <- matched.dataset.ids
           df
         })
       } else list()
     )
+  })
+  
+  goSummary <- reactive({
+    goRes <- values$goRes
+    if(length(goRes) > 1) {
+      # summary data is same regardless of bicluster tested
+      myHyperGResult <- goRes[[1]]
+      # list of matched IDs for each GO term
+      matchedDatasetIds <- Category::geneIdUniverse(myHyperGResult)
+      # how many in the dataset were actually GO-annotated
+      matchedDatasetSize <- length(unique(unlist(matched.dataset.ids)))
+      
+      # get the lowest adj. p-value for each bicluster
+      significance <- sapply(goDF(), function(df) min(df$adj.p.value))
+      if(any(significance < .Machine$double.eps)) {
+        significance <- significance + .Machine$double.eps
+      }
+      significance <- sort(-log10(significance), decreasing = TRUE)
+      
+      return(list(universeSize = matchedDatasetSize,
+                  significance = significance))
+    }
   })
   
   # Plot of bicluster significance values
@@ -730,13 +775,7 @@ function(input, output, session) {
     goRes <- values$goRes
     validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
     
-    # get the lowest adj. p-value for each bicluster
-    significance <- sapply(goDF(), function(df) min(df$adj.p.value))
-    if(any(significance == 0)) {
-      significance <- significance + .Machine$double.eps
-    }
-    significance <- sort(-log10(significance), decreasing = TRUE)
-    bp <- barplot(height = significance, xaxs = "i", yaxs = "i", xaxt = "n",
+    bp <- barplot(height = goSummary()$significance, xaxs = "i", yaxs = "i", xaxt = "n",
                   ylab = "-log10[p-value]")
     las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
     axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
@@ -755,7 +794,7 @@ function(input, output, session) {
   output$goTermTable <- DT::renderDT({
     validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
                     !is.null(input$goBicluster), "Please test GO enrichment"))
-    df <- goDF()[[input$goBicluster]][, 1:5] # don't include gene list
+    df <- goDF()[[input$goBicluster]][, 1:6] # don't include gene lists
     return(
       DT::datatable(df, options = list(paging = FALSE), selection = 'single')
     )
@@ -764,12 +803,10 @@ function(input, output, session) {
   observeEvent(
     input$goTabGenes,
     {selection <- input$goTermTable_rows_selected
-    browser()
     if(length(selection) > 0) {
       # assumes goDF() has not changed since goTermTable was rendered
       selection <- row.names(goDF()[[input$goBicluster]])[selection]
       
-      # FIXME does not work if GO terms are not already choices for selectInput "goTerm"
       updateSelectInput(session, inputId = "goTerm", selected = selection)
     }
     updateTabsetPanel(session, inputId = "goTab", selected = "Genes")
@@ -796,12 +833,18 @@ function(input, output, session) {
     validate(need(input$goBicluster %in% names(goDF()), 
                   "Please select a valid bicluster"))
     
-    genes <- goDF()[[input$goBicluster]][input$goTerm, "mapped.gene.ids"]
+    genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.bicluster.ids"]
     paste(unlist(genes), collapse = "\n")
   })
   
   output$goUniverseGenes <- renderText({
-    return("universegenes here")
+    validate(need(length(goDF()) > 0, "Please test GO enrichment"))
+    validate(need(!is.null(input$goTerm), "Please select a goTerm"))
+    validate(need(input$goBicluster %in% names(goDF()), 
+                  "Please select a valid bicluster"))
+    
+    genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.dataset.ids"]
+    paste(unlist(genes), collapse = "\n")
   })
   
       # PANEL DESCRIPTIONS

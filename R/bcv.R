@@ -19,7 +19,7 @@
 #'   of result counts is returned
 #'
 #' @export
-auto_bcv <- function(Y, ks, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
+auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
                      verbose = TRUE, ...) {
   oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
