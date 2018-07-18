@@ -10,11 +10,11 @@ setClass(
   "BiclusterStrategy",
   slots = list(
     factors = "ANY",
-    scoreThresh = "matrix",
-    loadingThresh = "matrix", # FIXME can we convert to 1 loading threshold and 1 score threshold>
-    scoreThreshAlgo = "character",
-    loadingThreshAlgo = "character",
-    pred = "matrix",
+    scoreThresh = "numeric",
+    loadingThresh = "numeric",
+    threshAlgo = "character",
+    clusteredSamples = "matrix",
+    clusteredFeatures = "matrix",
     name = "character"
   )
 )
@@ -52,9 +52,10 @@ BiclusterStrategy <-
   function(m,
            k,
            method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid", "spectral"),
-           scoreThresh = c("otsu"),
-           loadingThresh = c("otsu"), duplicable = TRUE, ...) {
-    method = match.arg(method)
+           threshAlgo = "otsu",
+           scoreThresh = threshAlgo, loadingThresh = threshAlgo, duplicable = TRUE, ...) {
+    method <- match.arg(method)
+    
     if (!"matrix" %in% class(m)) {
       warning(paste0(
         "Argument \"m\" must be of type matrix. Attempting to",
@@ -102,38 +103,36 @@ BiclusterStrategy <-
     }))
     colnames(bc@fit@W) <- biclustNames
     rownames(bc@fit@H) <- biclustNames
-    #### Thresholding ############################################################
-    st <- matrix()
-    lt <- matrix()
-    sta <- ""
-    lta <- ""
-    # thresholding needed if matrix-factorization is being performed
-    #### Score thresholds ####
-    st <-
-      generateThresholdMatrix(scoreThresh, bc@fit@W, biclustNames)
-    lt <-
-      generateThresholdMatrix(loadingThresh, t(bc@fit@H), biclustNames)
-    
-    sta <- colnames(st)[1]
-    lta <- colnames(lt)[1]
-    
-    #### Results #############################################################
-    if(!any(is.na(st))) { pred <- threshold(m = bc@fit@W, th = st, MARGIN = 2) }
-    else { 
-      pred <- matrix(rep(FALSE, length(bc@fit@W)), nrow(bc@fit@W))
+    if(k > 0) {
+      #### Thresholding ############################################################
+      if(inherits(scoreThresh, "numeric") && inherits(loadingThresh, "numeric")) {
+        if(length(scoreThresh) != k || length(loadingThresh) != k) {
+          stop("Length of \"scoreThresh\" and \"loadingThresh\" must equal \"k\"")
+        }
+        threshAlgo <- "user"
+      } else if(threshAlgo == "otsu") {
+        # Use automatic thresholding (default)
+        scoreThresh <- otsuHelper(bc@fit@W)
+        loadingThresh <- otsuHelper(t(bc@fit@H))
+      } else {
+        stop(paste("Currently \"otsu\" is the only implemented thresholding",
+                   "algorithm"))
+      }
+      #### Results #############################################################
+      clusteredSamples <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
+      clusteredFeatures <- threshold(m = bc@fit@H, th = loadingThresh,
+                                     MARGIN = 1)
+    } else { 
+      clusteredSamples <- matrix()
+      clusteredFeatures <- matrix()
       dimnames(pred) <- dimnames(bc@fit@W)
       warning(paste("Biclustering did not find valid results. No samples or",
                     "features are biclustered."))
     }
     
-    bcs <- new(
-      "BiclusterStrategy",
-      factors = bc,
-      scoreThresh = st,
-      loadingThresh = lt,
-      scoreThreshAlgo = sta,
-      loadingThreshAlgo = lta,
-      pred = pred
+    bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = scoreThresh,
+      loadingThresh = loadingThresh, threshAlgo = threshAlgo,
+      clusteredSamples = clusteredSamples, clusteredFeatures = clusteredFeatures
     )
     bcs@name <- name(bcs)
     bcs
@@ -159,94 +158,113 @@ validBiclusterStrategy <- function(object) {
   }
   
   sThresh <- scoreThresh(object)
-  if (!(inherits(sThresh, "matrix") &&
-        mode(sThresh) == "numeric")) {
-    msg <- c(msg, "The scoreThresh slot must be a numeric matrix")
+  if (!inherits(sThresh, "numeric")) {
+    msg <- c(msg, "The scoreThresh slot must be a numeric vector")
   } else {
-    if (nrow(sThresh) != nclust(object)) {
+    if (length(sThresh) != nclust(object)) {
       msg <-
         c(
           msg,
           paste(
-            "The scoreThresh matrix must have number of rows",
-            "equal to the width of the score matrix"
+            "scoreThresh must be as long as the width of the score matrix"
           )
         )
     }
-    if (!setequal(rownames(sThresh), colnames(score(object)))) {
+    if (!setequal(names(sThresh), colnames(score(object)))) {
       msg <-
         c(
           msg,
           paste(
-            "scoreThresh column names must correspond 1:1 with",
-            "score matrix row names. These are bicluster names"
+            "scoreThresh names must correspond 1:1 with score matrix row",
+            "names. These are bicluster names"
           )
         )
     }
   }
   
   lThresh <- loadingThresh(object)
-  if (!(inherits(lThresh, "matrix") &&
-        mode(lThresh) == "numeric")) {
-    msg <- c(msg, "The loadingThresh slot must be a numeric matrix")
+  if (!inherits(lThresh, "numeric")) {
+    msg <- c(msg, "The loadingThresh slot must be a numeric vector")
   } else {
-    if (nrow(lThresh) != nclust(object)) {
+    if (length(lThresh) != nclust(object)) {
       msg <-
         c(
           msg,
           paste(
-            "The loadingThresh matrix must have number of rows",
-            "equal to the width of the score matrix"
+            "loadingThresh must be as long as the width of the score matrix"
           )
         )
     }
-    if (!setequal(rownames(lThresh), rownames(loading(object)))) {
+    if (!setequal(names(lThresh), rownames(loading(object)))) {
       msg <-
         c(
           msg,
           paste(
-            "loadingThresh column names must correspond 1:1 with",
-            "loading matrix row names. These are bicluster names"
+            "loadingThresh names must correspond 1:1 with loading matrix row",
+            "names. These are bicluster names"
           )
         )
     }
   }
   
-  if (!inherits(object@scoreThreshAlgo, "character")) {
+  if (!inherits(object@threshAlgo, "character")) {
     msg <- c(msg, "The scoreThreshAlgo slot must be a character string")
   }
-  if (!inherits(object@loadingThreshAlgo, "character")) {
-    msg <-
-      c(msg, "The loadingThreshAlgo slot must be a character string")
-  }
   
-  predM <- pred(object)
-  if (!(inherits(predM, "matrix") && mode(predM) == "logical")) {
-    msg <- c(msg, "The prediction matrix must be a logical matrix")
+  predS <- clusteredSamples(object)
+  if (!(inherits(predS, "matrix") && mode(predS) == "logical")) {
+    msg <- c(msg, "clusteredSamples must be a logical matrix")
   } else {
-    if (!identical(dim(predM), c(nrow(score(object)), nclust(object)))) {
+    if (!identical(dim(predS), dim(score(object)))) {
       msg <-
         c(
           msg,
           paste(
-            "The prediction matrix must have dimensions M x K",
-            "where M = the height of score(object) and",
-            "K = the width of score(object)."
+            "clusteredSamples must have dimensions identical to",
+            "score(object)."
           )
         )
     }
-    if (!identical(dimnames(predM), dimnames(score(object)))) {
+    if (!identical(dimnames(predS), dimnames(score(object)))) {
       msg <-
         c(
           msg,
           paste(
-            "The row and column names of the prediction matrix",
+            "The row and column names of clusteredSamples",
             "must be identical to the row and column names of the",
             "score matrix"
           )
         )
     }
   }
+  
+  predF <- clusteredFeatures(object)
+  if (!(inherits(predF, "matrix") && mode(predF) == "logical")) {
+    msg <- c(msg, "clusteredFeatures must be a logical matrix")
+  } else {
+    if (!identical(dim(predF), dim(loading(object)))) {
+      msg <-
+        c(
+          msg,
+          paste(
+            "clusteredFeatures must have dimensions identical to the",
+            "loading(object)."
+          )
+        )
+    }
+    if (!identical(dimnames(predF), dimnames(loading(object)))) {
+      msg <-
+        c(
+          msg,
+          paste(
+            "The row and column names of clusteredFeatures",
+            "must be identical to the row and column names of the",
+            "score matrix"
+          )
+        )
+    }
+  }
+  
   if (is.null(msg))
     TRUE
   else
@@ -254,7 +272,7 @@ validBiclusterStrategy <- function(object) {
 }
 setValidity("BiclusterStrategy", validBiclusterStrategy)
 
-#### method ####
+#### Accessors ####
 #' @export
 setGeneric("method", signature = "bcs", function(bcs) {
   standardGeneric("method")
@@ -277,19 +295,13 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
   else {
     # Capitalize 
     bca <- capitalize(method(bcs))
-    sta <- capitalize(bcs@scoreThreshAlgo)
-    lta <- capitalize(bcs@loadingThreshAlgo)
-    name(list(bca = bca, sta = sta, lta = lta, k = nclust(bcs)))
+    ta <- capitalize(bcs@threshAlgo)
+    name(list(bca, ta, nclust(bcs)))
   }
 })
 
 setMethod("name", c(bcs = "list"), function(bcs) {
-  paste(
-    bcs$bca,
-    paste(bcs$sta, bcs$lta, sep = "/"),
-    bcs$k,
-    sep = " | "
-  )
+  do.call(paste, c(bcs, list(sep = " | ")))
 })
 
 #' Names of biclusters in this BiclusterStrategy
@@ -327,8 +339,16 @@ setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
   bcs@loadingThresh
 })
 
-setMethod("pred", c(bcs = "BiclusterStrategy"), function(bcs) {
-  bcs@pred
+#' Sample-bicluster clustering matrix
+#' 
+#' A binary matrix showing which samples are members of which biclusters.
+#'
+#'@export
+setGeneric("clusteredSamples", signature = "bcs", function(bcs) {
+  standardGeneric("clusteredSamples")
+  })
+setMethod("clusteredSamples", c(bcs = "BiclusterStrategy"), function(bcs) {
+  bcs@clusteredSamples
 })
 
 #' Score matrix
@@ -353,6 +373,18 @@ setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
   bcs@scoreThresh
 })
 
+#' Feature-bicluster clustering matrix
+#' 
+#' A binary matrix showing which features are members of which biclusters.
+#' 
+#' @export
+setGeneric("clusteredFeatures", signature = "bcs", function(bcs) {
+  standardGeneric("clusteredFeatures")
+}) 
+setMethod("clusteredFeatures", c(bcs = "BiclusterStrategy"), function(bcs) {
+  bcs@clusteredFeatures
+})
+
 #### HELPER FUNCTIONS ##########################################################
 
 #' Combine threshold values and names into a matrix
@@ -373,64 +405,19 @@ setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
 #'   vector
 #' @param matrix the target matrix, whose columns will be thresholded
 #' @param biclustNames names of the threshold matrix rows
-generateThresholdMatrix <-
-  function(thresholds, matrix, biclustNames) {
-    if(any(is.na(matrix))) {
-      tMatrix <- matrix(rep(NaN, ncol(matrix) * length(thresholds)), 
-                        ncol = length(thresholds), dimnames = list(biclustNames, thresholds))
-    } else if (identical(thresholds, "otsu")) {
-      # Calculate thresholds using available algorithms
-      tMatrix <- as.matrix(apply(matrix, 2, function(x) {
-        if (max(x) != min(x)) {
-          rescaled <- (x - min(x)) / (max(x) - min(x))
-          m <- as.matrix(rescaled)
-          thresholds <- EBImage::otsu(m)
-          thresholds * (max(x) - min(x)) + min(x)
-        } else  {
-          x[1]
-        }
-        # If all values of x are the same, then the threshold is that value
-        # itself
-      }), ncol = 1)
-      colnames(tMatrix) <- thresholds
-    } else if (inherits(thresholds, "matrix") &&
-               mode(thresholds) == "numeric" &&
-               nrow(thresholds) == k) {
-      # A matrix of numerics, if k x Y for any Y, will be assumed to be a matrix
-      # of thresholds, where each row k contains multiple thresholds to plot for
-      # bicluster k.
-      colNames <- unlist(lapply(seq_len(ncol(thresholds)),
-                                function(x)
-                                  paste("User.", x, sep = "")))
-      tMatrix <- thresholds
-      if (!is.null(colnames(tMatrix))) {
-        colnames(tMatrix) <- colNames
-      }
-    } else if (inherits(thresholds, "numeric") &&
-               length(thresholds) == 1L) {
-      # A single numeric will be applied to all clusters
-      tMatrix <- matrix(
-        rep(thresholds, times = k),
-        ncol = 1,
-        dimnames = list(biclustNames, paste0("Th.", thresholds))
-      )
-    } else if (inherits(thresholds, "numeric") &&
-               length(thresholds) == k) {
-      # A vector of numerics, if the same size as k, will be assumed to have
-      # a 1:1 relation with k
-      coln <- unlist(sapply(thresholds, paste0("Th.", x)))
-      tMatrix <- matrix(thresholds,
-                        ncol = 1,
-                        dimnames = list(biclustNames, coln))
-    } else {
-      stop(
-        "The format, dimensions, or length of the argument \"thresholds\"
-        is incorrect. Please ensure \"thresholds\" is numeric, and either
-        atomic, a vector of length k, or an matrix with k rows."
-      )
+otsuHelper <- function(matrix) {
+  # Calculate thresholds using available algorithms
+  thresholds <- apply(matrix, 2, function(x) {
+    if (max(x) != min(x)) {
+      rescaled <- (x - min(x)) / (max(x) - min(x))
+      m <- as.matrix(rescaled)
+      thresholds <- EBImage::otsu(m)
+      thresholds * (max(x) - min(x)) + min(x)
+    } else  {
+      x[1]
     }
-    if (!is.null(rownames(tMatrix))) {
-      rownames(tMatrix) <- biclustNames
-    }
-    tMatrix
+    # If all values of x are the same, then the threshold is that value
+    # itself
+  })
+  thresholds
   }

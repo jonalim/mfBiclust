@@ -31,8 +31,3 @@ setGeneric("nclust", signature = "bcs", function(bcs) {standardGeneric("nclust")
 
 setGeneric("plot")
 
-#' Bicluster prediction accessor
-#' 
-#' Get a binary matrix coding for bicluster membership. Rows represent samples and columns represent biclusters.
-#' @export
-setGeneric("pred", signature = "bcs", function(bcs) {standardGeneric("pred")})

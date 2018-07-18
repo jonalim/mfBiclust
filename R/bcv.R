@@ -20,7 +20,7 @@
 #'
 #' @export
 auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
-                     verbose = TRUE, ...) {
+                     verbose = TRUE, duplicable = TRUE) {
   oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
@@ -32,7 +32,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   converged <- FALSE
   while(!converged && i < maxIter) {
     # Get the number of biclusters with lowest bcv value
-    res <- bcv(Y, ks, duplicable = FALSE, ...)
+    res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts)
     bcvRes <- as.numeric(names(which.min(res)))
     distr[bcvRes] <- distr[bcvRes] + 1L
     

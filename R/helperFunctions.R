@@ -274,42 +274,28 @@ sizes <- function(biclusterRows, biclusterCols) {
 #' first col/row in m, etc.
 #' 
 #' @export
-setGeneric("threshold", signature = c("m", "th"), function(m, th, ...) {
+setGeneric("threshold", signature = c("m", "th"), function(m, th, MARGIN = 2) {
   standardGeneric("threshold")
 })
-
-#' @export
-setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, th, MARGIN = 2) {
+setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, th,
+                                                                 MARGIN) {
   # Get all values further from 0 than the provided threshold
-  if(length(th) == 1) {
-    if(th < 0) compare <- `<` else compare <- `>` 
-    mat <- matrix(TRUE, nrow = nrow(m), ncol = ncol(m), dimnames = dimnames(m))
-    mat[!compare(m, th)] <- FALSE
-    return(mat)
+  if(MARGIN == 1) {
+    if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
+    mat <- do.call(rbind, lapply(seq_len(nrow(m)), function(row) {
+      if(th[row] < 0) compare <- `<` else compare <- `>` 
+      compare(m[row, ], th[row])
+    }))
+  } else {
+    if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
+    mat <- do.call(cbind, lapply(seq_len(ncol(m)), function(col) {
+      if(th[col] < 0) compare <- `<` else compare <- `>` 
+      compare(m[, col], th[col])
+    }))
   }
-  else {
-    if(MARGIN == 1) {
-      if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
-      mat <- do.call(rbind, lapply(seq_len(nrow(m)), function(row) {
-        if(th[row] < 0) compare <- `<` else compare <- `>` 
-        compare(m[row, ], th[row])
-      }))
-    } else {
-      if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
-      mat <- do.call(cbind, lapply(seq_len(ncol(m)), function(col) {
-        if(th[col] < 0) compare <- `<` else compare <- `>` 
-        compare(m[, col], th[col])
-      }))
-    }
-    colnames(mat) <- colnames(m)
-    rownames(mat) <- rownames(m)
-    return(mat)
-  }
-}
-)
-
-setMethod("threshold", c(m = "matrix", th = "matrix"), function(m, th, MARGIN = 2) {
-  threshold(m, MARGIN = MARGIN, th = as.numeric(th))
+  colnames(mat) <- colnames(m)
+  rownames(mat) <- rownames(m)
+  return(mat)
 }
 )
 
