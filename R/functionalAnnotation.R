@@ -6,21 +6,6 @@ testFE <- function(bce, strategy, OrgDb = NULL, go = c("BP", "MF"), duplicable =
                "names(strategies(bce)) to see BiclusterStrategy objects."))
   }
   
-  # FIXME how to allow BiocParallel thru Windows Firewall when user accidentally
-  # Chose to deny?
-  mapp <- 
-    #   if(requireNamespace("BiocParallel")) { # use BiocParallel if available
-    #   BiocParallel::bpmapply
-    # } else { 
-    mapply
-  # }
-  
-  lapp <- 
-    # if(requireNamespace("BiocParallel")) { BiocParallel::bplapply 
-    # } else { 
-    lapply
-  # }
-  
   # Change this to use method dispatch
   bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)
   
@@ -39,15 +24,32 @@ testFE <- function(bce, strategy, OrgDb = NULL, go = c("BP", "MF"), duplicable =
   # Returns a list of results for each bicluster: a list with one element per
   # ontology
   if(length(go) > 0) {
+    mFun <- function(geneList, name, universe, ontology, fun) {
+      # test each requested GO
+      tryCatch(
+        {BiocParallel::bplapply(go, fun, 
+              geneList = geneList, name = name, universe = universe)
+        },
+        error = function(e) { # fallback if BiocParallel failes
+          lapply(go, fun, 
+                 geneList = geneList, name = name, universe = universe)
+        }
+      )
+    }
     return(# Test every bicluster for enrichment
-      mapp(function(geneList, name, universe, ontology, fun) {
-        # test each requested GO
-        lapp(go, fun, 
-             geneList = geneList, name = name, universe = universe)
-      },
-      geneLists, names(geneLists),
-      MoreArgs = list(universe = universe, ontology = go, fun = hyperGGO),
-      SIMPLIFY = FALSE, USE.NAMES = TRUE)
+      tryCatch(
+        {BiocParallel::bpmapply(mFun,
+              geneLists, names(geneLists),
+              MoreArgs = list(universe = universe, ontology = go, fun = hyperGGO),
+              SIMPLIFY = FALSE, USE.NAMES = TRUE)
+        },
+        error = function(e) {
+          mapply(mFun,
+                 geneLists, names(geneLists),
+                 MoreArgs = list(universe = universe, ontology = go, fun = hyperGGO),
+                 SIMPLIFY = FALSE, USE.NAMES = TRUE)
+        }
+      )
     )
   }
 }

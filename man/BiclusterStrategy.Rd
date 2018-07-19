@@ -5,8 +5,8 @@
 \title{Construct a BiclusterStrategy}
 \usage{
 BiclusterStrategy(m, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
-  "plaid", "spectral"), scoreThresh = c("otsu"), loadingThresh = c("otsu"),
-  duplicable = TRUE, ...)
+  "plaid", "spectral"), threshAlgo = "otsu", scoreThresh = threshAlgo,
+  loadingThresh = threshAlgo, duplicable = TRUE, ...)
 }
 \arguments{
 \item{scoreThresh}{the score thresholding algorithm to use. Ignored if

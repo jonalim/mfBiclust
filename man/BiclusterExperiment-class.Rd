@@ -9,9 +9,6 @@ This class encapsulates factorization and thresholding data for one or more
 biclustering runs. Objects can be created using the
 \code{\link{BiclusterExperiment}} constructor.
 }
-\details{
-data = "matrix", annot = "data.frame", strategies = "list", distance = "matrix"
-}
 \section{Slots}{
 
 \describe{
@@ -20,8 +17,5 @@ data = "matrix", annot = "data.frame", strategies = "list", distance = "matrix"
 \item{\code{annot}}{Object of class \code{\link{data.frame}}. Annotations provided by the user}
 
 \item{\code{strategies}}{A \code{\link{list}} of \code{BiclusterStrategy} objects}
-
-\item{\code{distance}}{Object of class \code{\link{matrix}}. Pairwise distances
-between the rows of \code{data}}
 }}
 

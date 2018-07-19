@@ -43,6 +43,7 @@ Collate:
     'functionalAnnotation.R'
     'genBiclusters.R'
     'goUI.R'
+    'graphical.R'
     'helperClasses.R'
     'mfBiclust.R'
     'mfbc.R'

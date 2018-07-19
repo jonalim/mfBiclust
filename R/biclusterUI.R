@@ -48,7 +48,7 @@ tabPanel(
                  uiOutput("scoreBicluster"),
                  checkboxInput("scoreReorder", "Reorder"),
                  # uiOutput("annotPicker"),
-                 checkboxInput("sampNames", "Sample names"))
+                 checkboxInput("biclusterSampNames", "Sample names"))
                # Score-thresholded heatmap (try empty heatmap with annotations?)
       ),
       tabPanel("Features", {
@@ -59,7 +59,7 @@ tabPanel(
           column(3,
                  uiOutput("loadingBicluster"),
                  checkboxInput("loadingReorder", "Reorder"),
-                 checkboxInput("featNames", "Feature names"),
+                 checkboxInput("biclusterFeatNames", "Feature names"),
                  uiOutput("biclusterGeneListLabel"),
                  fluidRow(verbatimTextOutput("biclusterGeneList"), 
                           style = "height:500px; overflow-y: scroll"))

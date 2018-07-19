@@ -13,8 +13,8 @@ setClass(
     scoreThresh = "numeric",
     loadingThresh = "numeric",
     threshAlgo = "character",
-    clusteredSamples = "matrix",
-    clusteredFeatures = "matrix",
+    clusteredSamples = "matrix", # m x k
+    clusteredFeatures = "matrix", # n x k
     name = "character"
   )
 )
@@ -120,12 +120,11 @@ BiclusterStrategy <-
       }
       #### Results #############################################################
       clusteredSamples <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
-      clusteredFeatures <- threshold(m = bc@fit@H, th = loadingThresh,
-                                     MARGIN = 1)
+      clusteredFeatures <- threshold(m = t(bc@fit@H), th = loadingThresh,
+                                     MARGIN = 2)
     } else { 
-      clusteredSamples <- matrix()
-      clusteredFeatures <- matrix()
-      dimnames(pred) <- dimnames(bc@fit@W)
+      clusteredSamples <- matrix(dimnames = dimnames(bc@fit@W))
+      clusteredFeatures <- matrix(dimnames = dimnames(bc@fit@W))
       warning(paste("Biclustering did not find valid results. No samples or",
                     "features are biclustered."))
     }
@@ -138,7 +137,6 @@ BiclusterStrategy <-
     bcs
   }
 
-#### METHODS ###################################################################
 validBiclusterStrategy <- function(object) {
   msg <- NULL
   factors <- object@factors
@@ -242,24 +240,24 @@ validBiclusterStrategy <- function(object) {
   if (!(inherits(predF, "matrix") && mode(predF) == "logical")) {
     msg <- c(msg, "clusteredFeatures must be a logical matrix")
   } else {
-    if (!identical(dim(predF), dim(loading(object)))) {
+    if (!identical(dim(predF), dim(t(loading(object))))) {
       msg <-
         c(
           msg,
           paste(
-            "clusteredFeatures must have dimensions identical to the",
-            "loading(object)."
+            "clusteredFeatures must have dimensions identical to",
+            "t(loading(object))."
           )
         )
     }
-    if (!identical(dimnames(predF), dimnames(loading(object)))) {
+    if (!identical(dimnames(predF), dimnames(t(loading(object))))) {
       msg <-
         c(
           msg,
           paste(
             "The row and column names of clusteredFeatures",
-            "must be identical to the row and column names of the",
-            "score matrix"
+            "must be identical to the column and row names, respectively, of",
+            "the score matrix"
           )
         )
     }
@@ -383,6 +381,20 @@ setGeneric("clusteredFeatures", signature = "bcs", function(bcs) {
 }) 
 setMethod("clusteredFeatures", c(bcs = "BiclusterStrategy"), function(bcs) {
   bcs@clusteredFeatures
+})
+
+#' Algorithm used to calculate threshold
+#' 
+#' Bicluster membership is determined by a binary thresholding function. The
+#' value of the threshold can be either user-provided or calculated by the
+#' Otsu algorithm.
+#' 
+#' @export
+setGeneric("threshAlgo", signature = "bcs", function(bcs) {
+  standardGeneric("threshAlgo")
+}) 
+setMethod("threshAlgo", c(bcs = "BiclusterStrategy"), function(bcs) {
+  bcs@threshAlgo
 })
 
 #### HELPER FUNCTIONS ##########################################################
