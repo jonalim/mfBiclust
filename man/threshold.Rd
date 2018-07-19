@@ -4,7 +4,7 @@
 \alias{threshold}
 \title{Apply threshold to a score or loading matrix}
 \usage{
-threshold(m, th, ...)
+threshold(m, th, MARGIN = 2)
 }
 \description{
 Returns a binary matrix of the same size as \code{m} where all elements over

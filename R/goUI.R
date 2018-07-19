@@ -2,6 +2,11 @@ tabPanel(
   "Functional Annotation",
   sidebarLayout(
     sidebarPanel(
+      checkboxGroupInput("gos", h6("Ontologies"),
+                         choices = list("Biological Process" = "BP",
+                                        "Molecular Function" = "MF",
+                                        "Cellular Component" = "CC"),
+                         selected = "BP"),
       actionButton("go", "Test for GO enrichment", disabled = TRUE),
       conditionalPanel(condition = "input.goTab == 'Terms' ||
                                  input.goTab == 'Genes'",
@@ -13,9 +18,9 @@ tabPanel(
     mainPanel(
       tabsetPanel(id = "goTab",
                   tabPanel("Biclusters",  plotOutput("goSigPlot")),
-                  tabPanel("Terms", 
-                           fluidRow(DT::DTOutput("goTermTable"),
-                                    style = "height:500px; overflow-y: scroll"),
+                  tabPanel("Terms",
+                           tags$style(type = "text/css", "#goTermTable {height: calc(90vh - 80px) !important;}"),
+                           DT::DTOutput("goTermTable"),
                            actionButton("goTabGenes",
                                         label = "Inspect genes")),
                   tabPanel("Genes", 

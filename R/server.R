@@ -76,7 +76,7 @@ function(input, output, session) {
                              sep = input$sepchar, quote = input$quotechar, dec = input$decchar, skip = input$skiplines)
         incProgress(6/8)
         rawmat <- as.matrix(rawmat)
-        if(input$sampleCols) rawmat <- t(rawdf)
+        if(input$sampleCols) rawmat <- t(rawmat)
         incProgress(1/8)
       }, message = "Parsing data...", value = 0)
       rawmat
@@ -179,12 +179,12 @@ function(input, output, session) {
   )
   
   # Euclidean Distance between samples (applied to raw data...might be good to scale first?)
-  output$distance <- renderPlot({
+  output$sampleDistance <- renderPlot({
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
-    gt <- reactiveDistance()
+    gt <- sampleDistance()
     print(gt)
   }, height = function() {reactiveHeatmapHeight500()})
-  reactiveDistance <- reactive({
+  sampleDistance <- reactive({
     validate(need(
       all(input$annot.rows %in% colnames(phenoData(values$bce))),
       paste0(
@@ -196,15 +196,13 @@ function(input, output, session) {
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
       phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(bce)))
-      # biclustLabels <- intersect(input$annots, names(getStrat(bce, input$strategy)))
-      biclustLabels <- NULL
-      distType <- if(input$distType == "Euclidean distance") {
+      distType <- if(input$sampDistType == "Euclidean distance") {
         "euclidean"} else {"pearson"}
-      plotDist(bce, distType = distType, phenoLabels = phenoLabels, 
-               biclustLabels = biclustLabels, 
-               ordering = if(input$distReorder) "distance" else "input", 
+      plotDist(bce, type = "samples", distType = distType, phenoLabels = phenoLabels, 
+               biclustLabels = NULL,
+               ordering = if(input$sampDistReorder) "distance" else "input", 
                strategy = input$strategy, 
-               rowColNames = input$sampNames
+               rowColNames = input$sampDistRownames
       )
     })
   })
@@ -348,7 +346,7 @@ function(input, output, session) {
       # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
       # hovering mouse over.
       lapply(seq_len(nclust(bcs)), function(bicluster) {
-        yrange <- which(clusteredFeatures(bcs)[bicluster, ])
+        yrange <- which(clusteredFeatures(bcs)[, bicluster])
         xrange <- which(clusteredSamples(bcs)[, bicluster])
         arr[xrange, yrange, 1] <<- cols["red", bicluster] / 255
         arr[xrange, yrange, 2] <<- cols["green", bicluster] / 255
@@ -483,9 +481,9 @@ function(input, output, session) {
         factorHeatmap(bce = bce, bcs = values$strategy, type = "score",
                       phenoLabels = phenoLabels,
                       biclustLabels = biclustLabels,
-                      ordering = if(input$scoreReorder) { "cluster" }
-                      else { "input" },
-                      colNames = input$sampNames)
+                      ordering = if(input$scoreReorder) { "cluster" } else {
+                        "input" },
+                      colNames = input$biclusterSampNames)
       })
   })
   
@@ -494,13 +492,15 @@ function(input, output, session) {
     scorePlotHelper()
   })
   scorePlotHelper <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    validate(need(inherits(values$strategy, "BiclusterStrategy") &&
+                    !is.null(input$scoreBicluster), ""))
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
-      plotSamples(bce = values$bce, bcs = values$strategy, type = "score",
+      plotThreshold(bce = values$bce, bcs = values$strategy, type = "score",
                   bicluster = input$scoreBicluster,
-                  ordering = if(input$sampOrder) { "input" }
-                  else { "distance" })
+                  ordering = if(input$scoreReorder) { "cluster" } else {
+                    "input" },
+                  xlabs = input$biclusterSampNames)
     })
   })
   
@@ -541,8 +541,10 @@ function(input, output, session) {
       value = 0, {
         set.seed(1234567) # FIXME: use duplicable()
         factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
-                      ordering = input$featOrder,
-                      colNames = input$featNames)
+                      ordering = if(input$loadingReorder) { "cluster" } else {
+                        "input"
+                        },
+                      colNames = input$biclusterFeatNames)
       }
     )})
   
@@ -555,9 +557,11 @@ function(input, output, session) {
   reactiveMarkers <- reactive({
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
-      plotMarkers(values$bce, strategy = name(values$strategy),
-                  bicluster = input$loadingBicluster,
-                  ordering = "input")
+      plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
+                    bicluster = input$loadingBicluster,
+                    ordering = if(input$loadingReorder) { "distance" } else {
+                      "input" },
+                    xlabs = input$biclusterFeatNames)
     })
   })
   
@@ -570,7 +574,7 @@ function(input, output, session) {
                     !is.null(input$loadingBicluster) &&
                     inherits(bcs, "BiclusterStrategy"), ""))
 
-    geneI <- which(loading(bcs)[bicluster, ] > bcs@loadingThresh[bicluster, 1])
+    geneI <- which(loading(bcs)[bicluster, ] > loadingThresh(bcs)[bicluster])
     genes <- featureNames(bce)[geneI]
     paste(unlist(genes), collapse = "\n")
   })
@@ -678,24 +682,23 @@ function(input, output, session) {
   observeEvent(
     input$go,
     {
-      shinyjs::disable("go")
       validate(need(inherits(values$bce, "BiclusterExperiment") &&
-                      inherits(values$strategy, "BiclusterStrategy"),
+                      inherits(values$strategy, "BiclusterStrategy") &&
+                      length(input$gos) > 0,
                     ""))
+      shinyjs::disable("go")
       withProgress(
         message = "Searching for Gene Ontology enrichment...",
         value = 0, max = nclust(values$strategy),
         {
           values$goRes <- withCallingHandlers({
-            testFE(bce = values$bce, strategy = values$strategy)
+            testFE(bce = values$bce, strategy = values$strategy, go = input$gos)
           },
           message = function(m) {
             incProgress(1)
             showNotification(conditionMessage(m), duration = 1)
           },
-          warning = function(w) {
-            showNotification(w$message, duration = NULL)
-            },
+          warning = function(w) {},
           error = function(e) {
             showNotification(e$message, duration = NULL)
             return(NULL)}
@@ -751,7 +754,6 @@ function(input, output, session) {
     goRes <- values$goRes
     if(length(goRes) > 1) {
       # summary data is same regardless of bicluster tested
-      browser()
       listOfHyperGs <- goRes[[1]]
       # list of matched IDs for each GO term
       matchedDatasetIds <- do.call(c, lapply(listOfHyperGs,
@@ -797,7 +799,8 @@ function(input, output, session) {
                     !is.null(input$goBicluster), "Please test GO enrichment"))
     df <- goDF()[[input$goBicluster]][, 1:6] # don't include gene lists
     return(
-      DT::datatable(df, options = list(paging = FALSE), selection = 'single')
+      DT::datatable(df, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
+                    autoHideNavigation = TRUE, selection = 'single')
     )
   })
   

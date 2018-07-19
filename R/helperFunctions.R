@@ -325,10 +325,7 @@ validateBiclustNames <- function(biclustNames, bcs) {
         paste0(
           "Requested bicluster labels ",
           paste(setdiff(biclustNames, validNames), sep = ", "),
-          " do not match any names in the \"pred\" slot of ",
-          "the named BiclusterStrategy. Call \"?names\"",
-          "to see how to view bicluster names."
-        )
+          " do not match any of names(bcs)")
       )
       biclustNames <- intersect(biclustNames, validNames)
     }

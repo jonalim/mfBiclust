@@ -539,6 +539,11 @@ Version: 0.5.0
 Hash: 247d1c1d72f3072563912ef860758624
 Requires: colorspace
 
+Package: nipals
+Source: CRAN
+Version: 0.4
+Hash: 781252e0739d914b473d7378ad970389
+
 Package: openssl
 Source: CRAN
 Version: 1.0.1

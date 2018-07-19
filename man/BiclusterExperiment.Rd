@@ -19,8 +19,6 @@ an instance of BiclusterExperiment-class
   data: Object of class \code{\link{matrix}}. The original data. 
   annot: Object of class \code{\link{data.frame}}. Annotations provided by the user
   strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
-  distance: Object of class \code{\link{matrix}}. Pairwise distances
-    between the rows of \code{data}
 }
 \description{
 BiclusterExperiment constructs an object holding data from multiple

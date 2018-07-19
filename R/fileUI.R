@@ -50,12 +50,13 @@ tabPanel(
         tabPanel("Sample distance", 
                  sidebarLayout(
                    sidebarPanel(
-                     selectInput("distType", "Formula",
+                     selectInput("sampDistType", "Formula",
                                  choices = c("Euclidean distance",
                                              "1 - Pearson")), 
-                     checkboxInput("distReorder", "Reorder"),
+                     checkboxInput("sampDistReorder", "Reorder"),
+                     checkboxInput("sampDistRownames", "Show row names"),
                      width = 3),
-                   mainPanel(plotOutput("distance", width = "100%"),
+                   mainPanel(plotOutput("sampleDistance", width = "100%"),
                              width = 9),
                    position = "right")
         )

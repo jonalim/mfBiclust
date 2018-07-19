@@ -37,7 +37,7 @@ setMethod("biclusterGUI", definition = function(obj, debug = FALSE) {
           source("R/biclusterUI.R", local = TRUE)$value,
           source("R/bcvUI.R", local = TRUE)$value, 
           source("R/goUI.R", local = TRUE)$value,
-          id = "navbarpage")
+          id = "navbarpage", fluid = TRUE)
         )
     },
     
