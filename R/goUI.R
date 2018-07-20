@@ -2,12 +2,13 @@ tabPanel(
   "Functional Annotation",
   sidebarLayout(
     sidebarPanel(
-      checkboxGroupInput("gos", h6("Ontologies"),
+      checkboxGroupInput("gos", h5("Ontologies"),
                          choices = list("Biological Process" = "BP",
                                         "Molecular Function" = "MF",
                                         "Cellular Component" = "CC"),
                          selected = "BP"),
-      actionButton("go", "Test for GO enrichment", disabled = TRUE),
+      uiOutput("species"),
+      uiOutput("go"),
       conditionalPanel(condition = "input.goTab == 'Terms' ||
                                  input.goTab == 'Genes'",
                        uiOutput("goBicluster")),
