@@ -3,21 +3,21 @@ function(input, output, session) {
   params <- list(
     biclusterargs = if(debug) {
       list(maxIter = 100L, shuffle = 1, withinVar = 10)
-      } else list(),
+    } else list(), # currently otsu is hardcoded even in debug mode
     bcvArgs = if(debug) list(holdouts = 2L) else list(),
     annotateBiclusters = if(debug) 3L else NA # how many biclusters to annotate
   )
-
+  
   #### REACTIVE VALUES #### 
   dep <- reactiveValues(
     pheatmap = requireNamespace("pheatmap", quietly = TRUE),
-    plaid = requireNamespace("biclust", quietly = TRUE),
-    spectral = requireNamespace("biclust", quietly = TRUE)
+    gostats = requireNamespace("GOstats", quietly = TRUE)
   )
   
   values <- reactiveValues(
     # Initialize as the user's BiclusterExperiment.
-    bce = if(inherits(userBce, "BiclusterExperiment")) userBce else NULL,
+    bce = if(inherits(userBce, "BiclusterExperiment")) {
+      userBce} else NULL,
     strategy = if(inherits(userBce, "BiclusterExperiment")) {
       if(length(strategies(userBce)) > 0) {
         getStrat(userBce, 1)
@@ -62,7 +62,7 @@ function(input, output, session) {
       shinyjs::enable("sepchar")
       shinyjs::enable("decchar")
       shinyjs::enable("quotechar")
-
+      
       # force character limits
       shinyjs::runjs("$('#sepchar').attr('maxlength', 1)")
       shinyjs::runjs("$('#quotechar').attr('maxlength', 1)")
@@ -79,6 +79,8 @@ function(input, output, session) {
         if(input$sampleCols) rawmat <- t(rawmat)
         incProgress(1/8)
       }, message = "Parsing data...", value = 0)
+      values$bce <- BiclusterExperiment(rawmat)
+      bcvValid <- FALSE
       rawmat
     }
   })
@@ -99,10 +101,9 @@ function(input, output, session) {
   # )
   
   # When the raw data matrix changes, trigger other reactive updates
-  observeEvent(rawmat(), {
-    values$bce <- BiclusterExperiment(rawmat())
-    bcvValid <- FALSE
-  })
+  # observeEvent(rawmat(), {
+  #   browser()
+  # })
   
   # Render an interactive data.table for the user's benefit
   output$dt <- DT::renderDT({
@@ -233,20 +234,26 @@ function(input, output, session) {
   }
   )
   
-  # observeEvent({values$bce
-  #   input$k
-  # },
-  # {if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "numeric"))) {
-  #   shinyjs::disable("bicluster")
-  # } else {
-  #   shinyjs::enable("bicluster")
-  # }
-  # }
-  # )
+  output$biclusterButton <- renderUI({
+    # core data must be available
+    atttributes <- if(inherits(values$bce, "BiclusterExperiment") && 
+                      inherits(input$k, "integer")) {
+      # The parameters must not match an existing BiclusterStrategy
+      if(all(names(values$bce) !=
+             name(list(bca = capitalize(input$algo),
+                       threshAlgo = capitalize("otsu"), k = input$k)))) {
+        # "disabled" must be absent to enable the button
+        return(actionButton("bicluster", "Run"))
+      }
+    }
+    # otherwise, disable the button
+    return(actionButton("bicluster", "Run", disabled = TRUE))
+  })
   
   observeEvent(input$bicluster, {
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
     validate(need(inherits(input$k, "integer"), ""))
+    # temporarily override the button's own renderUI
     shinyjs::disable("bicluster")
     try(removeNotification("overlapNotif"))
     
@@ -264,15 +271,15 @@ function(input, output, session) {
         # append any optional debug-mode arguments
         withCallingHandlers(
           bce <- do.call(addStrat,
-                         c(bce = bce, k = input$k, method = tolower(input$algo),
-                                     duplicable = TRUE, params$biclusterargs)),
-        warning = function(w) {
-          # In case less than the requested number of biclusters was found
-          showNotification(w$message, duration = NULL)
-        })
+                         c(bce = bce, k = input$k, method = input$algo,
+                           duplicable = TRUE, params$biclusterargs)),
+          warning = function(w) {
+            # In case less than the requested number of biclusters was found
+            showNotification(w$message, duration = NULL)
+          })
         newStrat <- names(bce)[length(names(bce))]
         algo <- strsplit(newStrat, split = " | ")[[1]][1]
-        if(algo != input$algo) {
+        if(algo != capitalize(input$algo)) {
           updateSelectInput(session, inputId = "algo", selected = algo)
           showNotification(
             paste(input$algo, "failed on your dataset, so the", algo,
@@ -283,30 +290,24 @@ function(input, output, session) {
         values$bce <- bce
       }, message = "Biclustering...", value = 0.2)
     } else {
+      browser()
       values$strategy <- getStrat(bce, matchStrats[1])
     }
   })
   
-  # Manage everything that happens when the parameters are changed
+  # When the parameters are changed, see if biclustering has already been run
+  # yet
   observeEvent({values$bce
     input$algo
     input$k
   }, {
-    # Disable the Run button if the data isn't in the right format
-    if(!(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "integer"))) {
-      shinyjs::disable("bicluster") 
-    } else {
-      # Enable the run button if the Bicluster strategy hasn't been run yet.
+    if(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "integer")) {
       bce <- values$bce
       stratName <- name(list(bca = capitalize(input$algo), 
-                             sta = capitalize("otsu"), lta = capitalize("otsu"), k = input$k))
+                             threshAlgo = capitalize("otsu"), k = input$k))
       matchStrats <- which(names(bce) == stratName)
-      if(length(matchStrats) == 0) {
-        shinyjs::enable("bicluster")
-      } else {
-        # If the BiclusterStrategy has been run already, activate it and disable
-        # the Run button
-        shinyjs::disable("bicluster")
+      if(length(matchStrats) > 0) {
+        # If the BiclusterStrategy has been run already, activate it
         values$strategy <- strategies(bce)[[stratName]]
       }
     }
@@ -330,6 +331,7 @@ function(input, output, session) {
     # render the whole heatmap
     mat <- rawmat()
     validate(need(inherits(mat, "matrix") && mode(mat) == "numeric", ""))
+    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
     m <- mat / max(mat)
     width <- ncol(m)
     height <- nrow(m)
@@ -407,23 +409,47 @@ function(input, output, session) {
     validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
     bcs <- values$strategy
     # Create lists of rows and columns contained in biclusters
-    rc <- biclusterMatrix2List(clusteredSamples(bcs),
-                               clusteredFeatures(bcs))
-    biclusterRows <- rc[[1]]
-    biclusterCols <- rc[[2]]
-    
-    # Check for overlaps with any other biclusters. Since a bicluster
-    # always overlaps with itself completely, test sum(l) == 1
-    overlaps <- overlap(biclusterRows, biclusterCols)
-    nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
-    if(!all(nonOverlap)) {
-      showNotification(id = "overlapNotif", paste(
-        do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
-        "overlap. Please interpret the heatmap annotations with care."), 
-        duration = NULL)
+    if(nclust(bcs) > 1) {
+      rc <- biclusterMatrix2List(clusteredSamples(bcs),
+                                 clusteredFeatures(bcs))
+      biclusterRows <- rc[[1]]
+      biclusterCols <- rc[[2]]
+      
+      # Check for overlaps with any other biclusters. Since a bicluster
+      # always overlaps with itself completely, test sum(l) == 1
+      overlaps <- overlap(biclusterRows, biclusterCols)
+      nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
+      if(any(!nonOverlap)) {
+        showNotification(id = "overlapNotif", paste(
+          do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
+          "overlap. Please interpret the heatmap annotations with care."), 
+          duration = NULL)
+      }
     }
   })
   
+  # Download a BiclusterExperiment with all BiclusterStrategy objects
+  output$downloadBceAll <- downloadHandler(
+    filename = function(){
+      paste0(substr(Sys.time(), start = 1, stop = 10),
+             "_BiclusterExperiment.Rdata")
+    },
+    content = function(file) {
+      bce <- values$bce
+      save(bce, file = file)
+    }
+  )
+  
+  output$downloadBceCurrent <- downloadHandler(
+    filename = function(){
+      paste0(substr(Sys.time(), start = 1, stop = 10),
+             "_BiclusterExperiment.Rdata")
+    },
+    content = function(file) {
+      bce <- wipeExcept(values$bce, values$strategy)
+      save(bce, file = file)
+    }
+  )
   
   #### Scores ####
   output$scorePanel <- renderUI({
@@ -497,10 +523,10 @@ function(input, output, session) {
     withProgress(message = "Plotting...", value = 0, {
       set.seed(1234567)
       plotThreshold(bce = values$bce, bcs = values$strategy, type = "score",
-                  bicluster = input$scoreBicluster,
-                  ordering = if(input$scoreReorder) { "cluster" } else {
-                    "input" },
-                  xlabs = input$biclusterSampNames)
+                    bicluster = input$scoreBicluster,
+                    ordering = if(input$scoreReorder) { "cluster" } else {
+                      "input" },
+                    xlabs = input$biclusterSampNames)
     })
   })
   
@@ -543,7 +569,7 @@ function(input, output, session) {
         factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
                       ordering = if(input$loadingReorder) { "cluster" } else {
                         "input"
-                        },
+                      },
                       colNames = input$biclusterFeatNames)
       }
     )})
@@ -573,7 +599,7 @@ function(input, output, session) {
     validate(need(inherits(bce, "BiclusterExperiment") && 
                     !is.null(input$loadingBicluster) &&
                     inherits(bcs, "BiclusterStrategy"), ""))
-
+    
     geneI <- which(loading(bcs)[bicluster, ] > loadingThresh(bcs)[bicluster])
     genes <- featureNames(bce)[geneI]
     paste(unlist(genes), collapse = "\n")
@@ -597,7 +623,7 @@ function(input, output, session) {
             shinyjs::html("bcvtext", "")
             suppressWarnings(
               do.call(auto_bcv, c(list(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
-                       bestOnly = FALSE, verbose = TRUE), params$bcvArgs)))
+                                       bestOnly = FALSE, verbose = TRUE), params$bcvArgs)))
           },
           message = function(m) {
             shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),

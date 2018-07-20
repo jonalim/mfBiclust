@@ -101,16 +101,21 @@ validBiclusterExperiment <- function( object ) {
   }
   
   if(inherits(object@strategies, "list")) {
-    validBcs <- unlist(sapply(names(object), function(bcs) {
-      inherits(getStrat(object, bcs), "BiclusterStrategy")
-    }))
-    if (!all(validBcs)) {
-      msg <- c(msg, "All strategies must be BiclusterStrategy objects.")
+    if(!all(names(object@strategies) == sapply(object@strategies, name))) {
+      msg <- c(msg, paste("List names of object@strategies are not identical",
+                          "to BiclusterStrategy names"))
     } else {
-      sapply(names(object), function(bcs) { # Check validity of all strategies
-        res <- validObject(getStrat(object, bcs), test = TRUE)
-        if(inherits(res, "character")) { msg <<- c(msg, res) }
-      })
+      validBcs <- unlist(sapply(names(object), function(bcs) {
+        inherits(getStrat(object, bcs), "BiclusterStrategy")
+      }))
+      if (!all(validBcs)) {
+        msg <- c(msg, "All strategies must be BiclusterStrategy objects.")
+      } else {
+        sapply(names(object), function(bcs) { # Check validity of all strategies
+          res <- validObject(getStrat(object, bcs), test = TRUE)
+          if(inherits(res, "character")) { msg <<- c(msg, res) }
+        })
+      }
     }
   } else {
     msg <- c(msg, "The strategies slot must be a 'list' object")
@@ -188,7 +193,6 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
                                        duplicable = duplicable, ...)
             }
             
-            
             name <- name(bcs)
             bce@strategies[[name]] <- bcs
             if(validObject(bce)) {
@@ -232,6 +236,49 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
+#' Remove all BiclusterStrategy objects from this BiclusterExperiment
+#' 
+#' Returns a BiclusterExperiment containing only abundance data
+#' 
+#' @export
+setGeneric("wipe", signature = "bce", function(bce) {standardGeneric("wipe")})
+setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
+  bce@strategies <- list()
+  return(bce)
+})
+
+#' Removes all BiclusterStrategy objects except one
+#' 
+#' Returns a BiclusterExperiment encapsulating only the named BiclusterStrategy.
+#' Can be useful to store the final results.
+#' 
+#' @export
+setGeneric("wipeExcept", signature = c("bce", "bcs"),
+           function(bce, bcs) {standardGeneric("wipeExcept")})
+setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "numeric"),
+           function(bce, bcs) {
+             wipeExcept(bce, getStrat(bce, bcs))
+           }
+)
+setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "character"),
+           function(bce, bcs) {
+             wipeExcept(bce, getStrat(bce, bcs))
+           }
+)
+setMethod("wipeExcept", c(bce = "BiclusterExperiment",
+                           bcs = "BiclusterStrategy"),
+           function(bce, bcs) {
+             if(any(names(bce) == name(bcs))) {
+              bce@strategies <- list()
+              bce@strategies[[name(bcs)]] <- bcs
+              return(bce)
+             } else {
+               stop(paste("The given BiclusterStrategy is not contained by the",
+"given BiclusterExperiment. Please create the BiclusterStrategy first."))
+             }
+           }
+)
+  
 #' @export
 setGeneric("strategies", signature = "bce", function(bce) {
   standardGeneric("strategies")

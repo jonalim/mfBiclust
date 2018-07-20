@@ -12,11 +12,17 @@ tabPanel(
   sidebarLayout(
   sidebarPanel(
     selectInput("algo", label = "Biclustering algorithm",
-                choices = c("ALS-NMF", "SVD-PCA", "NIPALS-PCA",
-                            "SNMF", "Plaid", "Spectral")
+                choices = c("ALS-NMF" = "als-nmf", "SVD-PCA" = "svd-pca", 
+                            "NIPALS-PCA" = "nipals-pca", "SNMF" = "snmf",
+                            "Plaid" = "plaid", "Spectral" = "spectral"),
+                multiple = FALSE
     ),
     uiOutput("kSlider"),
-    actionButton("bicluster", "Run", ),
+    uiOutput("biclusterButton"),
+    downloadButton('downloadBceCurrent', 'Download this bicluster result',
+                   class="dlButton"),
+    downloadButton('downloadBceAll', 'Download all bicluster results',
+                   class="dlButton"),
     width = 3
   ),
   mainPanel(
