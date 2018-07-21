@@ -730,15 +730,24 @@ function(input, output, session) {
       }
     }
   })
+  # Call this anytime BiocInstaller is needed
+  reqBiocInstaller <- function() {
+    # don't ever let duplicate actionButtons with the same ID exist
+    try(removeNotification("biocInstallerNotif"))
+    if(!requireNamespace("BiocInstaller", quietly = TRUE)) {
+      showNotification("BiocInstaller must be installed",
+                     action = actionButton("biocinstaller", "Install"),
+                     id ="biocInstallerNotif", duration = NULL)
+    }
+    return(requireNamespace("BiocInstaller", quietly = TRUE))
+  }
+  # Install GOstats
   observeEvent(
     input$gostats,
     {
+      # don't ever let duplicate actionButtons with the same ID exist
       try(removeNotification("gostatsNotif"))
-      if(!requireNamespace("BiocInstaller", quietly = TRUE)) {
-        showNotification("BiocInstaller must be installed",
-                         action = actionButton("biocinstaller", "Install"),
-                         id ="biocInstallerNotif", duration = NULL)
-      } else {
+      if(reqBiocInstaller()) {
         suppressWarnings(BiocInstaller::biocLite("GOstats",
                                                  suppressUpdates = TRUE))
       }
@@ -748,7 +757,7 @@ function(input, output, session) {
                {removeNotification("biocInstallerNotif")
                  suppressWarnings(source("https://bioconductor.org/biocLite.R"))
                  if(requireNamespace("BiocInstaller", quietly = TRUE)) {
-                   showNotification("Install GOstats now?", 
+                   showNotification("Install GOstats from Bioconductor now?", 
                                     action = actionButton("gostats2", "Install"),
                                     id = "gostatsNotif",
                                     duration = NULL)
@@ -763,6 +772,13 @@ function(input, output, session) {
                      length(input$gos) > 0,
                    ""))
       shinyjs::disable("go") # temporarily override the button's own renderUI
+      if(!requireNamespace(input$orgDb, quietly = TRUE)) {
+        # If the database needs to be installed, help the user to do so.
+        showNotification(paste(input$orgDb, "must be installed from Bioconductor"),
+                         action = actionButton("orgDbInstall", "Install"),
+                         id = "orgDbInstallNotif", duration = NULL)
+        # User will have to click the button againafter installation
+      } else {
       withProgress(
         message = "Searching for Gene Ontology enrichment...",
         value = 0, max = nclust(values$strategy),
@@ -781,12 +797,31 @@ function(input, output, session) {
             return(NULL)}
           )
         })
+      }
     })
+  # Install the selected org.*.Db
+  observeEvent(
+    input$orgDbInstall,
+    {if(reqBiocInstaller()) {
+      try(removeNotification("orgDbInstallNotif"))
+      # FIXME provide feedback...
+      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
+      # suppressWarnings( might be necessary to use --no-multiarch here?? I
+      # troubleshooted "Biobase is not installed for arch = i386" by
+      # reinstalling biobase
+        BiocInstaller::biocLite(input$orgDb,
+                                               suppressUpdates = TRUE,
+                                               suppressAutoUpdate = TRUE, type = "source")
+        # )
+    } if(requireNamespace(input$orgDb, quietly = TRUE)) {
+      shinyjs::click("go") # If installation succeeded, try again
+    }
+  })
   
   output$species <- renderUI({
     if(requireNamespace("BiocInstaller", quietly = TRUE)) {
       # search for Org.*.db packages on Bioconductor
-      pkgs <- available.packages(repo = biocinstallRepos()["BioCann"],
+      pkgs <- available.packages(repo = BiocInstaller::biocinstallRepos()["BioCann"],
                                   type= "source")
       orgdbI <- grep(pattern = "^org.*", row.names(pkgs))
       return(selectInput("orgDb", "Org. database:", choices = 
