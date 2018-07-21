@@ -809,6 +809,27 @@ function(input, output, session) {
       # suppressWarnings( might be necessary to use --no-multiarch here?? I
       # troubleshooted "Biobase is not installed for arch = i386" by
       # reinstalling biobase
+      BiocInstaller::biocLite(
+        input$orgDb,
+        suppressUpdates = TRUE,
+        suppressAutoUpdate = TRUE,
+        type = "source"
+      )
+    }
+      if(requireNamespace(input$orgDb, quietly = TRUE)) {
+        shinyjs::click("go") # If installation succeeded, try again
+      }
+    })
+  # Install the selected org.*.Db
+  observeEvent(
+    input$orgDbInstall,
+    {if(reqBiocInstaller()) {
+      try(removeNotification("orgDbInstallNotif"))
+      # FIXME provide feedback...
+      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
+      # suppressWarnings( might be necessary to use --no-multiarch here?? I
+      # troubleshooted "Biobase is not installed for arch = i386" by
+      # reinstalling biobase
         BiocInstaller::biocLite(input$orgDb,
                                                suppressUpdates = TRUE,
                                                suppressAutoUpdate = TRUE, type = "source")
