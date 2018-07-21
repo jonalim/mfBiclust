@@ -13,7 +13,8 @@ tabPanel(
                                  input.goTab == 'Genes'",
                        uiOutput("goBicluster")),
       conditionalPanel(condition = "input.goTab == 'Genes'",
-                       selectInput("goTerm", label = "Select GO ID:", choices = list(),
+                       selectInput("goTerm", label = "Select GO ID:",
+                                   choices = list(),
                                    multiple = FALSE)),
       width = 3),
     mainPanel(
