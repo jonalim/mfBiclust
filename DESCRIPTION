@@ -17,7 +17,6 @@ URL: https://github.com/jonalim/mfBiclust
 BugReports: https://github.com/jonalim/mfBiclust/issues
 biocViews:
 Imports: 
-    Rcpp (>= 0.12.16),
     shiny (>= 1.0.5),
     NMF,
     EBImage,
@@ -26,14 +25,12 @@ Imports:
     pheatmap,
     shinyjs,
     biclust
-LinkingTo: Rcpp
 RoxygenNote: 6.0.1
 Collate: 
     'containerGenerics.R'
     'helperFunctions.R'
     'BiclusterStrategy.R'
     'BiclusterExperiment.R'
-    'RcppExports.R'
     'bcv.R'
     'bcvUI.R'
     'bicluster.R'
