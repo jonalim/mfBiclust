@@ -20,25 +20,13 @@ setMethod("biclusterGUI", definition = function(obj, dbg = FALSE) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
-  userBce <- obj
+  userBce <- obj # server.R has access to this variable
   
   shinyApp(
     ui = source(system.file("shinyApp", "ui.R", package = "mfBiclust"),
            local = TRUE)$value,
     server = source(system.file("shinyApp", "server.R", package = "mfBiclust"),
                     local = TRUE)$value,
-    options = list(launch.browser = TRUE)
+    options = list(launch.browser = TRUE, fullstacktrace = TRUE)
   )
-  
-  # shinyApp(
-  #   ui = {
-  #     
-  #   },
-  #   
-  #   #### SERVER ##################################################################
-  #   server = source("R/server.R", local = TRUE)$value,
-  #   
-  #   # launch App in a browser
-  #   options = list(launch.browser = TRUE, fullstacktrace = TRUE)
-  # )
 })

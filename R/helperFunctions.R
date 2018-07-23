@@ -10,8 +10,8 @@
 biclusterMatrix2List <- function(rowxBicluster, biclusterxCol) {
   biclusterRows <- lapply(seq_len(ncol(rowxBicluster)), 
                           function(k) which(rowxBicluster[, k]))
-  biclusterCols <- lapply(seq_len(nrow(biclusterxCol)), 
-                          function(k) which(biclusterxCol[k, ]))
+  biclusterCols <- lapply(seq_len(ncol(biclusterxCol)), 
+                          function(k) which(biclusterxCol[, k]))
   list(biclusterRows, biclusterCols)
 }
 

@@ -254,14 +254,12 @@ snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
       }
     },
     error = function(e) {
-      browser()
       stop(e)
     }#,
     # finally = function() {
     #   res
     # }
   )
-  browser()
   res@method <- "snmf"
   return(res)
 }
