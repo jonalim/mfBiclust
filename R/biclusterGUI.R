@@ -16,33 +16,29 @@ setGeneric("biclusterGUI", signature = "obj", function(obj = NULL, ...) {
 # clusters must be a named list of matrices
 #' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
 #' @import shiny
-setMethod("biclusterGUI", definition = function(obj, debug = FALSE) {
+setMethod("biclusterGUI", definition = function(obj, dbg = FALSE) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
   userBce <- obj
   
   shinyApp(
-    ui = {
-      tagList(
-        shinyjs::useShinyjs(),
-        #### UI ##################################################################
-        navbarPage(
-          theme = shinythemes::shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
-          #### Data tabpanel ####
-          source("R/fileUI.R", local = TRUE)$value,
-          #### Bicluster tabpanel ####
-          source("R/biclusterUI.R", local = TRUE)$value,
-          source("R/bcvUI.R", local = TRUE)$value, 
-          source("R/goUI.R", local = TRUE)$value,
-          id = "navbarpage", fluid = TRUE)
-        )
-    },
-    
-    #### SERVER ##################################################################
-    server = source("R/server.R", local = TRUE)$value,
-    
-    # launch App in a browser
-    options = list(launch.browser = TRUE, fullstacktrace = TRUE)
+    ui = source(system.file("shinyApp", "ui.R", package = "mfBiclust"),
+           local = TRUE)$value,
+    server = source(system.file("shinyApp", "server.R", package = "mfBiclust"),
+                    local = TRUE)$value,
+    options = list(launch.browser = TRUE)
   )
+  
+  # shinyApp(
+  #   ui = {
+  #     
+  #   },
+  #   
+  #   #### SERVER ##################################################################
+  #   server = source("R/server.R", local = TRUE)$value,
+  #   
+  #   # launch App in a browser
+  #   options = list(launch.browser = TRUE, fullstacktrace = TRUE)
+  # )
 })

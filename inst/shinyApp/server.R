@@ -1,11 +1,10 @@
 function(input, output, session) {
-  
   params <- list(
-    biclusterargs = if(debug) {
+    biclusterargs = if(dbg) {
       list(maxIter = 100L, shuffle = 1, withinVar = 10)
     } else list(), # currently otsu is hardcoded even in debug mode
-    bcvArgs = if(debug) list(holdouts = 2L) else list(),
-    annotateBiclusters = if(debug) 3L else NA # how many biclusters to annotate
+    bcvArgs = if(dbg) list(holdouts = 2L) else list(),
+    annotateBiclusters = if(dbg) 3L else NA # how many biclusters to annotate
   )
   
   #### REACTIVE VALUES #### 
