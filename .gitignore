@@ -1,6 +1,7 @@
-packrat/lib*/
+packrat/lib*
 .Rproj.user
 packrat/bundles/*
 data/other/*
 .Rhistory
 NAMESPACE
+packrat/lib*/
