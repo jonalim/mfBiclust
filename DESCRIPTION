@@ -24,7 +24,8 @@ Imports:
     DT,
     pheatmap,
     shinyjs,
-    biclust
+    biclust,
+    shinythemes
 RoxygenNote: 6.0.1
 Collate: 
     'containerGenerics.R'

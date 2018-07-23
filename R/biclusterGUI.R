@@ -20,8 +20,6 @@ setMethod("biclusterGUI", definition = function(obj, debug = FALSE) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
-  library("shinythemes")
-  on.exit({try(detach("package:shinythemes"))},add = TRUE)
   userBce <- obj
   
   shinyApp(
@@ -30,7 +28,7 @@ setMethod("biclusterGUI", definition = function(obj, debug = FALSE) {
         shinyjs::useShinyjs(),
         #### UI ##################################################################
         navbarPage(
-          theme = shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
+          theme = shinythemes::shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
           #### Data tabpanel ####
           source("R/fileUI.R", local = TRUE)$value,
           #### Bicluster tabpanel ####
