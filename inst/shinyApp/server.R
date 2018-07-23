@@ -10,6 +10,7 @@ function(input, output, session) {
   #### REACTIVE VALUES #### 
   dep <- reactiveValues(
     pheatmap = requireNamespace("pheatmap", quietly = TRUE),
+    BiocInstaller = requireNamespace("BiocInstaller", quietly = TRUE),
     gostats = requireNamespace("GOstats", quietly = TRUE)
   )
   
@@ -704,7 +705,8 @@ function(input, output, session) {
   
   #### GO ENRICHMENT ####
   # FIXME don't crash upon choosing an absent species database
-  # Potential installation of GOstats and BiocInstaller
+  # Potential installation of GOstats and BiocInstaller...although BiocInstaller
+  # was required to install dependency biclust
   output$go <- renderUI({
     if(!dep$gostats) {
       return(actionButton("gostats", "Install dependency \"GOstats\""))
@@ -719,6 +721,10 @@ function(input, output, session) {
             active <- FALSE 
           }
         }
+        # the species dropdown must have loaded
+        if(is.null(input$orgDb)) { active <- FALSE } else {
+          if(nchar(input$orgDb) == 0) { active <- FALSE }
+        }
       } else {
           active <- FALSE
       }
@@ -730,46 +736,69 @@ function(input, output, session) {
     }
   })
   # Call this anytime BiocInstaller is needed
-  reqBiocInstaller <- function() {
-    # don't ever let duplicate actionButtons with the same ID exist
-    try(removeNotification("biocInstallerNotif"))
-    if(!requireNamespace("BiocInstaller", quietly = TRUE)) {
-      showNotification("BiocInstaller must be installed",
+  requestBiocInstaller <- function() {
+    if(!dep$BiocInstaller) {
+      showNotification(ui = paste("BiocInstaller must be installed. Clicking",
+                                  "below will run",
+                                  "https://bioconductor.org/biocLite.R"),
                      action = actionButton("biocinstaller", "Install"),
-                     id ="biocInstallerNotif", duration = NULL)
+                     id ="biocInstallerNotif", duration = NULL,
+                     closeButton = FALSE)
+      # I hate to make the notification non-closable, but I have no way of
+      # detecting the close action. Then the user has no way to install
+      # BiocInstaller after closing.
     }
-    return(requireNamespace("BiocInstaller", quietly = TRUE))
   }
   # Install GOstats
   observeEvent(
     input$gostats,
     {
-      # don't ever let duplicate actionButtons with the same ID exist
-      try(removeNotification("gostatsNotif"))
-      if(reqBiocInstaller()) {
-        suppressWarnings(BiocInstaller::biocLite("GOstats",
-                                                 suppressUpdates = TRUE))
+      if(!dep$BiocInstaller) { requestBiocInstaller() } else {
+        shinyjs::disable("gostats") # user may click only once
+        withProgress(
+          message = "Installing GOstats...", value = 3/8,
+          {suppressWarnings(BiocInstaller::biocLite("GOstats",
+                                                     suppressUpdates = TRUE))
+          })
+        withProgress(
+          message = "Verifying installation...", value = 7/8,
+          {
+            if(requireNamespace("GOstats", quietly = TRUE)) {
+              dep$gostats <- TRUE # trigger update of the "Run" button
+              showNotification(ui = "GOstats installed", duration = NULL)
+            } else {
+              showNotification(
+                ui = paste("Unable to install GOstats. Please save your work",
+                           "exit the GUI, and install GOstats manually before",
+                           "attempting to test for functional enrichment."),
+                duration = NULL)
+            }
+          })
+      }
+      shinyjs::enable("gostats") # cleanup? will this button ever display again?
+    }
+  )
+  observeEvent(
+    input$biocinstaller,
+    {removeNotification("biocInstallerNotif")
+      withProgress(
+        message = "Running https://bioconductor.org/biocLite.R", value = 3/8,
+        {suppressWarnings(source("https://bioconductor.org/biocLite.R"))
+        }
+      )
+      if(requireNamespace("BiocInstaller", quietly = TRUE)) {
+        dep$BiocInstaller <- TRUE
       }
     }
   )
-  observeEvent(input$biocinstaller,
-               {removeNotification("biocInstallerNotif")
-                 suppressWarnings(source("https://bioconductor.org/biocLite.R"))
-                 if(requireNamespace("BiocInstaller", quietly = TRUE)) {
-                   showNotification("Install GOstats from Bioconductor now?", 
-                                    action = actionButton("gostats2", "Install"),
-                                    id = "gostatsNotif",
-                                    duration = NULL)
-                 }
-               }
-  )
-  observeEvent(input$gostats2, { shinyjs::click("gostats") }) # redirect
+  # observeEvent(input$gostats2, { shinyjs::click("gostats") }) # redirect
   observeEvent(
     input$go,
     {validate(need(inherits(values$bce, "BiclusterExperiment") &&
                      inherits(values$strategy, "BiclusterStrategy") &&
                      length(input$gos) > 0,
                    ""))
+      browser()
       shinyjs::disable("go") # temporarily override the button's own renderUI
       if(!requireNamespace(input$orgDb, quietly = TRUE)) {
         # If the database needs to be installed, help the user to do so.
@@ -798,81 +827,41 @@ function(input, output, session) {
         })
       }
     })
-  # Install the selected org.*.Db
-  observeEvent(
-    input$orgDbInstall,
-    {if(reqBiocInstaller()) {
-      try(removeNotification("orgDbInstallNotif"))
-      # FIXME provide feedback...
-      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
-      # suppressWarnings( might be necessary to use --no-multiarch here?? I
-      # troubleshooted "Biobase is not installed for arch = i386" by
-      # reinstalling biobase
-      BiocInstaller::biocLite(
-        input$orgDb,
-        suppressUpdates = TRUE,
-        suppressAutoUpdate = TRUE,
-        type = "source"
-      )
-    }
-      if(requireNamespace(input$orgDb, quietly = TRUE)) {
-        shinyjs::click("go") # If installation succeeded, try again
-      }
-    })
-  # Install the selected org.*.Db
-  observeEvent(
-    input$orgDbInstall,
-    {if(reqBiocInstaller()) {
-      try(removeNotification("orgDbInstallNotif"))
-      # FIXME provide feedback...
-      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
-      # suppressWarnings( might be necessary to use --no-multiarch here?? I
-      # troubleshooted "Biobase is not installed for arch = i386" by
-      # reinstalling biobase
-      BiocInstaller::biocLite(
-        input$orgDb,
-        suppressUpdates = TRUE,
-        suppressAutoUpdate = TRUE,
-        type = "source"
-      )
-    }
-      if(requireNamespace(input$orgDb, quietly = TRUE)) {
-        shinyjs::click("go") # If installation succeeded, try again
-      }
-    })
-  # Install the selected org.*.Db
-  observeEvent(
-    input$orgDbInstall,
-    {
-      if(reqBiocInstaller()) {
-        try(removeNotification("orgDbInstallNotif"))
-        # FIXME provide feedback...
-        # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
-        # suppressWarnings( might be necessary to use --no-multiarch here?? I
-        # troubleshooted "Biobase is not installed for arch = i386" by
-        # reinstalling biobase
-        BiocInstaller::biocLite(input$orgDb,
-                                suppressUpdates = TRUE,
-                                suppressAutoUpdate = TRUE, type = "source")
-        # )
-      }
-      if(requireNamespace(input$orgDb, quietly = TRUE)) {
-        shinyjs::click("go") # If installation succeeded, try again
-      }
-  })
-  
   output$species <- renderUI({
-    if(requireNamespace("BiocInstaller", quietly = TRUE)) {
+    if(!dep$BiocInstaller) {
+      # pop up requesting BiocInstaller. Selector will be empty until installed.
+      requestBiocInstaller()
+      return(selectInput("orgDb", "Species:", choices = NULL, selected = NULL))
+    } else {
       # search for Org.*.db packages on Bioconductor
       pkgs <- available.packages(repo = BiocInstaller::biocinstallRepos()["BioCann"],
-                                  type= "source")
+                                 type= "source")
       orgdbI <- grep(pattern = "^org.*", row.names(pkgs))
       return(selectInput("orgDb", "Org. database:", choices = 
                            row.names(pkgs[orgdbI, ])))
-    } else {
-      return(selectInput("orgDb", "Species:", choices = NULL, selected = NULL))
     }
   })
+  # Install the selected org.*.Db
+  observeEvent(
+    input$orgDbInstall,
+    {if(dep$BiocInstaller) { # this check is redundant
+      try(removeNotification("orgDbInstallNotif"))
+      # FIXME provide feedback...
+      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
+      # suppressWarnings( might be necessary to use --no-multiarch here?? I
+      # troubleshooted "Biobase is not installed for arch = i386" by
+      # reinstalling biobase
+      BiocInstaller::biocLite(
+        input$orgDb,
+        suppressUpdates = TRUE,
+        suppressAutoUpdate = TRUE,
+        type = "source"
+      )
+    }
+      if(requireNamespace(input$orgDb, quietly = TRUE)) {
+        shinyjs::click("go") # If installation succeeded, try again
+      }
+    })
 
   # a list of hypergeometric test result dataframes, one per bicluster
   goDF <- reactive({
