@@ -41,8 +41,11 @@ function(input, output, session) {
   }
   )
   
-  rawmat <- reactive({ # If the user has not chosen a file yet, look for a BiclusterExperiment in the execution environment of biclusterGUI
+  # Update this central matrix from its source
+  rawmat <- reactive({
     if(is.null(input$input_df)) {
+      # If the user has not chosen a file yet, look for a BiclusterExperiment in
+      # the execution environment of biclusterGUI
       shinyjs::disable("row_names")
       shinyjs::disable("header")
       shinyjs::disable("skiplines")
@@ -51,7 +54,7 @@ function(input, output, session) {
       shinyjs::disable("decchar")
       validate(need(inherits(userBce, "BiclusterExperiment"), 
                     "You may import your dataset."))
-      t(as.matrix(userBce))
+      return(t(as.matrix(values$bce))) # rawmat mirrors values$bce
     }
     # If the user has chosen a file, read it and update
     else {
@@ -78,9 +81,9 @@ function(input, output, session) {
         if(input$sampleCols) rawmat <- t(rawmat)
         incProgress(1/8)
       }, message = "Parsing data...", value = 0)
-      values$bce <- BiclusterExperiment(rawmat)
+      values$bce <- BiclusterExperiment(rawmat) # values$bce mirrors rawmat
       bcvValid <- FALSE
-      rawmat
+      return(rawmat)
     }
   })
   # 
@@ -118,15 +121,6 @@ function(input, output, session) {
             )[, annot]))
           }))) * 22 - 106)})
   
-  observeEvent(input$pheatmap, {
-    withProgress(message = "Installing pheatmap...", value = 0, {
-      install.packages("pheatmap")
-    })
-    if(requireNamespace("pheatmap", quietly = TRUE)) {
-      dep$pheatmap <- TRUE
-    }
-  })
-  
   output$annotPicker <- renderUI({
     classes <- if(inherits(values$bce, "BiclusterExperiment")) {
       c(colnames(Biobase::phenoData(values$bce)))
@@ -140,12 +134,10 @@ function(input, output, session) {
   # plot abundance heatmap (original data)
   output$uiabundance <- renderUI({
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
-    if(!dep$pheatmap) {
-      actionButton("pheatmap", "Install dependency \"pheatmap\"")
-    } else {
+    withProgress(message = "Plotting...", value = 3/8, {
       height = reactiveHeatmapHeight500()
-      plotOutput("abundance", height = height)
-    }
+      return(plotOutput("abundance", height = height))
+    })
   })
   output$abundance <- renderPlot({
     gt <- reactive_abundance()
@@ -153,28 +145,25 @@ function(input, output, session) {
   }, height = function() {reactiveHeatmapHeight500()})
   reactive_abundance <- reactive({
     bce <- values$bce
-    
-    withProgress(message = "Plotting...", value = 0, {
-      set.seed(1234567)
-      if(input$logBase == "e") {
-        logBase <- exp(1)
-      } else {
-        logBase <- as.numeric(input$logBase)
-      }
-      phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(bce)))
-      # biclustLabels <- if(length(names(bce)) > 0) {
-      #   intersect(input$annots, names(getStrat(bce, input$strategy)))
-      plot(bce, logBase = logBase, phenoLabels = phenoLabels,
-           ordering = if(input$heatmapReorder) "distance" else "input",
-           strategy = input$strategy,
-           rowNames = input$sampNames, colNames = input$featNames)
-    })
+
+    if(input$logBase == "e") {
+      logBase <- exp(1)
+    } else {
+      logBase <- as.numeric(input$logBase)
+    }
+    phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(bce)))
+    # biclustLabels <- if(length(names(bce)) > 0) {
+    #   intersect(input$annots, names(getStrat(bce, input$strategy)))
+    plot(bce, logBase = logBase, phenoLabels = phenoLabels,
+         ordering = if(input$heatmapReorder) "distance" else "input",
+         strategy = input$strategy,
+         rowNames = input$sampNames, colNames = input$featNames)
   })
   
   # Plot of samples along first two PCs
   output$pca <- renderPlot({ 
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
-    pca(values$bce)
+    withProgress(message = "Plotting...", value = 3/8, { pca(values$bce) })
   }
   )
   
