@@ -1,3 +1,9 @@
+#' Simulated bicluster datasets
+#' 
+#' Simulated matrices containing biclusters and mild normally-distributed noise.
+#' Generated using \code{genSimData}.
+"simdata"
+
 #' Gene expression datasets for benchmarking classification performance
 #'
 #' Microarray and RNAseq datasets from biclustlib, originally published by
