@@ -6,6 +6,11 @@ simdata_10 <- genSimData(n = 10, overlapped = TRUE, noise = 0.01)
 
 simdata <- list(simdata_3_nonoverlap, simdata_3_overlap, simdata_10_nonoverlap,
                 simdata_10)
+<<<<<<< HEAD
 names(simdata) <- c("simdata_3_nonoverlap", "simdata_3_overlap",
                     "simdata_10_nonoverlap", "simdata_10")
+=======
+names(simdata) <- c("nonoverlap3", "overlap3",
+                    "nonoverlap10", "overlap10")
+>>>>>>> Added simulation data and  to the correct folders
 usethis::use_data(simdata, overwrite = TRUE)
