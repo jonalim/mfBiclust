@@ -2,6 +2,12 @@
 #' 
 #' Simulated matrices containing biclusters and mild normally-distributed noise.
 #' Generated using \code{genSimData}.
+#' 
+#' @format A list of 4 matrices named:
+#' \item{nonoverlap3}
+#' \item{overlap3}
+#' \item{nonoverlap10}
+#' \item{overlap10}
 "simdata"
 
 #' Gene expression datasets for benchmarking classification performance
