@@ -19,10 +19,8 @@ tabPanel(
     ),
     uiOutput("kSlider"),
     uiOutput("biclusterButton"),
-    downloadButton('downloadBceCurrent', 'Download this bicluster result',
-                   class="dlButton"),
-    downloadButton('downloadBceAll', 'Download all bicluster results',
-                   class="dlButton"),
+    uiOutput("downloadBceButton"),
+    uiOutput("downloadBceAllButton"),
     width = 3
   ),
   mainPanel(
