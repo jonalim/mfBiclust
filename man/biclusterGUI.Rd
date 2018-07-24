@@ -8,7 +8,7 @@
 \usage{
 biclusterGUI(obj = NULL, ...)
 
-\S4method{biclusterGUI}{ANY}(obj, debug = FALSE)
+\S4method{biclusterGUI}{ANY}(obj, dbg = FALSE)
 }
 \description{
 Opens a GUI to visualize analysis results contained in a BiclusterExperiment
