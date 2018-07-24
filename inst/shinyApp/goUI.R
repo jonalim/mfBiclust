@@ -2,7 +2,7 @@ tabPanel(
   "Functional Annotation",
   sidebarLayout(
     sidebarPanel(
-      checkboxGroupInput("gos", h5("Ontologies"),
+      checkboxGroupInput("gos", h5("Gene Ontologies"),
                          choices = list("Biological Process" = "BP",
                                         "Molecular Function" = "MF",
                                         "Cellular Component" = "CC"),

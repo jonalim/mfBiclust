@@ -1,6 +1,7 @@
 # RETURN list of named vectors of BH-adjusted p-values
 # Each list element should be named after a bicluster
-testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF"), duplicable = TRUE) {
+testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "CC"), 
+                   parallel = FALSE, duplicable = TRUE) {
   if(length(strategy) != 1) {
     stop(paste("Provide exactly one BiclusterStrategy object, name or index. Run",
                "names(strategies(bce)) to see BiclusterStrategy objects."))
@@ -16,6 +17,19 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF"), d
   # Change this to use method dispatch
   bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)
   
+  go <- match.arg(go, several.ok = TRUE)
+
+  lappl <- lapply
+  mappl <- mapply
+  if(parallel) {
+    if(!requireNamespace("BiocParallel", quietly = TRUE)) {
+      warning("BiocParallel must be on the library path to use parallelization")
+    } else {
+      lappl <- BiocParallel::bplapply
+      mappl <- BiocParallel::bpmapply
+    }
+  }
+  
   if(duplicable) { duplicable("testFE") }
   
   # thresholded loading matrix
@@ -30,39 +44,19 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF"), d
   
   # Returns a list of results for each bicluster: a list with one element per
   # ontology
-  if(length(go) > 0) {
-    mFun <- function(geneList, name, universe, ontology, fun, orgDb) {
-      # test each requested GO
-      tryCatch(
-        {BiocParallel::bplapply(go, fun, 
-              geneList = geneList, name = name, universe = universe,
-              orgDb = orgDb)
-        },
-        error = function(e) { # fallback if BiocParallel failes
-          lapply(go, fun, 
-                 geneList = geneList, name = name, universe = universe,
-                 orgDb = orgDb)
-        }
-      )
-    }
-    return(# Test every bicluster for enrichment
-      tryCatch(
-        {BiocParallel::bpmapply(mFun,
-              geneLists, names(geneLists),
-              MoreArgs = list(universe = universe, ontology = go,
-                              fun = hyperGGO, orgDb = orgDb),
-              SIMPLIFY = FALSE, USE.NAMES = TRUE)
-        },
-        error = function(e) {
-          mapply(mFun,
-                 geneLists, names(geneLists),
-                 MoreArgs = list(universe = universe, ontology = go,
-                                 fun = hyperGGO, orgDb = orgDb),
-                 SIMPLIFY = FALSE, USE.NAMES = TRUE)
-        }
-      )
-    )
+  mFun <- function(geneList, name, universe, ontology, fun, orgDb) {
+    # test each requested GO
+    lappl(go, fun, 
+          geneList = geneList, name = name, universe = universe,
+          orgDb = orgDb)
   }
+  return(# Test every bicluster for enrichment
+    mappl(mFun,
+          geneLists, names(geneLists),
+          MoreArgs = list(universe = universe, ontology = go,
+                          fun = hyperGGO, orgDb = orgDb),
+          SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  )
 }
 
 hyperGGO <- function(ontology = c("MF", "BP", "CC"), geneList, name, universe,

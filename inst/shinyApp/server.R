@@ -329,7 +329,7 @@ function(input, output, session) {
     # render the whole heatmap
     mat <- rawmat()
     validate(need(inherits(mat, "matrix") && mode(mat) == "numeric", ""))
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), ""))
+    
     m <- mat / max(mat)
     width <- ncol(m)
     height <- nrow(m)
@@ -338,7 +338,7 @@ function(input, output, session) {
     
     # Add bicluster outlines 
     bcs <- values$strategy
-    if(!is.null(bcs)) {
+    if(inherits(bcs, "BiclusterStrategy")) {
       cols <- hcl(h = seq(0, (nclust(bcs) - 1) / (nclust(bcs)),
                           length = nclust(bcs)) * 360, c = 100, l = 65,
                   fixup = TRUE)
@@ -375,10 +375,7 @@ function(input, output, session) {
     #   arr <- array(1, dim = c(1, 1, 1)) # one white pixel
     #   
     # }
-    tryCatch(png::writePNG(arr,
-                           target = temp), error = function(e) {.0
-                             browser()}
-    )
+    try(png::writePNG(arr, target = temp))
     # Return a list containing information about the zoomed image
     list(
       src = temp,
@@ -427,6 +424,15 @@ function(input, output, session) {
   })
   
   # Download a BiclusterExperiment with all BiclusterStrategy objects
+  output$downloadBceAllButton <- renderUI({
+    if(length(strategies(values$bce)) > 0) {
+      downloadButton('downloadBceAll', 'Download all bicluster results',
+                      class="dlButton")
+    } else {
+      actionButton('downloadBceAll', 'Download all bicluster results',
+                     class="dlButton", disabled = TRUE)
+    }
+  })
   output$downloadBceAll <- downloadHandler(
     filename = function(){
       paste0(substr(Sys.time(), start = 1, stop = 10),
@@ -438,6 +444,16 @@ function(input, output, session) {
     }
   )
   
+  # Download a BiclusterExperiment with the current BiclusterStrategy
+  output$downloadBceButton <- renderUI({
+    if(inherits(values$strategy, "BiclusterStrategy")) {
+      downloadButton('downloadBceCurrent', 'Download this bicluster result',
+                     class="dlButton")
+    } else {
+      actionButton('downloadBceCurrent', 'Download this bicluster result',
+                 class="dlButton", disabled = TRUE)
+    }
+  })
   output$downloadBceCurrent <- downloadHandler(
     filename = function(){
       paste0(substr(Sys.time(), start = 1, stop = 10),
@@ -734,7 +750,7 @@ function(input, output, session) {
       }
     }
   })
-  # Call this anytime BiocInstaller is needed
+  # Call this anytime BiocInstaller is absent
   requestBiocInstaller <- function() {
     if(!dep$BiocInstaller) {
       showNotification(ui = paste("BiocInstaller must be installed. Clicking",
@@ -790,7 +806,6 @@ function(input, output, session) {
       }
     }
   )
-  # observeEvent(input$gostats2, { shinyjs::click("gostats") }) # redirect
   observeEvent(
     input$go,
     {validate(need(inherits(values$bce, "BiclusterExperiment") &&
@@ -810,21 +825,23 @@ function(input, output, session) {
       } else {
       withProgress(
         message = "Searching for Gene Ontology enrichment...",
-        value = 0, max = nclust(values$strategy),
+        value = 0, max = nclust(values$strategy) * length(input$gos),
         {
           values$goRes <- withCallingHandlers({
-            testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
-                   orgDb = input$orgDb)
+            # withCallingHandlers handles warnings; errors are trapped by try()
+            try(testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
+                   orgDb = input$orgDb))
           },
           message = function(m) {
             incProgress(1)
-            showNotification(conditionMessage(m), duration = 1)
+            showNotification(conditionMessage(m), duration = 5)
           },
-          warning = function(w) {},
-          error = function(e) {
-            showNotification(e$message, duration = NULL)
-            return(NULL)}
+          warning = function(w) {}
           )
+          if(inherits(values$goRes, "try-error")) {
+            showNotification(values$goRes, duration = NULL)
+            values$goRes <- NULL # return to previous app state
+          }
         })
       }
     })
@@ -845,25 +862,27 @@ function(input, output, session) {
   # Install the selected org.*.Db
   observeEvent(
     input$orgDbInstall,
-    {if(dep$BiocInstaller) { # this check is redundant
-      try(removeNotification("orgDbInstallNotif"))
-      # FIXME provide feedback...
-      # withProgress(value = (3/8), message = paste("Installing", input$orgDb), {
-      # suppressWarnings( might be necessary to use --no-multiarch here?? I
-      # troubleshooted "Biobase is not installed for arch = i386" by
-      # reinstalling biobase
-      BiocInstaller::biocLite(
-        input$orgDb,
-        suppressUpdates = TRUE,
-        suppressAutoUpdate = TRUE,
-        type = "source"
-      )
-    }
-      if(requireNamespace(input$orgDb, quietly = TRUE)) {
-        shinyjs::click("go") # If installation succeeded, try again
+    {
+      if(dep$BiocInstaller) { # this check is redundant
+        try(removeNotification("orgDbInstallNotif"))
+        withProgress(
+          message = paste("Installing", input$orgDb), value = 3/8,
+          {BiocInstaller::biocLite(
+            input$orgDb,
+            suppressUpdates = TRUE,
+            suppressAutoUpdate = TRUE,
+            type = "source")
+          }
+        )
+        if(requireNamespace(input$orgDb, quietly = TRUE)) {
+          # why doesn't this work? shinyjs::click("go") 
+          showNotification(paste(input$orgDb, "installed!"), duration = NULL)
+        }
+      } else {
+        requestBiocInstaller()
       }
     })
-
+  
   # a list of hypergeometric test result dataframes, one per bicluster
   goDF <- reactive({
     goRes <- values$goRes
@@ -920,7 +939,8 @@ function(input, output, session) {
   # Plot of bicluster significance values
   output$goSigPlot <- renderPlot({
     goRes <- values$goRes
-    validate(need(length(goRes) > 0 && !is.null(names(goRes)), ""))
+    validate(need(length(goRes) > 0 && !is.null(names(goRes)),
+                  "Please test for functional enrichment"))
     
     bp <- barplot(height = goSummary()$significance, xaxs = "i", yaxs = "i", xaxt = "n",
                   ylab = "-log10[p-value]")
