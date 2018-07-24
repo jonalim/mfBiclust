@@ -289,7 +289,6 @@ function(input, output, session) {
         values$bce <- bce
       }, message = "Biclustering...", value = 0.2)
     } else {
-      browser()
       values$strategy <- getStrat(bce, matchStrats[1])
     }
   })
@@ -798,14 +797,16 @@ function(input, output, session) {
                      inherits(values$strategy, "BiclusterStrategy") &&
                      length(input$gos) > 0,
                    ""))
-      browser()
       shinyjs::disable("go") # temporarily override the button's own renderUI
       if(!requireNamespace(input$orgDb, quietly = TRUE)) {
+        try(removeNotification("orgDbInstallNotif"))
         # If the database needs to be installed, help the user to do so.
         showNotification(paste(input$orgDb, "must be installed from Bioconductor"),
                          action = actionButton("orgDbInstall", "Install"),
                          id = "orgDbInstallNotif", duration = NULL)
-        # User will have to click the button againafter installation
+        # the user can click this button repeatedly, but only one notif is shown
+        shinyjs::enable("go")
+        # User will have to click the button again AFTER installation
       } else {
       withProgress(
         message = "Searching for Gene Ontology enrichment...",
