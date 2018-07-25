@@ -117,14 +117,14 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
   return(invisible(res))
 }
 
-nipals_pca <- function(A, k, duplicable = TRUE, ...) {
+nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
   np <- tryCatch({
-    nipals::nipals(x = A, ncomp = k, center = FALSE, scale = FALSE, 
+    nipals::nipals(x = A, ncomp = k, center = center, scale = FALSE, 
                    tol = 1e-6, ...)
   },
   error = function(e) {
@@ -141,25 +141,26 @@ nipals_pca <- function(A, k, duplicable = TRUE, ...) {
       method = "nipals-pca")
 }
 
-nipals_pca_helper <- function(A, k, cleanParam = 0, duplicable = FALSE) {
+nipals_pca_autoclean <- function(A, k, cleanParam = 0, center = FALSE,
+                                 duplicable = FALSE) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
-  
   cleanRes <- clean(A, cleanParam, dimsRemain = TRUE)
   mClean <- cleanRes$obj
   indexRem <- cleanRes$dimsRemain
   
   tryCatch({
-    list(m = mClean, nipals_pca(mClean, k), indexRemaining = indexRem)
+    list(m = mClean, genericFit = nipals_pca_nocatch(mClean, k, center = center),
+         indexRemaining = indexRem)
   }, error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
-      cleanParam <- cleanParam + (1 - cleanParam) / 2
+      cleanParam <- cleanParam + log10(2 - i)
       message(paste("Too many NA in the data. Cleaning with maxNAs at",
                     cleanParam))
       # pass the original m so indexRemaining is valid for the user's matrix
-      nipals_pca(A, k, cleanParam, duplicable)
+      nipals_pca_helper(A, k, cleanParam, center, duplicable)
     } else { stop(e) }
   })
 }

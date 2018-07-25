@@ -4,10 +4,7 @@ setGeneric("as.matrix")
 #' Cleans a matrix by removing NAs
 #'
 #' @export
-setGeneric("clean", function(object, maxNa = 0, dimsRemain = FALSE) {
-  if(!(maxNa <= 1 && maxNa >= 0)) {
-    stop("Arg \"maxNa\" must be in the range of 0 to 1.")
-  }
+setGeneric("clean", function(object, cleanParam = 0, dimsRemain = FALSE) {
   standardGeneric("clean")
 })
 
