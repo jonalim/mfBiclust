@@ -207,7 +207,11 @@ setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
 })
 
-setMethod("clean", c(object = "BiclusterExperiment"), function(object, maxNa) {
+setMethod("clean", c(object = "BiclusterExperiment"), function(object,
+                                                               cleanParam) {
+  if(!(cleanParam <= 1 && cleanParam >= 0)) {
+    stop("Arg \"cleanParam\" must be in the range of 0 to 1.")
+  }
   results <- clean(t(as.matrix(object)), maxNa, TRUE)
   # [[2]] contains a vector of indexes of the remaining columns
   # [[1]] contains the cleaned matrix itself

@@ -44,6 +44,7 @@ capitalize <- Vectorize(function(s) {
                 return(paste0(toupper(substring(s, 1,1)), substring(s, 2)))) }
 })
 
+#### Clean ####
 setMethod("clean", c(object = "matrix"), function(object, cleanParam,
                                                   dimsRemain) {
   if(!(cleanParam <= 1 && cleanParam >= 0)) {
