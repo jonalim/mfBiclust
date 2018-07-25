@@ -331,13 +331,13 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, ...) {
 #' @param m the target matrix
 #' @param k the number of principal components
 svd_pca <- function(A, k, duplicable = NULL, ...) {
-  prcmp <- prcomp(A, rank. = k, retx = TRUE, center = FALSE)
+  prcmp <- prcomp(t(A), rank. = k, retx = TRUE, center = FALSE)
   new(
     "genericFit",
     fit = new(
       "genericFactorization",
-      W = prcmp$x,
-      H = t(prcmp$rotation)
+      H = t(prcmp$x),
+      W = prcmp$rotation
     ),
     method = "svd-pca"
   )

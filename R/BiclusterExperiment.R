@@ -54,7 +54,7 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 #'   annot: Object of class \code{\link{data.frame}}. Annotations provided by the user
 #'   strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
 #' @export
-setGeneric("BiclusterExperiment", function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE), featureData = annotatedDataFrameFrom(m, byrow = FALSE), pp = FALSE, maxNa = 0.5) {
+setGeneric("BiclusterExperiment", function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = FALSE), featureData = annotatedDataFrameFrom(m, byrow = TRUE), pp = FALSE, maxNa = 0.5) {
   standardGeneric("BiclusterExperiment")
 })
 
@@ -74,7 +74,7 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, fe
   }
   
   ad <- Biobase::assayDataNew(storage.mode = "list")
-  ad$abund <- t(m)
+  ad$abund <- m
   
   if(inherits(bcs, "list")) {
     names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
@@ -140,40 +140,31 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' provided.
 #' 
 #' @export
-setGeneric("addStrat", function(bce, k, 
-                                method,
-                                maxNa = 1, duplicable = TRUE, silent = FALSE, 
+setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
+                                                           method = c("als-nmf", "svd-pca", "snmf",
+                                                                      "nipals-pca", "plaid", "spectral"),
+                                duplicable = TRUE, silent = FALSE, 
                                 ...) {
   standardGeneric("addStrat")
 })
-setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric", 
-                        method = "character"), 
-          function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
-                                      "nipals-pca", "plaid", "spectral"), maxNa, 
+setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"), 
+          function(bce, k, method,
                    duplicable, silent, ...) {
             # Validate parameters
             # k must be whole number, smaller than both dimensions of m
-            m <- t(as.matrix(bce))
-            k <- validateKM(k, m, method)
-            if(!(maxNa <= 1 && maxNa >= 0)) {
-              stop("Arg \"maxNa\" must be in the range of 0 to 1.")
-            }
-            
-            if(method == "nipals-pca") {
-              # to my knowledge, this is the only method so far that needs cleaning
-              bce <- clean(bce, maxNa)
-            }
-            
+            m <- as.matrix(bce)
+            method <- match.arg(method)
             if(length(method) > 1) {
               stop("Argument \"method\" must be a single string")
             }
-            method <- match.arg(method)
             # do this so that the recursive calls with a NULL method are also silent
             method.orig <- method
             
+            k <- validateKM(k, m, method)
+
             if (method == "nipals-pca") {# Special code for NIPALS
               # Careful! because we're in tryCatch, warnings won't be printed.
-              bcs <- tryCatch({
+              res <- tryCatch({
                 BiclusterStrategy(m = m, k = k, method = method, ...)
               }, error = function(e) {
                 if(method == "nipals-pca" &&
@@ -194,7 +185,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric",
             }
             
             name <- name(bcs)
-            bce@strategies[[name]] <- bcs
+            strategies(bce)[[name]] <- bcs
             if(validObject(bce)) {
               message(paste("Added BiclusterStrategy named", name))
               return(bce)
@@ -212,7 +203,7 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object,
   if(!(cleanParam <= 1 && cleanParam >= 0)) {
     stop("Arg \"cleanParam\" must be in the range of 0 to 1.")
   }
-  results <- clean(t(as.matrix(object)), maxNa, TRUE)
+  results <- clean(as.matrix(object), maxNa, TRUE)
   # [[2]] contains a vector of indexes of the remaining columns
   # [[1]] contains the cleaned matrix itself
   bce <- object[results[[2]][[2]], results[[2]][[1]]]
@@ -233,7 +224,7 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object,
 #' @export
 setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
 setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
-  bce@strategies[[id]] 
+  strategies(bce)[[id]] 
 })
 
 #' Names of BiclusterStrategies in this BiclusterExperiment
@@ -247,7 +238,7 @@ setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 #' @export
 setGeneric("wipe", signature = "bce", function(bce) {standardGeneric("wipe")})
 setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
-  bce@strategies <- list()
+  strategies(bce) <- list()
   return(bce)
 })
 

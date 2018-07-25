@@ -45,7 +45,7 @@ libGostats <- function() {
 
 calcFE <- function(dataset, algorithm, cutoffs) {
   # Perform biclustering for 300 biclusters
-  bce <- BiclusterExperiment(t(as.matrix(dataset)))
+  bce <- BiclusterExperiment(as.matrix(dataset))
   
   bce <- addStrat(bce, 500, method = algorithm, duplicable = TRUE)
   
@@ -236,7 +236,7 @@ testResidAgriCor <- function(rep = 30) {
   
   agrisResids <- sapply(seq_len(30), FUN = function(i) {
     agrisResids <- sapply(overTwoClass, FUN = function(dataset) {
-      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- BiclusterExperiment(as.matrix(dataset$data))
       bce <- addStrat(bce, k = length(unique(colnames(dataset$labels))), 
                       method = "als-nmf")
       labels <- dataset$labels
@@ -246,7 +246,7 @@ testResidAgriCor <- function(rep = 30) {
         prediction <- apply(prediction, 2, as.numeric)
         gri$grand_index(t(labels), t(prediction), adjusted=TRUE)  
       } else { 0 }
-      resid <- t(as.matrix(dataset$data)) - 
+      resid <- as.matrix(dataset$data) -
         score(getStrat(bce, 1)) %*% loading(getStrat(bce, 1))
       resid.rms <- sqrt(sum(resid ^ 2) / length(resid))
       
@@ -334,7 +334,7 @@ testMultiBiclustering <- function() {
   # Find and evaluate als-nmf solutions for datasets
   agris.als_nmf <- sapply(seq_len(30), function(i) {
     agris.als_nmf <- sapply(datasets.all, function(dataset) {
-      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- BiclusterExperiment(as.matrix(dataset$data))
       bce <- addStrat(bce, k = length(unique(colnames(dataset$labels))), method = "als-nmf")
       labels <- dataset$labels
       if(method(getStrat(bce, 1)) == "als-nmf") {
@@ -349,7 +349,7 @@ testMultiBiclustering <- function() {
   
   # Find and evaluate SVD-PCA solutions for datasets
   bces.svd_pca <- sapply(datasets.all, function(l) {
-    bce <- BiclusterExperiment(t(as.matrix(l$data)))
+    bce <- BiclusterExperiment(as.matrix(l$data))
     bce <- addStrat(bce, k = length(unique(colnames(l$labels))), method = "svd-pca")
   }
   )
@@ -367,7 +367,7 @@ testMultiBiclustering <- function() {
     dataset <<- 0
     agris.plaid <- sapply(datasets.all, FUN = function(l) {
       dataset <<- dataset + 1
-      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      bce <- BiclusterExperiment(as.matrix(l$data))
       agri.plaid <- NULL
       while(!is.numeric(agri.plaid)) {
         agri.plaid <- try({
@@ -385,7 +385,7 @@ testMultiBiclustering <- function() {
   
   agris.spectral <- sapply(seq_len(30), function(i) {
     agris.spectral <- sapply(datasets.all, FUN = function(dataset) {
-      bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+      bce <- BiclusterExperiment(as.matrix(dataset$data))
       agri.spectral <- NULL
       while(!is.numeric(agri.spectral)) {
         agri.spectral <- try({
@@ -444,7 +444,7 @@ testSinglePca <- function() {
   minRowClusterFraction <- min(sapply(twoClass, function(x) table(x$labels) / length(x$labels)))
   
   aris.als_nmf <- sapply(twoClass, function(dataset) {
-    bce <- BiclusterExperiment(t(as.matrix(dataset$data)))
+    bce <- BiclusterExperiment(as.matrix(dataset$data))
     bce <- addStrat(bce, k = 1, method = "als-nmf")
     
     labels <- dataset$labels
@@ -454,7 +454,7 @@ testSinglePca <- function() {
   })
   
   bces.svd_pca <- sapply(twoClass, function(l) {
-    bce <- BiclusterExperiment(t(as.matrix(l$data)))
+    bce <- BiclusterExperiment(as.matrix(l$data))
     bce <- addStrat(bce, k = 1, method = "svd-pca")
   }
   )
@@ -473,7 +473,7 @@ testSinglePca <- function() {
     dataset <<- 0
     aris.plaid <- sapply(twoClass, FUN = function(l) {
       dataset <<- dataset + 1
-      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      bce <- BiclusterExperiment(as.matrix(l$data))
       ari.plaid <- NULL
       while(!is.numeric(ari.plaid)) {
         ari.plaid <- try({
@@ -493,7 +493,7 @@ testSinglePca <- function() {
     aris.spectral <- sapply(twoClass, FUN = function(l) {
       dataset <<- dataset + 1
       print(dataset)
-      bce <- BiclusterExperiment(t(as.matrix(l$data)))
+      bce <- BiclusterExperiment(as.matrix(l$data))
       ari.spectral <- NULL
       
       bce <- addStrat(bce, k = 2, method = "spectral", min = minRowClusterFraction)
@@ -569,7 +569,7 @@ testMicroarrays <- function() {
   mapply(function(es, labels) {
     bce <- as(es, "BiclusterExperiment")
     k.oracle <- length(labels)
-    addStrat(bce, BiclusterStrategy(t(as.matrix(bce)), k.oracle, method = "nipals"))
+    addStrat(bce, BiclusterStrategy(as.matrix(bce), k.oracle, method = "nipals"))
     adjustedRandIndex(gse1.labels, getStrat(bce, 1)@pred[, 1])
   },
   es = exprSets, labels = labels)
@@ -619,7 +619,7 @@ auto_bcs <- function(bce, k, cleanParam = 0) {
   if(cleanParam > 0) { bce <- clean(bce, cleanParam) }
   
   tryCatch({
-    addStrat(bce, bcs = BiclusterStrategy(m = t(as.matrix(bce)), k = maxK, method = "nipals"))
+    addStrat(bce, bcs = BiclusterStrategy(m = as.matrix(bce), k = maxK, method = "nipals"))
   }, error = function(e) {
     cleanParam <- cleanParam + (1 - cleanParam) / 2
     message(paste("Too many NA in the data. Cleaning with maxNAs at", 

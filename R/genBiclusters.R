@@ -3,13 +3,21 @@
 #' Optional noise parameter
 #'
 #' @export
-genSimData <- function(n, overlapped = FALSE, file = "", striped = c("cols", ""), noise = 0.01) {
+genSimData <- function(n, overlapped = FALSE, file = "",
+                       striped = c("cols", ""), noise = 0.01, dynamSize = FALSE,
+                       dimx = 50, dimy = dimx) {
   
   striped <- match.arg(striped)
   
-  x <- round(rnorm(1, 20, 1) * n)
-  y <- round(rnorm(1, 85, 5) * n)
-  
+  if(dynamSize) {
+    # scale up in size if more biclusters
+    x <- 5 * n
+    y <- 5 * n
+  } else {
+    # cram all biclusters into the same space. scale dimensions manually
+    x <- dimx
+    y <- dimy
+  }
   xCoords <- sample(1:x, 2 * n, replace = FALSE)
   yCoords <- sample(1:y, 2 * n, replace = FALSE)
   if(!overlapped) {
@@ -56,8 +64,8 @@ genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols,
     biclusterVal <- rep(1, each = length(colRange))
     if(striped == "cols") {
       # stripes will have a uniform distribution; range of 2
-      biclusterVal <- biclusterVal + sample(0:2, length(biclusterVal),
-                                            replace = TRUE)
+      colstripes <- sample(0:2, length(biclusterVal), replace = TRUE)
+      biclusterVal <- biclusterVal + colstripes
     }
     mapply(function(col, value) {
       # overlapping biclusters will be additive

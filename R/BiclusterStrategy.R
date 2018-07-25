@@ -13,8 +13,8 @@ setClass(
     scoreThresh = "numeric",
     loadingThresh = "numeric",
     threshAlgo = "character",
-    clusteredSamples = "matrix", # m x k
-    clusteredFeatures = "matrix", # n x k
+    clusteredFeatures = "matrix", # m x k
+    clusteredSamples = "matrix", # n x k
     name = "character"
   )
 )
@@ -119,9 +119,9 @@ BiclusterStrategy <-
                    "algorithm"))
       }
       #### Results #############################################################
-      clusteredSamples <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
-      clusteredFeatures <- threshold(m = t(bc@fit@H), th = loadingThresh,
-                                     MARGIN = 2)
+      clusteredFeatures <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
+      clusteredSamples <- threshold(m = bc@fit@H, th = loadingThresh,
+                                     MARGIN = 1)
     } else { 
       clusteredSamples <- matrix(dimnames = dimnames(bc@fit@W))
       clusteredFeatures <- matrix(dimnames = dimnames(bc@fit@W))
@@ -208,22 +208,21 @@ validBiclusterStrategy <- function(object) {
   if (!inherits(object@threshAlgo, "character")) {
     msg <- c(msg, "The scoreThreshAlgo slot must be a character string")
   }
-  
   predS <- clusteredSamples(object)
   if (!(inherits(predS, "matrix") && mode(predS) == "logical")) {
     msg <- c(msg, "clusteredSamples must be a logical matrix")
   } else {
-    if (!identical(dim(predS), dim(score(object)))) {
+    if (!identical(dim(predS), dim(loading(object)))) {
       msg <-
         c(
           msg,
           paste(
             "clusteredSamples must have dimensions identical to",
-            "score(object)."
+            "loading(object)."
           )
         )
     }
-    if (!identical(dimnames(predS), dimnames(score(object)))) {
+    if (!identical(dimnames(predS), dimnames(loading(object)))) {
       msg <-
         c(
           msg,
@@ -240,7 +239,7 @@ validBiclusterStrategy <- function(object) {
   if (!(inherits(predF, "matrix") && mode(predF) == "logical")) {
     msg <- c(msg, "clusteredFeatures must be a logical matrix")
   } else {
-    if (!identical(dim(predF), dim(t(loading(object))))) {
+    if (!identical(dim(predF), dim(score(object)))) {
       msg <-
         c(
           msg,
@@ -250,7 +249,7 @@ validBiclusterStrategy <- function(object) {
           )
         )
     }
-    if (!identical(dimnames(predF), dimnames(t(loading(object))))) {
+    if (!identical(dimnames(predF), dimnames(score(object)))) {
       msg <-
         c(
           msg,
