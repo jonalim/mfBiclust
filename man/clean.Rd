@@ -4,7 +4,7 @@
 \alias{clean}
 \title{Cleans a matrix by removing NAs}
 \usage{
-clean(object, maxNa = 0, dimsRemain = FALSE)
+clean(object, cleanParam = 0, dimsRemain = FALSE)
 }
 \description{
 Cleans a matrix by removing NAs

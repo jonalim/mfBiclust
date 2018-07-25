@@ -11,5 +11,7 @@ if(packageVersion("devtools") < package_version("1.13.5.9000")) {
   devtools::install_github("r-lib/devtools", ref = "33a9404583833f162f84b6a931cca2ccca2dd8d7")
 }
 
-devtools::install_version("roxygen2", version = "6.0.1")
+devtools::install_github("klutometis/roxygen#760")
+devtools::document(roclets=c('rd', 'collate', 'namespace', 'vignette'))
 devtools::install()
+packrat::snapshot(ignore.stale = TRUE, prompt = TRUE)

@@ -4,5 +4,4 @@ packrat/src*
 packrat/bundles/*
 data/other/*
 .Rhistory
-NAMESPACE
 packrat/lib*/

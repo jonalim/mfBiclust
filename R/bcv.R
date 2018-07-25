@@ -178,7 +178,7 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
         estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
         
         resid <- A - estA # residual holdout matrix
-        sum(resid ^ 2) # squared Frobenius norm
+        sum(resid ^ 2, na.rm = TRUE) # squared Frobenius norm
       })
       holdoutRes
     })
@@ -189,8 +189,9 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   names(rcvs) <- as.character(ks)
   
   # In all, we took the sum of residuals of A - estA, for holdouts covering A
-  # exactly once. Therefore, we normalize to the size of the matrix here.
-  rcvVals <- rcvs / p / n
+  # exactly once. Therefore, we normalize to the size of the matrix here,
+  # without NA's because NAs are evaluated as 0 when taking the Frobenius norm.
+  rcvVals <- rcvs / (p * n - sum(is.na(Y)))
   
   # subtract <- c(0, cumsum(var_k[1:(length(var_k) - 1)]))
   # frob_square_x <- sum(Y ^ 2)

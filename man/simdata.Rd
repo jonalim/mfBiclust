@@ -5,10 +5,12 @@
 \alias{simdata}
 \title{Simulated bicluster datasets}
 \format{A list of 4 matrices named:
-\item{nonoverlap3}
-\item{overlap3}
-\item{nonoverlap10}
-\item{overlap10}}
+\describe{
+ \item{nonoverlap3}{}
+ \item{overlap3}{}
+ \item{nonoverlap10}{}
+ \item{overlap10}{}
+ }}
 \usage{
 simdata
 }
