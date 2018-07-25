@@ -1,8 +1,9 @@
 packrat::set_opts("auto.snapshot" = FALSE)
 up <- packrat::unused_packages()
-up <- up[sapply(up, function(x) ! x$name %in% c("BH", "plogr", "Rcpp", "BiocGenerics"))]
-packrat::clean(up)
+up <- up[unlist(sapply(up, function(x) ! x$name %in% c("BH", "plogr", "BiocGenerics")))]
+packrat::clean(up, force = TRUE)
 
+try(unloadNamespace("devtools"))
 if(!requireNamespace("devtools")) {
   install.packages("devtools")
 }
@@ -11,3 +12,4 @@ if(packageVersion("devtools") < package_version("1.13.5.9000")) {
 }
 
 devtools::install_version("roxygen2", version = "6.0.1")
+devtools::install()
