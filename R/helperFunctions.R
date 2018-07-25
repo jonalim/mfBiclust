@@ -44,9 +44,13 @@ capitalize <- Vectorize(function(s) {
                 return(paste0(toupper(substring(s, 1,1)), substring(s, 2)))) }
 })
 
-setMethod("clean", c(object = "matrix"), function(object, maxNa, dimsRemain) {
-  maxNaPerRow <- round(maxNa * ncol(object))
-  maxNaPerCol <- round(maxNa * nrow(object))
+setMethod("clean", c(object = "matrix"), function(object, cleanParam,
+                                                  dimsRemain) {
+  if(!(cleanParam <= 1 && cleanParam >= 0)) {
+    stop("Arg \"cleanParam\" must be in the range of 0 to 1.")
+  }
+  maxNaPerRow <- round((1 - cleanParam) * ncol(object))
+  maxNaPerCol <- round((1 - cleanParam) * nrow(object))
   
   # Both 0s and NAs can foul up NIPALS
   goodRows <- apply(object, MARGIN = 1, function(row) 
