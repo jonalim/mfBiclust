@@ -38,12 +38,6 @@ Source: Bioconductor
 Version: 1.28.0
 Hash: d0ba96fdc386731c75313f5bb5ba3d68
 
-Package: BiocParallel
-Source: Bioconductor
-Version: 1.12.0
-Hash: 98e35b54e5994cd7a583d81dbf5885f8
-Requires: BH, futile.logger, snow
-
 Package: Category
 Source: Bioconductor
 Version: 2.44.0
@@ -297,6 +291,10 @@ GithubRepo: devtools
 GithubUsername: r-lib
 GithubRef: 33a9404583833f162f84b6a931cca2ccca2dd8d7
 GithubSha1: 33a9404583833f162f84b6a931cca2ccca2dd8d7
+RemoteHost: https://api.github.com
+RemoteRepo: devtools
+RemoteUsername: r-lib
+RemoteSha: 33a9404583833f162f84b6a931cca2ccca2dd8d7
 
 Package: dichromat
 Source: CRAN
@@ -549,12 +547,6 @@ Source: CRAN
 Version: 1.0.1
 Hash: e04b8ed7b05c1f75aa81c65a086b1d0c
 
-Package: org.Sc.sgd.db
-Source: Bioconductor
-Version: 3.5.0
-Hash: 2f5a0c8fc093b91671ed072eda6da1d3
-Requires: AnnotationDbi
-
 Package: packrat
 Source: CRAN
 Version: 0.4.9-3
@@ -581,6 +573,10 @@ GithubRepo: pkgbuild
 GithubUsername: r-lib
 GithubRef: master
 GithubSha1: 94d2f0da8a49fe9bec5a7f5e9608b7dead959b7c
+RemoteHost: https://api.github.com
+RemoteRepo: pkgbuild
+RemoteUsername: r-lib
+RemoteSha: 94d2f0da8a49fe9bec5a7f5e9608b7dead959b7c
 
 Package: pkgconfig
 Source: CRAN
@@ -590,12 +586,16 @@ Hash: 0dda4a2654a22b36a715c2b0b6fbacac
 Package: pkgload
 Source: github
 Version: 1.0.0
-Hash: bdf10d32815dd7b4afbcc505444e0faa
+Hash: 63227f11486a3e82a26a5c76f5f3401a
 Requires: desc, pkgbuild, rlang, rprojroot, rstudioapi, withr
 GithubRepo: pkgload
 GithubUsername: r-lib
 GithubRef: master
-GithubSha1: 35efedd287f1beddf9c6f7ca931e820313490b6b
+GithubSha1: c6995504df211bc100f54e0e8d6c3fd5a7420304
+RemoteHost: https://api.github.com
+RemoteRepo: pkgload
+RemoteUsername: r-lib
+RemoteSha: c6995504df211bc100f54e0e8d6c3fd5a7420304
 
 Package: pkgmaker
 Source: CRAN
@@ -659,6 +659,10 @@ GithubRepo: rcmdcheck
 GithubUsername: r-lib
 GithubRef: master
 GithubSha1: ad42561aa6e06297367455546b6312dcf59282b6
+RemoteHost: https://api.github.com
+RemoteRepo: rcmdcheck
+RemoteUsername: r-lib
+RemoteSha: ad42561aa6e06297367455546b6312dcf59282b6
 
 Package: registry
 Source: CRAN
@@ -782,8 +786,8 @@ Requires: glue, magrittr, stringi
 
 Package: styler
 Source: CRAN
-Version: 1.0.1
-Hash: 89c57fae74273b6cca937fcdf675d181
+Version: 1.0.2
+Hash: a803f5288519f928124d6305af477120
 Requires: backports, cli, enc, magrittr, purrr, rematch2, rlang,
     rprojroot, tibble, withr
 

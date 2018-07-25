@@ -54,7 +54,7 @@ function(input, output, session) {
       shinyjs::disable("decchar")
       validate(need(inherits(userBce, "BiclusterExperiment"), 
                     "You may import your dataset."))
-      return(t(as.matrix(values$bce))) # rawmat mirrors values$bce
+      return(as.matrix(values$bce)) # rawmat mirrors values$bce
     }
     # If the user has chosen a file, read it and update
     else {
@@ -134,10 +134,10 @@ function(input, output, session) {
   # plot abundance heatmap (original data)
   output$uiabundance <- renderUI({
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
-    withProgress(message = "Plotting...", value = 3/8, {
+    # withProgress(message = "Plotting...", value = 3/8, {
       height = reactiveHeatmapHeight500()
       return(plotOutput("abundance", height = height))
-    })
+    # })
   })
   output$abundance <- renderPlot({
     gt <- reactive_abundance()
@@ -157,7 +157,7 @@ function(input, output, session) {
     plot(bce, logBase = logBase, phenoLabels = phenoLabels,
          ordering = if(input$heatmapReorder) "distance" else "input",
          strategy = input$strategy,
-         rowNames = input$sampNames, colNames = input$featNames)
+         rowNames = input$featNames, colNames = input$sampNames)
   })
   
   # Plot of samples along first two PCs
@@ -334,9 +334,15 @@ function(input, output, session) {
       cols <- col2rgb(cols) # RGB as rows; each column a different color
       # FIXME: Allow to select a subset of biclusters. Allow bicluster ID when
       # hovering mouse over.
-      lapply(seq_len(nclust(bcs)), function(bicluster) {
-        yrange <- which(clusteredFeatures(bcs)[, bicluster])
-        xrange <- which(clusteredSamples(bcs)[, bicluster])
+      biclusterLists <- biclusterMatrix2List(
+        rowxBicluster = clusteredFeatures(bcs),
+        biclusterxCol = clusteredSamples(bcs))
+      displayOrder <- order(sizes(biclusterRows = biclusterLists[[1]],
+                                  biclusterCols = biclusterLists[[2]]), 
+                            decreasing = TRUE)
+      lapply(displayOrder, function(bicluster) {
+        yrange <- which(clusteredSamples(bcs)[bicluster, ])
+        xrange <- which(clusteredFeatures(bcs)[, bicluster])
         arr[xrange, yrange, 1] <<- cols["red", bicluster] / 255
         arr[xrange, yrange, 2] <<- cols["green", bicluster] / 255
         arr[xrange, yrange, 3] <<- cols["blue", bicluster] / 255
@@ -394,8 +400,8 @@ function(input, output, session) {
     bcs <- values$strategy
     # Create lists of rows and columns contained in biclusters
     if(nclust(bcs) > 1) {
-      rc <- biclusterMatrix2List(clusteredSamples(bcs),
-                                 clusteredFeatures(bcs))
+      rc <- biclusterMatrix2List(clusteredFeatures(bcs),
+                                 clusteredSamples(bcs))
       biclusterRows <- rc[[1]]
       biclusterCols <- rc[[2]]
       
@@ -463,7 +469,7 @@ function(input, output, session) {
       column(3,
              uiOutput("scoreBicluster"),
              checkboxInput("scoreReorder", "Reorder"),
-             checkboxInput("sampNames", "Sample names"))
+             checkboxInput("sampNames", "Feature names"))
     )
   })
   
@@ -516,7 +522,7 @@ function(input, output, session) {
       })
   })
   
-  # Plot of sample scores for one bicluster
+  # Plot of feature scores for one bicluster
   output$scorePlot <- renderPlot({
     scorePlotHelper()
   })
@@ -558,7 +564,7 @@ function(input, output, session) {
                 choices = choices)
   })
   
-  # Heatmap of loadings for all features
+  # Heatmap of loadings for all samples
   output$loadingHeatmap <- renderPlot({
     gt <- reactiveLoadingHeatmap()
     print(gt)
@@ -578,7 +584,7 @@ function(input, output, session) {
     )})
   
   # Plot of feature loadings for one bicluster
-  output$plot_biomarkers <- renderPlot({
+  output$samplePlot <- renderPlot({
     validate(need(inherits(values$strategy, "BiclusterStrategy") &&
                     !is.null(input$loadingBicluster), ""))
     reactiveMarkers()
@@ -588,7 +594,7 @@ function(input, output, session) {
       set.seed(1234567)
       plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
                     bicluster = input$loadingBicluster,
-                    ordering = if(input$loadingReorder) { "distance" } else {
+                    ordering = if(input$loadingReorder) { "cluster" } else {
                       "input" },
                     xlabs = input$biclusterFeatNames)
     })

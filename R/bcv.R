@@ -33,7 +33,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   while(!converged && i < maxIter) {
     # Get the number of biclusters with lowest bcv value
     res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts)
-    bcvRes <- as.numeric(names(which.min(res)))
+    bcvRes <- names(which.min(res))
     distr[bcvRes] <- distr[bcvRes] + 1L
     
     # In case some of the highest ks were not tested by bcv, amend distr.
@@ -47,8 +47,10 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
     if(verbose) {
       cat(paste("Iteration", i + 1L, "\n")) 
       cat("BCV result distribution:\n")
-      message(paste(do.call(paste, as.list(names(distr))), "\n",
-                    do.call(paste, as.list(distr - 1L))))
+      message(paste0(
+        do.call(paste, as.list(c(as.list(names(distr)), sep = "\t"))), "\n",
+        do.call(paste, as.list(c(as.list(distr - 1L), sep = "\t")))
+      ))
     }
     converged <- all(resid < tol)
     

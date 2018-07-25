@@ -44,33 +44,32 @@ tabPanel(
         )
       }),
       tabPanel("Samples",
+                 column(9,
+                        plotOutput("loadingHeatmap", width = "100%"), 
+                        plotOutput("samplePlot", width = "100%")),
+                 column(3,
+                        uiOutput("loadingBicluster"),
+                        checkboxInput("loadingReorder", "Reorder"),
+                        checkboxInput("biclusterFeatNames", "Sample names"),
+                        uiOutput("biclusterGeneListLabel"),
+                        fluidRow(verbatimTextOutput("biclusterGeneList"), 
+                                 style = "height:500px; overflow-y: scroll"))
+      ),
+      tabPanel("Features",
                column(9,
                       plotOutput("scoreHeatmap", width = "100%"), 
-                      plotOutput("scorePlot", width = "100%")
-               ), column(
-                 3,
-                 uiOutput("scoreBicluster"),
-                 checkboxInput("scoreReorder", "Reorder"),
-                 # uiOutput("annotPicker"),
-                 checkboxInput("biclusterSampNames", "Sample names"))
+                      plotOutput("scorePlot", width = "100%")),
+               column(3,
+                      uiOutput("scoreBicluster"),
+                      checkboxInput("scoreReorder", "Reorder"),
+                      # uiOutput("annotPicker"),
+                      checkboxInput("biclusterSampNames", "Feature names"))
                # Score-thresholded heatmap (try empty heatmap with annotations?)
-      ),
-      tabPanel("Features", {
-        fluidRow(
-          column(9,
-                 plotOutput("loadingHeatmap", width = "100%"), 
-                 plotOutput("plot_biomarkers", width = "100%")),
-          column(3,
-                 uiOutput("loadingBicluster"),
-                 checkboxInput("loadingReorder", "Reorder"),
-                 checkboxInput("biclusterFeatNames", "Feature names"),
-                 uiOutput("biclusterGeneListLabel"),
-                 fluidRow(verbatimTextOutput("biclusterGeneList"), 
-                          style = "height:500px; overflow-y: scroll"))
-        )
-        # uiOutput("loadingPanel")
-      })),
-      width = 9
+      )
     ),
+      width = 9, 
+
     position = "left")
   )
+)
+  

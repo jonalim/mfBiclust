@@ -16,7 +16,7 @@ setMethod("plot", c(x = "BiclusterExperiment"),
           function(x, logBase = 0, phenoLabels = c(), biclustLabels = c(), 
                    ordering = c("input", "distance", "cluster"), strategy = "", 
                    rowNames = FALSE, colNames = FALSE) {
-            data <- t(as.matrix(x))
+            data <- as.matrix(x)
             if(logBase != 0) {
               signs <- sign(data)
               data <- log(abs(data), logBase) * signs
@@ -27,34 +27,26 @@ setMethod("plot", c(x = "BiclusterExperiment"),
             if(is.null(row.names(data))) row.names(data) <- seq_len(nrow(data))
             
             # Validate requested annotations and parse into a dataframe
-            annots <- createAnnots(x, rownames(data), strategy, phenoLabels, biclustLabels)
+            annots <- createAnnots(x, colnames(data), strategy, phenoLabels, biclustLabels)
             
             ordering <- match.arg(ordering)
             
             # FIXME prevent shuffling of annotation colors
             if (ordering == "input") {
-              cluster_rows <- FALSE
+              cluster_cols <- FALSE
               cdist <- NULL
-              # ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, cluster_cols = FALSE,
-              # show_rownames = rowNames, show_colnames = colNames, annotation_row = annots, legend = legend)
             } else if (ordering == "distance") {
-              cluster_rows <- TRUE
-              cdist <- x@distance
-              # ph <- pheatmap::pheatmap(data, clustering_distance_rows = x@distance, cluster_cols = FALSE, show_rownames = rowNames, show_colnames = colNames, annotation_row = annots, legend = legend)
+              cluster_cols <- TRUE
+              cdist <- dist(t(as.matrix(bce)))
             } else if(ordering == "cluster") {
-              cluster_rows <- TRUE
-              cdist <- dist(pred(getStrat(x, strategy)), method = "euclidean")
-              # ph <- pheatmap::pheatmap(data, cluster_rows = TRUE, 
-              # clustering_distance_rows = clusterDist,
-              # cluster_cols = FALSE, 
-              # show_rownames = rowNames, 
-              # show_colnames = colNames, 
-              # annotation_row = annots, legend = legend)
+              cluster_cols <- TRUE
+              browser()
+              cdist <- dist(t(clusteredSamples(getStrat(x, strategy))), method = "euclidean")
             }
             
-            ph <- pheatmap::pheatmap(data, cluster_rows = cluster_rows, 
-                                     clustering_distance_rows = cdist,
-                                     cluster_cols = FALSE,
+            ph <- pheatmap::pheatmap(data, cluster_rows = FALSE, 
+                                     clustering_distance_cols = cdist,
+                                     cluster_cols = cluster_cols,
                                      show_rownames = rowNames, show_colnames = colNames, annotation_row = annots)
           }
 )
@@ -212,14 +204,14 @@ setMethod(
                                show_colnames = colNames, 
                                annotation_col = annots, silent = silent)
     } else if (ordering == "distance") {
-      distance <- dist(as.matrix(bce), method = "euclidean")
+      distance <- dist(t(as.matrix(bce)), method = "euclidean")
       ph <- pheatmap::pheatmap(data, cluster_rows = FALSE,
                                clustering_distance_cols = distance,
                                show_colnames = colNames,
                                annotation_col = annots, silent = silent)
     } else { # cluster reordering
-      clusFunction <- if(type == "score") {
-        clusteredSamples
+      clusFunction <- if(type == "loading") {
+        function(x) t(clusteredSamples(x))
       } else {
         clusteredFeatures
       }
@@ -294,19 +286,19 @@ setMethod(
     ordering <- match.arg(ordering)
     # Plot
     xs <- seq_along(data)
-    xlab <- if(type == "score") "Samples" else "Features"
+    xlab <- if(type == "loading") "Samples" else "Features"
     ylab = capitalize(type)
     
     if(ordering == "input") {
       ord <- xs
     } else if (ordering == "distance") {
-      m <- if(type == "score") t(as.matrix(bce)) else as.matrix(bce)
+      m <- if(type == "loading") as.matrix(bce) else t(as.matrix(bce))
       ord <- hclust(dist(m))$order
     } else if (ordering == "cluster") {
-      clusFunction <- if(type == "score") {
-        function(bcs) clusteredSamples(bcs)
+      clusFunction <- if(type == "loading") {
+        function(bcs) t(clusteredSamples(bcs))
       } else {
-        function(bcs) t(clusteredFeatures(bcs))
+        function(bcs) clusteredFeatures(bcs)
       }
       ord <- hclust(dist(clusFunction(bcs)))$order
     }
@@ -339,13 +331,13 @@ setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
   if(any(pcaStrats)) {
     # PCA has already been performed
     strat <- getStrat(bce, min(which(pcaStrats))) # A PCA-encapsulating strategy
-    var <- nrow(as.matrix(bce))
-    xs <- strat@factors@fit@W[, 1]
+    var <- ncol(as.matrix(bce))
+    xs <- strat@factors@fit@H[1, ]
     var1 <- round(sd(xs) ^ 2 / var, 1)
-    ys <- strat@factors@fit@W[, 2]
+    ys <- strat@factors@fit@H[2, ]
     var2 <- round(sd(ys) ^ 2 / var, 1)
   } else {
-    m <- as.matrix(bce)
+    m <- t(as.matrix(bce)) # pca on columns
     prcmp <- prcomp(m)
     xs <- prcmp$x[, 1]
     var1 <- round(prcmp$sdev[1]^2 / sum(prcmp$sdev^2) * 100, 1)

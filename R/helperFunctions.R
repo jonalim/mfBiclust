@@ -97,12 +97,6 @@ createAnnots <-
     
     # Process bicluster labels
     if (length(strategy) > 0 && length(biclustLabels) == 0) {
-      warning(
-        paste0(
-          "Since bicluster annotations were not ",
-          "requested, the \"strategy\" argument will be ignored."
-        )
-      )
     } else if (length(biclustLabels) > 0) {
       validateStratName(strategy, x) # if no strategy, stop
       bcs <- getStrat(x, strategy) # get BiclusterStrategy
