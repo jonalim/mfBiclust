@@ -5,8 +5,8 @@
 \title{Perform multiple biclustering runs}
 \usage{
 BiclusterExperiment(m, bcs = list(),
-  phenoData = Biobase::annotatedDataFrameFrom(m, byrow = TRUE),
-  featureData = annotatedDataFrameFrom(m, byrow = FALSE), pp = FALSE,
+  phenoData = Biobase::annotatedDataFrameFrom(m, byrow = FALSE),
+  featureData = annotatedDataFrameFrom(m, byrow = TRUE), pp = FALSE,
   maxNa = 0.5)
 }
 \arguments{

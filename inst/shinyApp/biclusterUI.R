@@ -10,40 +10,49 @@ tabPanel(
     ))
   ),
   sidebarLayout(
-  sidebarPanel(
-    selectInput("algo", label = "Biclustering algorithm",
-                choices = c("ALS-NMF" = "als-nmf", "SVD-PCA" = "svd-pca", 
-                            "NIPALS-PCA" = "nipals-pca", "SNMF" = "snmf",
-                            "Plaid" = "plaid", "Spectral" = "spectral"),
-                multiple = FALSE
+    sidebarPanel(
+      selectInput("algo", label = "Biclustering algorithm",
+                  choices = c("ALS-NMF" = "als-nmf", "SVD-PCA" = "svd-pca", 
+                              "NIPALS-PCA" = "nipals-pca", "SNMF" = "snmf",
+                              "Plaid" = "plaid", "Spectral" = "spectral"),
+                  multiple = FALSE
+      ),
+      sliderInput("k", label = "Number of biclusters:", min = 1, max = 2,
+                  value = 1, step = 1),
+      actionButton("bicluster", "Run"),
+      uiOutput("downloadBceButton"),
+      uiOutput("downloadBceAllButton"),
+      width = 3
     ),
-    uiOutput("kSlider"),
-    uiOutput("biclusterButton"),
-    uiOutput("downloadBceButton"),
-    uiOutput("downloadBceAllButton"),
-    width = 3
-  ),
-  mainPanel(
-    tabsetPanel(
-      tabPanel("Summary", {
-        # filled interactive heatmap
-        # In a imageOutput, passing values for click, dblclick, hover, or brush
-        # will enable those interactions.
-        imageOutput("image1",
-                    # Equivalent to: click = clickOpts(id = "image_click")
-                    click = "image_click",
-                    dblclick = dblclickOpts(
-                      id = "image_dblclick"
-                    ),
-                    hover = hoverOpts(
-                      id = "image_hover"
-                    ),
-                    brush = brushOpts(
-                      id = "image_brush"
-                    )
-        )
-      }),
-      tabPanel("Samples",
+    mainPanel(
+      tabsetPanel(
+        tabPanel("Summary",
+                 tags$style(type = "text/css", "#image1 {image-rendering: pixelated !important;}"),
+                 # possible fixes for other browsers:
+                 # image-rendering: optimizeSpeed;
+                 # image-rendering: -moz-crisp-edges;
+                 # image-rendering: -o-crisp-edges;
+                 # image-rendering: -webkit-optimize-contrast;
+                 # image-rendering: optimize-contrast;
+                 
+                 # filled interactive heatmap
+                 # In a imageOutput, passing values for click, dblclick, hover, or brush
+                 # will enable those interactions.
+                 imageOutput("image1",
+                             # Equivalent to: click = clickOpts(id = "image_click")
+                             click = "image_click",
+                             dblclick = dblclickOpts(
+                               id = "image_dblclick"
+                             ),
+                             hover = hoverOpts(
+                               id = "image_hover"
+                             ),
+                             brush = brushOpts(
+                               id = "image_brush"
+                             )
+                 )
+        ),
+        tabPanel("Samples",
                  column(9,
                         plotOutput("loadingHeatmap", width = "100%"), 
                         plotOutput("samplePlot", width = "100%")),
@@ -54,22 +63,21 @@ tabPanel(
                         uiOutput("biclusterGeneListLabel"),
                         fluidRow(verbatimTextOutput("biclusterGeneList"), 
                                  style = "height:500px; overflow-y: scroll"))
+        ),
+        tabPanel("Features",
+                 column(9,
+                        plotOutput("scoreHeatmap", width = "100%"), 
+                        plotOutput("scorePlot", width = "100%")),
+                 column(3,
+                        uiOutput("scoreBicluster"),
+                        checkboxInput("scoreReorder", "Reorder"),
+                        # uiOutput("annotPicker"),
+                        checkboxInput("biclusterSampNames", "Feature names"))
+                 # Score-thresholded heatmap (try empty heatmap with annotations?)
+        )
       ),
-      tabPanel("Features",
-               column(9,
-                      plotOutput("scoreHeatmap", width = "100%"), 
-                      plotOutput("scorePlot", width = "100%")),
-               column(3,
-                      uiOutput("scoreBicluster"),
-                      checkboxInput("scoreReorder", "Reorder"),
-                      # uiOutput("annotPicker"),
-                      checkboxInput("biclusterSampNames", "Feature names"))
-               # Score-thresholded heatmap (try empty heatmap with annotations?)
-      )
-    ),
       width = 9, 
-
-    position = "left")
+      
+      position = "left")
   )
 )
-  

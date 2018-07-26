@@ -5,7 +5,7 @@
 \title{Simulate a matrix with n biclusters}
 \usage{
 genSimData(n, overlapped = FALSE, file = "", striped = c("cols", ""),
-  noise = 0.01)
+  noise = 0.01, dynamSize = FALSE, dimx = 50, dimy = dimx)
 }
 \description{
 Optional noise parameter

@@ -14,8 +14,8 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
                "BiocInstaller::biocLite(\"", orgDb, "\")"))
   }
   
-  # Change this to use method dispatch
-  bcs <- if(inherits(strategy, "BiclusterStrategy")) strategy else getStrat(bce, strategy)
+  bcs <- if(inherits(strategy, "BiclusterStrategy")) { strategy
+    } else getStrat(bce, strategy)
   
   go <- match.arg(go, several.ok = TRUE)
 
@@ -33,15 +33,13 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
   if(duplicable) { duplicable("testFE") }
   
   # thresholded loading matrix
-  biclusterxCol <- threshold(loading(bcs), MARGIN = 1, th = loadingThresh(bcs))
+  biclusterxCol <- clusteredFeatures(bcs)
   
-  geneLists <- lapply(seq_len(nrow(biclusterxCol)), function(biclust) {
-    rownames(bce)[biclusterxCol[biclust, ] == 1]
+  geneLists <- lapply(seq_len(ncol(clusteredFeatures(bcs))), function(biclust) {
+    rownames(bce)[biclusterxCol[, biclust] == 1]
   })
   names(geneLists) <- names(strategy)
-  
   universe <- rownames(bce) # these must be ENSEMBL
-  
   # Returns a list of results for each bicluster: a list with one element per
   # ontology
   mFun <- function(geneList, name, universe, ontology, fun, orgDb) {

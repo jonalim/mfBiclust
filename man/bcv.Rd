@@ -4,7 +4,7 @@
 \alias{bcv}
 \title{Perform bi-cross-validation}
 \usage{
-bcv(Y, ks, holdouts = 10L, duplicable = TRUE)
+bcv(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}
