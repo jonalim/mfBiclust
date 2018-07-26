@@ -28,5 +28,6 @@ biclustering runs.
 This function is useful for constructing one BiclusterExperiment
 encapsulating results of different pipelines (e.g. comparing NMF with PCA).
 For comparing results from the same pipeline with differing values of
-\code{k}, \code{\link{mfbc()}} is recommended.
+\code{k}, add multiple BiclusterStrategy objects to a single
+BiclusterExperiment.
 }

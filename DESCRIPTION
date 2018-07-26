@@ -34,6 +34,7 @@ RoxygenNote: 6.0.1
 Collate: 
     'containerGenerics.R'
     'helperFunctions.R'
+    'helperClasses.R'
     'BiclusterStrategy.R'
     'BiclusterExperiment.R'
     'bcv.R'
@@ -43,7 +44,6 @@ Collate:
     'functionalAnnotation.R'
     'genBiclusters.R'
     'graphical.R'
-    'helperClasses.R'
     'mfBiclust.R'
 Suggests: 
     testthat,

@@ -17,7 +17,12 @@
 cancer_benchmark
 }
 \description{
-Microarray and RNAseq datasets from biclustlib, originally published by
-de Souto MC, Costa IG, de Araujo DS, Ludermir TB, Schliep A in 2008.
+Pre-classified microarray and RNAseq datasets from human cancer samples,
+originally published by de Souto MC, Costa IG, de Araujo DS, Ludermir TB,
+Schliep A in 2008.
+}
+\details{
+Redistributed from biclustlib: A Python library of biclustering algorithms
+and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
 }
 \keyword{datasets}
