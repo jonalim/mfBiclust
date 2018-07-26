@@ -65,7 +65,7 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, fe
   if(pp) {
     m <- clean(m, maxNa)
   }
-
+  
   if(!inherits(phenoData, "AnnotatedDataFrame")) {
     phenoData <- AnnotatedDataFrame(phenoData)
   }
@@ -143,8 +143,8 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
                                                            method = c("als-nmf", "svd-pca", "snmf",
                                                                       "nipals-pca", "plaid", "spectral"),
-                                duplicable = TRUE, silent = FALSE, 
-                                ...) {
+                                                           duplicable = TRUE, silent = FALSE, 
+                                                           ...) {
   standardGeneric("addStrat")
 })
 setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"), 
@@ -161,26 +161,29 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"),
             method.orig <- method
             
             k <- validateKM(k, m, method)
-
-            if (method == "nipals-pca") {# Special code for NIPALS
-              # Careful! because we're in tryCatch, warnings won't be printed.
-              res <- tryCatch({
-                BiclusterStrategy(m = m, k = k, method = method, ...)
-              }, error = function(e) {
-                if(method == "nipals-pca" &&
-                   grepl(pattern = paste0("replacement has length zero"), 
-                         x = e)) {
-                  maxNa <- maxNa - (maxNa / 2)
-                  message(paste("Cleaning with maxNAs at", maxNa))
-                  
-                  # Call recursively until success.
-                  addStrat(bce, k, method.orig, maxNa, ...)
-                } else { stop(e) }
-              })
+            # Special code for NIPALS or missing data
+            if (method == "nipals-pca" || any(is.na(m))) {
+              if(method != "nipals-pca") {
+                warning(paste("Since some data is NA, the NIPALS-PCA",
+                              "algorithm must be used."))
+              }
+              nipals.res <- nipals_pca_autoclean(A = m, cleanParam = 0,
+                                                 k = k, center = FALSE,
+                                                 duplicable = duplicable)
+              bcs <- BiclusterStrategy(obj = nipals.res$genericFit, k = k,
+                                       method = "nipals-pca")
+              oldDims <- dim(bce)
+              bce <- bce[unlist(nipals.res$indexRemaining[[1]]),
+                         unlist(nipals.res$indexRemaining[[2]])]
+              if(!identical(oldDims, dim(bce))) {
+                warning(paste("Some samples or features with too much missing",
+                              "data were removed. sampleNames(bce) and",
+                              "featureNames(bce) can be called to see the",
+                              "remaining samples and features."))
+              }
             } else {
-              # Here, warnings and errors are thrown, not handled
               #### DEFUALT CALL ####
-              bcs <- BiclusterStrategy(m = m, k = k, method = method, 
+              bcs <- BiclusterStrategy(obj = m, k = k, method = method, 
                                        duplicable = duplicable, ...)
             }
             
@@ -251,29 +254,29 @@ setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
 setGeneric("wipeExcept", signature = c("bce", "bcs"),
            function(bce, bcs) {standardGeneric("wipeExcept")})
 setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "numeric"),
-           function(bce, bcs) {
-             wipeExcept(bce, getStrat(bce, bcs))
-           }
+          function(bce, bcs) {
+            wipeExcept(bce, getStrat(bce, bcs))
+          }
 )
 setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "character"),
-           function(bce, bcs) {
-             wipeExcept(bce, getStrat(bce, bcs))
-           }
+          function(bce, bcs) {
+            wipeExcept(bce, getStrat(bce, bcs))
+          }
 )
 setMethod("wipeExcept", c(bce = "BiclusterExperiment",
-                           bcs = "BiclusterStrategy"),
-           function(bce, bcs) {
-             if(any(names(bce) == name(bcs))) {
+                          bcs = "BiclusterStrategy"),
+          function(bce, bcs) {
+            if(any(names(bce) == name(bcs))) {
               bce@strategies <- list()
               bce@strategies[[name(bcs)]] <- bcs
               return(bce)
-             } else {
-               stop(paste("The given BiclusterStrategy is not contained by the",
-"given BiclusterExperiment. Please create the BiclusterStrategy first."))
-             }
-           }
+            } else {
+              stop(paste("The given BiclusterStrategy is not contained by the",
+                         "given BiclusterExperiment. Please create the BiclusterStrategy first."))
+            }
+          }
 )
-  
+
 #' @export
 setGeneric("strategies", signature = "bce", function(bce) {
   standardGeneric("strategies")

@@ -1,5 +1,6 @@
 #' @include helperFunctions.R
 #' @include containerGenerics.R
+#' @include helperClasses.R
 NULL
 
 #### CLASS #####################################################################
@@ -48,94 +49,119 @@ setClass(
 #' bicluster is "plaid" or "bimax"
 #' @param loadingThresh the loading thresholding algorithm to use. Ignored if
 #' bicluster is "plaid" or "bimax"
-BiclusterStrategy <-
-  function(m,
-           k,
-           method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid", "spectral"),
-           threshAlgo = "otsu",
-           scoreThresh = threshAlgo, loadingThresh = threshAlgo, duplicable = TRUE, ...) {
-    method <- match.arg(method)
-    
-    if (!"matrix" %in% class(m)) {
-      warning(paste0(
-        "Argument \"m\" must be of type matrix. Attempting to",
-        "coerce m to matrix."
-      ))
-      m <- as.matrix(m)
+setGeneric("BiclusterStrategy", signature = c("obj", "k"),
+           function(obj, k, method = c("als-nmf", "svd-pca", "snmf",
+                                       "nipals-pca", "plaid", "spectral"),
+                    threshAlgo = "otsu", scoreThresh = threshAlgo,
+                    loadingThresh = threshAlgo, duplicable = TRUE, ...) {
+             standardGeneric("BiclusterStrategy")
+           })
+setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
+  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) {
+  method <- match.arg(method)
+  
+  #### Matrix factorization ###################################################
+  bc <- NULL
+  
+  if(any(is.na(obj)) || method == "nipals-pca") {
+    if (method != "nipals-pca") {
+      warning(paste("Switching to the NIPALS-PCA method because the input",
+                    "matrix has missing data"))
+      method <- "nipals-pca"
     }
-    
-    #### Matrix factorization ###################################################
-    bc <- NULL
-    
-    if(any(is.na(m)) || method == "nipals-pca") {
-      if (method != "nipals-pca") {
-        warning(paste("Switching to the NIPALS-PCA method because the input",
-                      "matrix has missing data"))
-        method <- "nipals-pca"
-      }
-      # If still too many NAs, an error will be thrown back to addStrat
-      bc <- nipals_pca(biclustArgs)
-    }
-    
-    # Simply shift all values to be >= 0, if necessary for the algorithm
-    if(method == "als-nmf" || method == "snmf") m <- pseudovalues(m)
-    
-    # Same arguments regardless of algorithm
-    biclustArgs <- c(list(A = m, k = k, duplicable = duplicable), list(...))
-    
-    # Function names here have underscores instead of hyphens
-    hyphen <- regexpr(pattern = "-", text = method)[[1]]
-    if(hyphen > 0) substr(method, start = hyphen, stop = hyphen) <- "_"
-    
-    tryCatch(bc <- do.call(get(method), biclustArgs), # Bicluster
-             error = function(c) {
-               warning(paste(method, "failed, switching to PCA."))
-               bc <<- svd_pca(m, k) # fallback to PCA
-               method <<- "svd-pca"
-               return(NULL)
-             }
-    )
-    
-    k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
-    # k biclusters
-    biclustNames <- unlist(sapply(seq_len(k), function(x) {
-      paste0("Bicluster.", x)
-    }))
-    colnames(bc@fit@W) <- biclustNames
-    rownames(bc@fit@H) <- biclustNames
-    if(k > 0) {
-      #### Thresholding ############################################################
-      if(inherits(scoreThresh, "numeric") && inherits(loadingThresh, "numeric")) {
-        if(length(scoreThresh) != k || length(loadingThresh) != k) {
-          stop("Length of \"scoreThresh\" and \"loadingThresh\" must equal \"k\"")
-        }
-        threshAlgo <- "user"
-      } else if(threshAlgo == "otsu") {
-        # Use automatic thresholding (default)
-        scoreThresh <- otsuHelper(bc@fit@W)
-        loadingThresh <- otsuHelper(t(bc@fit@H))
-      } else {
-        stop(paste("Currently \"otsu\" is the only implemented thresholding",
-                   "algorithm"))
-      }
-      #### Results #############################################################
-      clusteredFeatures <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
-      clusteredSamples <- threshold(m = bc@fit@H, th = loadingThresh,
-                                     MARGIN = 1)
-    } else { 
-      clusteredSamples <- matrix(dimnames = dimnames(bc@fit@W))
-      clusteredFeatures <- matrix(dimnames = dimnames(bc@fit@W))
-      warning(paste("Biclustering did not find valid results. No samples or",
-                    "features are biclustered."))
-    }
-    
-    bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = scoreThresh,
-      loadingThresh = loadingThresh, threshAlgo = threshAlgo,
-      clusteredSamples = clusteredSamples, clusteredFeatures = clusteredFeatures
-    )
-    bcs@name <- name(bcs)
-    bcs
+    # If still too many NAs, an error will be thrown back to addStrat
+    bc <- nipals_pca(biclustArgs)
   }
+  
+  # Simply shift all values to be >= 0, if necessary for the algorithm
+  if(method == "als-nmf" || method == "snmf") obj <- pseudovalues(obj)
+  
+  # Same arguments regardless of algorithm
+  biclustArgs <- c(list(A = obj, k = k, duplicable = duplicable), list(...))
+  
+  # Function names here have underscores instead of hyphens
+  hyphen <- regexpr(pattern = "-", text = method)[[1]]
+  if(hyphen > 0) substr(method, start = hyphen, stop = hyphen) <- "_"
+  
+  tryCatch(bc <- do.call(get(method), biclustArgs), # Bicluster
+           error = function(c) {
+             warning(paste(method, "failed, switching to PCA."))
+             bc <<- svd_pca(obj, k) # fallback to PCA
+             method <<- "svd-pca"
+             return(NULL)
+           }
+  )
+  
+  k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
+  # k biclusters
+  biclustNames <- unlist(sapply(seq_len(k), function(x) {
+    paste0("Bicluster.", x)
+  }))
+  colnames(bc@fit@W) <- biclustNames
+  rownames(bc@fit@H) <- biclustNames
+  
+  thRes <- thresholdHelper(bc = bc, k = k, scoreThresh = scoreThresh,
+                           loadingThresh, threshAlgo = threshAlgo)
+  list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples)
+  
+  bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = thRes[[2]],
+             loadingThresh = thRes[[3]], threshAlgo = thRes[[1]],
+             clusteredSamples = thRes[[5]], clusteredFeatures = thRes[[4]])
+  bcs@name <- name(bcs)
+  bcs
+})
+setMethod("BiclusterStrategy", c(obj = "genericFit", k = "numeric"), function(
+  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) { 
+  method <- match.arg(method)
+  bc <- obj
+  
+  k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
+  # k biclusters
+  biclustNames <- unlist(sapply(seq_len(k), function(x) {
+    paste0("Bicluster.", x)
+  }))
+  colnames(bc@fit@W) <- biclustNames
+  rownames(bc@fit@H) <- biclustNames
+  
+  thRes <- thresholdHelper(bc = bc, k = k, scoreThresh = scoreThresh,
+                           loadingThresh, threshAlgo = threshAlgo)
+  list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples)
+  
+  bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = thRes[[2]],
+             loadingThresh = thRes[[3]], threshAlgo = thRes[[1]],
+             clusteredSamples = thRes[[5]], clusteredFeatures = thRes[[4]])
+  bcs@name <- name(bcs)
+  bcs
+})
+
+thresholdHelper <- function(bc, k, scoreThresh, loadingThresh, threshAlgo) {
+  if(k > 0) {
+    #### Thresholding ############################################################
+    if(inherits(scoreThresh, "numeric") && inherits(loadingThresh, "numeric")) {
+      if(length(scoreThresh) != k || length(loadingThresh) != k) {
+        stop("Length of \"scoreThresh\" and \"loadingThresh\" must equal \"k\"")
+      }
+      threshAlgo <- "user"
+    } else if(threshAlgo == "otsu") {
+      # Use automatic thresholding (default)
+      scoreThresh <- otsuHelper(bc@fit@W)
+      loadingThresh <- otsuHelper(t(bc@fit@H))
+    } else {
+      stop(paste("Currently \"otsu\" is the only implemented thresholding",
+                 "algorithm"))
+    }
+    #### Results #############################################################
+    clusteredFeatures <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
+    clusteredSamples <- threshold(m = bc@fit@H, th = loadingThresh,
+                                  MARGIN = 1)
+  } else { 
+    clusteredSamples <- matrix(dimnames = dimnames(bc@fit@W))
+    clusteredFeatures <- matrix(dimnames = dimnames(bc@fit@W))
+    warning(paste("Biclustering did not find valid results. No samples or",
+                  "features are biclustered."))
+  }
+  return(list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples))
+}
 
 validBiclusterStrategy <- function(object) {
   msg <- NULL
@@ -343,7 +369,7 @@ setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
 #'@export
 setGeneric("clusteredSamples", signature = "bcs", function(bcs) {
   standardGeneric("clusteredSamples")
-  })
+})
 setMethod("clusteredSamples", c(bcs = "BiclusterStrategy"), function(bcs) {
   bcs@clusteredSamples
 })
@@ -431,4 +457,4 @@ otsuHelper <- function(matrix) {
     # itself
   })
   thresholds
-  }
+}
