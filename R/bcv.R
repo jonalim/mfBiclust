@@ -155,7 +155,7 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
       list(scores = res$x, loadings = t(res$rotation))
     }
   }
-  
+  browser()
   # Perform PCA on the whole matrix
   pcares <- pca(Y, max(ks))
   tM = pcares$scores

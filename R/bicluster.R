@@ -178,7 +178,7 @@ plaid <- function(A, k, duplicable = TRUE, ...) {
             background.df = args$background.df, shuffle = args$shuffle, 
             backfit = args$backfit, iter.startup = args$iter.startup, 
             iter.layer = args$iter.layer, verbose = args$verbose)
-
+  
   number <- 0
   release <- 0.7
   best <- NULL
@@ -186,7 +186,7 @@ plaid <- function(A, k, duplicable = TRUE, ...) {
     dummy <- capture.output({
       bc <- do.call(biclust::biclust, 
                     c(list(x = A, method = biclust::BCPlaid(), row.release = release,
-                      col.release = release, max.layers = k), args))
+                           col.release = release, max.layers = k), args))
     })
     if(bc@Number > number) {
       number <- bc@Number
@@ -236,7 +236,7 @@ snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
     {
       suppressMessages(
         do.call(NMF::nmf, c(list(x = A, rank = k,  method = "snmf/l", 
-                                      beta = beta, rng = .Random.seed), args)))
+                                 beta = beta, rng = .Random.seed), args)))
     },
     warning = function(w) {
       if (any(suppressWarnings(
