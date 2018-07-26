@@ -8,16 +8,6 @@ addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
   "plaid", "spectral"), duplicable = TRUE, silent = FALSE, ...)
 }
 \description{
-Due to requirements of various biclustering methods, this function may warn
-that the chosen biclustering method was overridden.
-}
-\details{
-Also, if any matrix elements of abund(BiclusterExperiment) are missing, then
-the BiclusterExperiment returned is not guaranteed to have the same number of
-samples and features.
-
-Optional boolean argument \code{duplicable} can force Spectral, Plaid, 
-NIPALS, and SNMF to be duplicable. Alternatively, can allow ALS-NMF to be 
-non-duplicable. Other arguments to specific functions in bicluster.R can be
-provided.
+Returns a BiclusterExperiment identical to \code{bce} with the addition of a
+BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
 }

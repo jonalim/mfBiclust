@@ -13,7 +13,11 @@
 yeast_benchmark
 }
 \description{
-A dataset containing the microarray datasets in biclustlib originally
-published by Jaskowiak PA, Campello RJ, Costa Filho IG (2013).
+Yeast microarray datasets originally published by Jaskowiak PA, Campello RJ,
+Costa Filho IG (2013). All rownames are ENSEMBL gene names.
+}
+\details{
+Redistributed from biclustlib: A Python library of biclustering algorithms
+and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
 }
 \keyword{datasets}

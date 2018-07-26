@@ -2,10 +2,12 @@
 % Please edit documentation in R/containerGenerics.R
 \name{clean}
 \alias{clean}
-\title{Cleans a matrix by removing NAs}
+\title{Clean a matrix}
 \usage{
 clean(object, cleanParam = 0, dimsRemain = FALSE)
 }
 \description{
-Cleans a matrix by removing NAs
+Returns an object of the same type as \code{object}, containing all columns 
+in \code{object} for which the fraction of missing values is less than
+\code{cleanParam}
 }

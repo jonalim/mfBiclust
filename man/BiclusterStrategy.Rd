@@ -4,9 +4,10 @@
 \alias{BiclusterStrategy}
 \title{Construct a BiclusterStrategy}
 \usage{
-BiclusterStrategy(m, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
-  "plaid", "spectral"), threshAlgo = "otsu", scoreThresh = threshAlgo,
-  loadingThresh = threshAlgo, duplicable = TRUE, ...)
+BiclusterStrategy(obj, k, method = c("als-nmf", "svd-pca", "snmf",
+  "nipals-pca", "plaid", "spectral"), threshAlgo = "otsu",
+  scoreThresh = threshAlgo, loadingThresh = threshAlgo, duplicable = TRUE,
+  ...)
 }
 \arguments{
 \item{scoreThresh}{the score thresholding algorithm to use. Ignored if
@@ -20,8 +21,9 @@ bicluster is "plaid" or "bimax"}
 \description{
 This class encapsulates bicluster results for one biclustering algorithm, one
 thresholding algorithms, and one quantity of biclusters. To visualize results
-in a GUI, wrap a \code{\link{BiclusterStrategy}} in a
-\code{\link{BiclusterExperiment}}, then call \code{\link{shinyStart()}}.
+in a GUI, call \code{\link{addStrat()}} on a
+\code{\link{BiclusterExperiment}}, then call \code{\link{biclusterGUI()}}
+on the resulting BiclusterExperiment.
 }
 \details{
 details
