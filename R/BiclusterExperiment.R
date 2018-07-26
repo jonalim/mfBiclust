@@ -44,7 +44,8 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 #' This function is useful for constructing one BiclusterExperiment
 #' encapsulating results of different pipelines (e.g. comparing NMF with PCA).
 #' For comparing results from the same pipeline with differing values of
-#' \code{k}, \code{\link{mfbc()}} is recommended.
+#' \code{k}, add multiple BiclusterStrategy objects to a single
+#' BiclusterExperiment.
 #' 
 #' @param m the data matrix defining this BiclusterExperiment. Should have rows
 #'   as samples and features as columns
@@ -127,17 +128,8 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #### addStrat ####
 #' Add a BiclusterStrategy to a BiclusterExperiment
 #' 
-#' Due to requirements of various biclustering methods, this function may warn
-#' that the chosen biclustering method was overridden.
-#' 
-#' Also, if any matrix elements of abund(BiclusterExperiment) are missing, then
-#' the BiclusterExperiment returned is not guaranteed to have the same number of
-#' samples and features.
-#' 
-#' Optional boolean argument \code{duplicable} can force Spectral, Plaid, 
-#' NIPALS, and SNMF to be duplicable. Alternatively, can allow ALS-NMF to be 
-#' non-duplicable. Other arguments to specific functions in bicluster.R can be
-#' provided.
+#' Returns a BiclusterExperiment identical to \code{bce} with the addition of a
+#' BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
 #' 
 #' @export
 setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
@@ -147,8 +139,29 @@ setGeneric("addStrat", signature = c("bce", "k"), function(bce, k,
                                                            ...) {
   standardGeneric("addStrat")
 })
+
+#' Add a BiclusterStrategy calculated with the given k and method
+#'
+#' Returns a BiclusterExperiment identical to \code{bce} with the addition of a
+#' BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
+#'
+#' The provided \code{method} is used to compute a number of biclusters,
+#' sets comprising both samples and features. Matrix factorization methods will
+#' store intermediate data in the \code{factors} slot of the BiclusterStrategy.
+#' That intermediate data is then thresholded to yield the matrices in the
+#' \code{clusteredSamples} and \code{clusteredFeatures} slots of the
+#' BiclusterStrategy.
+#'
+#' @section Potential side effects:
+#' Due to requirements of various biclustering methods, this function may with
+#' warning override user parameters. Also, if any elements of 
+#' \code{abund(BiclusterExperiment)} are missing, the row and column
+#' containing those elements may be removed with warning.
+#'
+#' @describeIn addStrat
 setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"), 
-          function(bce, k, method,
+          function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
+                                      "nipals-pca", "plaid", "spectral"), maxNa, 
                    duplicable, silent, ...) {
             # Validate parameters
             # k must be whole number, smaller than both dimensions of m
@@ -195,7 +208,12 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"),
             }
           })
 
-# FIXME adapt from ExpressionSet method exprs so environment-style assayData can be accessed?
+setGeneric("as.matrix")
+#' Get abundance values in a BiclusterExperiment
+#'
+#' Returns a numeric matrix
+#'
+#' @describeIn BiclusterExperiment
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
@@ -224,6 +242,8 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object,
 #' @param bce A BiclusterExperiment to access
 #' @param id Either the integer index or the name of the BiclusterStrategy to 
 #'   get
+#' 
+#' @describeIn BiclusterExperiment
 #' @export
 setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
 setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
@@ -231,6 +251,8 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
 })
 
 #' Names of BiclusterStrategies in this BiclusterExperiment
+#' 
+#' @describeIn BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
@@ -238,6 +260,7 @@ setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 #' 
 #' Returns a BiclusterExperiment containing only abundance data
 #' 
+#' @describeIn BiclusterExperiment
 #' @export
 setGeneric("wipe", signature = "bce", function(bce) {standardGeneric("wipe")})
 setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
@@ -250,6 +273,7 @@ setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
 #' Returns a BiclusterExperiment encapsulating only the named BiclusterStrategy.
 #' Can be useful to store the final results.
 #' 
+#' @describeIn BiclusterExperiment
 #' @export
 setGeneric("wipeExcept", signature = c("bce", "bcs"),
            function(bce, bcs) {standardGeneric("wipeExcept")})
@@ -277,6 +301,12 @@ setMethod("wipeExcept", c(bce = "BiclusterExperiment",
           }
 )
 
+
+#' Access strategies contained by a BiclusterExperiment
+#'
+#' Returns a list of BiclusterStrategy objects 
+#'
+#' @describeIn BiclusterExperiment
 #' @export
 setGeneric("strategies", signature = "bce", function(bce) {
   standardGeneric("strategies")

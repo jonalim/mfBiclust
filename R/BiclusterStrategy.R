@@ -25,8 +25,9 @@ setClass(
 #'
 #' This class encapsulates bicluster results for one biclustering algorithm, one
 #' thresholding algorithms, and one quantity of biclusters. To visualize results
-#' in a GUI, wrap a \code{\link{BiclusterStrategy}} in a
-#' \code{\link{BiclusterExperiment}}, then call \code{\link{shinyStart()}}.
+#' in a GUI, call \code{\link{addStrat()}} on a
+#' \code{\link{BiclusterExperiment}}, then call \code{\link{biclusterGUI()}}
+#' on the resulting BiclusterExperiment.
 #'
 #' details
 #' @section Custom thresholds:
@@ -296,6 +297,9 @@ validBiclusterStrategy <- function(object) {
 setValidity("BiclusterStrategy", validBiclusterStrategy)
 
 #### Accessors ####
+#' The biclustering algorithm used 
+#'
+#' Returns the name of the biclustering algorithm used to calculate a BiclusterStrategy
 #' @export
 setGeneric("method", signature = "bcs", function(bcs) {
   standardGeneric("method")
@@ -307,10 +311,12 @@ setMethod("method", "BiclusterStrategy", function(bcs) {
 #' Name of a BiclusterStrategy
 #'
 #' Get this BiclusterStrategy's display-friendly name. If it does not have a name, computes a
-#' string containing the biclustering algorithm, thresholding algorithms, and
+#' string containing the biclustering algorithm, thresholding algorithm, and
 #' number of biclusters in the given BiclusterStrategy.
 #'
 #' This function may not be used to modify a BiclusterStrategy's name.
+#' @export
+setGeneric("name", signature = "bcs", function(bcs) {standardGeneric("name")})
 setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
   if (length(bcs@name) > 0) {
     bcs@name
@@ -322,11 +328,11 @@ setMethod("name", c(bcs = "BiclusterStrategy"), function(bcs) {
     name(list(bca, ta, nclust(bcs)))
   }
 })
-
 setMethod("name", c(bcs = "list"), function(bcs) {
   do.call(paste, c(bcs, list(sep = " | ")))
 })
 
+setGeneric("names")
 #' Names of biclusters in this BiclusterStrategy
 #' @export
 setMethod("names", "BiclusterStrategy", function(x) {

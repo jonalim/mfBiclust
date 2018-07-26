@@ -126,7 +126,11 @@ createAnnots <-
     annots
   }
 
-#' @export
+#' Use a string to set the random seed
+#'
+#' Returns the output of .Random.seed. Call
+#' \code{on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+#' } to restore the random seed.
 duplicable <- function(str) {
   if (!exists(".Random.seed", mode="numeric")) sample(NA)
   oldSeed <- .Random.seed
@@ -155,6 +159,18 @@ error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
   suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
+#' Filter biclusters by overlap and quantity
+#' 
+#' Returns a pair of bicluster membership matrices and a list of the qualifying
+#' biclusters.
+#' 
+#' @param rowxBicluster a binary matrix with samples as rows, biclusters as 
+#'   columns
+#' @param biclusterxCol a binary matrix with samples as rows, biclusters as 
+#'   columns
+#' @param max the maximum number of bicluster to keep
+#' @param overlap the maximum portion of a bicluster that may overlap with
+#'   another bicluster
 #' @export
 filter.biclust <- function(rowxBicluster, biclusterxCol, max = NULL, 
                            overlap = 0.25) {

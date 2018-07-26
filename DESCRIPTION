@@ -20,10 +20,14 @@ Imports:
     shiny (>= 1.0.5),
     NMF,
     EBImage,
+    methods,
     Biobase,
     DT,
+    nipals,
     pheatmap,
+    RColorBrewer,
     shinyjs,
+    MASS,
     biclust,
     shinythemes
 RoxygenNote: 6.0.1
@@ -36,18 +40,17 @@ Collate:
     'bicluster.R'
     'biclusterGUI.R'
     'data.R'
-    'evaluate.R'
     'functionalAnnotation.R'
     'genBiclusters.R'
     'graphical.R'
     'helperClasses.R'
     'mfBiclust.R'
-    'mfbc.R'
-    'readFile.R'
 Suggests: 
     testthat,
     GOstats,
     BiocInstaller,
+    BiocParallel,
+    nipals,
     mclust,
     reticulate
 LazyData: true

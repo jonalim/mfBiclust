@@ -14,8 +14,12 @@
 
 #' Gene expression datasets for benchmarking classification performance
 #'
-#' Microarray and RNAseq datasets from biclustlib, originally published by
-#' de Souto MC, Costa IG, de Araujo DS, Ludermir TB, Schliep A in 2008.
+#' Pre-classified microarray and RNAseq datasets from human cancer samples,
+#' originally published by de Souto MC, Costa IG, de Araujo DS, Ludermir TB,
+#' Schliep A in 2008.
+#' 
+#' Redistributed from biclustlib: A Python library of biclustering algorithms
+#' and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
 #'
 #' @format A list of 13 datasets where each element contains:
 #' \describe{
@@ -28,9 +32,12 @@
 
 #' Gene expression datasets for benchmarking detection of biological signal
 #'
-#' A dataset containing the microarray datasets in biclustlib originally
-#' published by Jaskowiak PA, Campello RJ, Costa Filho IG (2013).
+#' Yeast microarray datasets originally published by Jaskowiak PA, Campello RJ,
+#' Costa Filho IG (2013). All rownames are ENSEMBL gene names.
 #'
+#' Redistributed from biclustlib: A Python library of biclustering algorithms
+#' and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
+#' 
 #' @format A list of 17 data.frames where columns are samples and rows are
 #'   genes, with ENSEMBL names
 #'
