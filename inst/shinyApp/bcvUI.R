@@ -2,9 +2,8 @@ tabPanel(
   "Optimize",
   sidebarLayout(
     sidebarPanel(
-      actionButton("bcvButton", "Perform BCV", ),
-      actionButton("bcvAndBiclusterButton", "Perform BCV and bicluster", ),
-      renderUI("goBicluster"),
+      uiOutput("bcvButton"),
+      uiOutput("bcvAndBiclusterButton"),
       width = 3),
     mainPanel(
       p(id = "bcvtable", ""),

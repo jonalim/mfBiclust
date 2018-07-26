@@ -4,8 +4,8 @@
 \alias{addStrat}
 \title{Add a BiclusterStrategy to a BiclusterExperiment}
 \usage{
-addStrat(bce, k, method, maxNa = 1, duplicable = TRUE, silent = FALSE,
-  ...)
+addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
+  "plaid", "spectral"), duplicable = TRUE, silent = FALSE, ...)
 }
 \description{
 Due to requirements of various biclustering methods, this function may warn

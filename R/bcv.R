@@ -20,7 +20,7 @@
 #'
 #' @export
 auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
-                     verbose = TRUE, duplicable = TRUE) {
+                     verbose = TRUE, duplicable = TRUE, interactive = TRUE) {
   oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   
@@ -32,7 +32,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   converged <- FALSE
   while(!converged && i < maxIter) {
     # Get the number of biclusters with lowest bcv value
-    res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts)
+    res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts, interactive)
     bcvRes <- names(which.min(res))
     distr[bcvRes] <- distr[bcvRes] + 1L
     
@@ -40,7 +40,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
     # This should occur on the first iteration only.
     if(length(distr) > length(res)) distr <- distr[seq_along(res)]
     names(distr) <- names(res)
-
+    
     resid <- unlist(mapply(function(d, dOld) {
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
@@ -67,7 +67,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   if(bestOnly) { med }
   else { list(best = med, counts = distr) }
 }
-  
+
 #' Perform bi-cross-validation
 #'
 #' The number of biclusters yielding the lowest BCV value is the predicted best.
@@ -84,7 +84,7 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
 #'   matrix \code{Y}
 #'
 #' @export
-bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
+bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE) {
   if(duplicable) {
     oldSeed <- duplicable("bcv") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -92,17 +92,24 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
   
   #validate input
   if(!inherits(Y, "matrix")) Y <- as.matrix(Y)
+  if(any(is.na(Y)) && interactive) {
+    message(paste("Since some elements of the matrix are NA, BCV will run the",
+                  "slower iterative algorithm. Continue?"))
+    if (menu(c("Yes", "No")) != 1) {
+      stop("User choice")
+    }
+  }
   p <- ncol(Y)
   n <- nrow(Y)
   
   kLimit <- floor((holdouts - 1L) / holdouts * min(p, n))
   if(sum(ks < kLimit) < length(ks)) {
     warning(paste("Due to holdouts, some of the highest requested ks will not be",
-               "tested."))
-    }
+                  "tested."))
+  }
   ks <- ks[ks < kLimit]
   if(length(ks) < 1) { stop(paste("ks must be a range of integers less than the",
-                                 "smaller matrix dimension"))
+                                  "smaller matrix dimension"))
   }
   
   # Automatically decrease the number of holdouts if necessary
@@ -110,7 +117,7 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE) {
   if(holdouts > min(p, n)) {
     holdouts <- min(p, n)
     warning(paste("Using", holdouts, "holdouts to ensure non-zero holdout",
-                "size."))
+                  "size."))
   }
   
   result.list <- bcvGivenKs(Y, ks, holdouts)
@@ -126,14 +133,14 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   # initialize...
   p <- ncol(Y)
   n <- nrow(Y)
-
+  
   # Set up bi-cross-validation folds
   nHoldoutInd <- (seq_len(n) %% holdouts) + 1L
   nHoldoutInd <- sample(nHoldoutInd, size = n)
   
   pHoldoutInd <- (seq_len(p) %% holdouts) + 1L
   pHoldoutInd <- sample(pHoldoutInd, size = p)
-
+  
   # Try NIPALS-PCA if any NA values
   if(any(is.na(Y))) {
     warning(paste("Using NIPALS-PCA because some matrix elements are NA",
@@ -141,12 +148,12 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
     pca <- function(Y, k) { 
       res <- nipals_pca_autoclean(Y, k, center = TRUE)$genericFit
       list(scores = res@fit@W, loadings = res@fit@H)
-           }
+    }
   } else {
     pca <- function(Y, k) {
       res <- prcomp(Y, rank. = k, retx = TRUE, center = TRUE)
       list(scores = res$x, loadings = t(res$rotation))
-      }
+    }
   }
   
   # Perform PCA on the whole matrix

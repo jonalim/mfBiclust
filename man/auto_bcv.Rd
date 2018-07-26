@@ -5,7 +5,8 @@
 \title{Perform bcv until convergence}
 \usage{
 auto_bcv(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10^-4),
-  bestOnly = TRUE, verbose = TRUE, duplicable = TRUE)
+  bestOnly = TRUE, verbose = TRUE, duplicable = TRUE,
+  interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}

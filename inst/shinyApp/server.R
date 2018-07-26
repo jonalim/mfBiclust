@@ -27,8 +27,8 @@ function(input, output, session) {
     bcvRes = numeric(0),
     bcvBest = 0,
     bcvValid = FALSE,
-    # a named list containing results for each bicluster
-    goRes = numeric(0)
+    goRes = numeric(0), # a named list containing results for each bicluster
+    goLastParams = list()
   )
   
   #### DATA I/O ####
@@ -135,8 +135,8 @@ function(input, output, session) {
   output$uiabundance <- renderUI({
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
     # withProgress(message = "Plotting...", value = 3/8, {
-      height = reactiveHeatmapHeight500()
-      return(plotOutput("abundance", height = height))
+    height = reactiveHeatmapHeight500()
+    return(plotOutput("abundance", height = height))
     # })
   })
   output$abundance <- renderPlot({
@@ -145,7 +145,7 @@ function(input, output, session) {
   }, height = function() {reactiveHeatmapHeight500()})
   reactive_abundance <- reactive({
     bce <- values$bce
-
+    
     if(input$logBase == "e") {
       logBase <- exp(1)
     } else {
@@ -201,42 +201,53 @@ function(input, output, session) {
   # That way, BCV and Bicluster can modify the sliderInput.
   # TODO initialize the slidreInput in the UI, then use an observer on values$bce
   # to modify the max and value ASAP
-  output$kSlider <- renderUI({
+  observeEvent({
+    values$bce
+  },
+  {
     bce <- values$bce
     val <- input$k
-    if(is.null(val)) {
-      # Initialize everything on the Bicluster tab
-      if(inherits(values$strategy, "BiclusterStrategy")) {
-        # Assume a BiclusterStrategy has a method listed in biclusterUI.R
-        updateSelectInput(session, "algo", selected = method(values$strategy))
-        val <- nclust(values$strategy)
-      } else val <- 2
-    }
-    maxk <- if(is.null(bce)) { 2 } else {
+    if(is.null(bce)) { 
+      maxk <- 1
+      val <- 1
+    } else {
       m <- as.matrix(bce)
-      min(nrow(m), ncol(m))
+      maxk <- min(nrow(m), ncol(m))
+      val <- min(2, maxk) # if possible, suggest 2 to the user
     }
-    sliderInput("k", "Number biclusters", min = 1, 
-                value = val,
-                max = maxk, step = 1)
+    if(inherits(userBce, "BiclusterExperiment") &&
+       inherits(values$strategy, "BiclusterStrategy")) {
+      updateSelectInput(session, "algo", selected = method(values$strategy))
+      val <- nclust(values$strategy) # if there's already a biclusterstrategy..
+    }
+    updateSliderInput(session, "k", max = maxk, step = 1)
+    updateSliderInput(session, "k", value = val)
   }
   )
   
-  output$biclusterButton <- renderUI({
+  observeEvent({
+    values$bce
+    input$k
+    input$algo
+    },
+    {
+    if(biclusteringAllowed()) { shinyjs::enable("bicluster") 
+      } else { shinyjs::disable("bicluster") }
+    }
+  )
+  biclusteringAllowed <- function() {
     # core data must be available
-    atttributes <- if(inherits(values$bce, "BiclusterExperiment") && 
-                      inherits(input$k, "integer")) {
+    if(inherits(values$bce, "BiclusterExperiment") && 
+       inherits(input$k, "integer")) {
       # The parameters must not match an existing BiclusterStrategy
       if(all(names(values$bce) !=
              name(list(bca = capitalize(input$algo),
                        threshAlgo = capitalize("otsu"), k = input$k)))) {
-        # "disabled" must be absent to enable the button
-        return(actionButton("bicluster", "Run"))
+        return(TRUE)
       }
     }
-    # otherwise, disable the button
-    return(actionButton("bicluster", "Run", disabled = TRUE))
-  })
+    return(FALSE)
+  }
   
   observeEvent(input$bicluster, {
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
@@ -422,10 +433,10 @@ function(input, output, session) {
   output$downloadBceAllButton <- renderUI({
     if(length(strategies(values$bce)) > 0) {
       downloadButton('downloadBceAll', 'Download all bicluster results',
-                      class="dlButton")
+                     class="dlButton")
     } else {
       actionButton('downloadBceAll', 'Download all bicluster results',
-                     class="dlButton", disabled = TRUE)
+                   class="dlButton", disabled = TRUE)
     }
   })
   output$downloadBceAll <- downloadHandler(
@@ -446,7 +457,7 @@ function(input, output, session) {
                      class="dlButton")
     } else {
       actionButton('downloadBceCurrent', 'Download this bicluster result',
-                 class="dlButton", disabled = TRUE)
+                   class="dlButton", disabled = TRUE)
     }
   })
   output$downloadBceCurrent <- downloadHandler(
@@ -623,46 +634,91 @@ function(input, output, session) {
   })
   
   #### BI-CROSS-VALIDATION ####
-  guiBCV <- function() {
-    if(values$bcvValid == FALSE) {
-      withProgress(
-        message = "Performing bi-cross-validation...",
-        value = 0, max = params$bcvMaxIter, {
-          res <- withCallingHandlers({
-            shinyjs::html("bcvtext", "")
-            suppressWarnings(
-              do.call(auto_bcv, c(list(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
-                                       bestOnly = FALSE, verbose = TRUE), params$bcvArgs)))
-          },
-          message = function(m) {
-            shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
-                          add = FALSE)
-            incProgress(1)
-          })
-          values$bcvRes <- res$counts
-          values$bcvBest <- res$best
-          values$bcvValid <- TRUE
-        })
+  output$bcvButton <- renderUI({
+    if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
+      # disabled button if invalid data, or BCV already run
+      return(actionButton(inputId = "bcvButton", label = "Perform BCV",
+                          disabled = TRUE))
+    } else if(any(is.na(as.matrix(values$bce)))) {
+      # button redirecting to confirmation dialog
+      return(actionButton(inputId = "bcvCheckButton", label = "Perform BCV"))
+    } else {
+      # BCV immediately
+      return(actionButton(inputId = "bcvButton", label = "Perform BCV"))
     }
-  }
+  })
+  output$bcvAndBiclusterButton <- renderUI({
+    if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
+      return(actionButton(inputId = "bcvAndBicluster", label = "Perform BCV and bicluster",
+                          disabled = TRUE))
+    } else if(any(is.na(as.matrix(values$bce)))) {
+      return(actionButton(inputId = "bcvCheckAndBicluster", 
+                          label = "Perform BCV and bicluster"))
+    } else {
+      return(actionButton(inputId = "bcvAndBicluster", 
+                          label = "Perform BCV and bicluster"))
+    }
+  })
   
+  observeEvent(input$bcvCheckButton, {
+    try(removeNotification("bcvNaNotif"))
+    showNotification(
+      id = "bcvNaNotif",
+      ui = paste("Since some matrix elements are NA, bi-cross-validation",
+                 "will run\n much more slowly."),
+      action = actionButton(inputId = "bcvButton", label = "Continue"),
+      duration = NULL)
+  }
+  )
   observeEvent(
     input$bcvButton,
     {
-      shinyjs::disable("bcvButton")
-      shinyjs::disable("bcvAndBiclusterButton")
-      guiBCV()
+      runBcv()
     }
   )
-  
-  observeEvent(input$bcvAndBiclusterButton, {
+  runBcv <- function() {
     shinyjs::disable("bcvButton")
     shinyjs::disable("bcvAndBiclusterButton")
-    guiBCV()
-    updateSliderInput(session, inputId = "k", value = as.integer(values$bcvBest))
-    shinyjs::click("bicluster")
-    updateNavbarPage(session, inputId = "navbarpage", 
-                     selected = "Bicluster")
+    withProgress(
+      message = "Performing bi-cross-validation...",
+      value = 0, max = params$bcvMaxIter, {
+        res <- withCallingHandlers({
+          shinyjs::html("bcvtext", "")
+          suppressWarnings(
+            do.call(auto_bcv,
+                    c(list(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
+                           bestOnly = FALSE, verbose = TRUE,
+                           interactive = FALSE),
+                      params$bcvArgs)))
+        },
+        message = function(m) {
+          shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
+                        add = FALSE)
+          incProgress(1)
+        })
+        values$bcvRes <- res$counts
+        values$bcvBest <- res$best
+        values$bcvValid <- TRUE
+      })
+  }
+  
+  observeEvent(
+    input$bcvCheckAndBicluster,
+    {
+      try(removeNotification("bcvNaNotifThenBicluster"))
+      showNotification(
+        id = "bcvNaNotifThenBicluster",
+        ui = paste("Since some matrix elements are NA, bi-cross-validation",
+                   "will run\n much more slowly."),
+        action = actionButton(inputId = "bcvAndBicluster", label = "Continue"),
+        duration = NULL)
+    }
+  )
+  observeEvent(input$bcvAndBicluster, {
+    runBcv()
+    updateSliderInput(session, "k", val = values$bcvBest)
+    if(biclusteringAllowed()) shinyjs::click("bicluster")
+    updateTabsetPanel(session, "navbarpage", selected = "Bicluster")
   })
   
   # A barplot of BCV results
@@ -721,23 +777,10 @@ function(input, output, session) {
     if(!dep$gostats) {
       return(actionButton("gostats", "Install dependency \"GOstats\""))
     } else {
-      # there must be biclustering data present
-      if(inherits(values$strategy, "BiclusterStrategy")) {
-        active <- TRUE
-        if(length(values$goRes) > 0) {
-          # the selected species must be different from the current results
-          if(substr(input$orgDb, 1, nchar(input$orgDb) - 3) ==
-             annotation(values$goRes[[1]][[1]])) {
-            active <- FALSE 
-          }
-        }
-        # the species dropdown must have loaded
-        if(is.null(input$orgDb)) { active <- FALSE } else {
-          if(nchar(input$orgDb) == 0) { active <- FALSE }
-        }
-      } else {
-          active <- FALSE
-      }
+      # all input must be present, and params must have changed since last run
+      active <- goAllowed() &&
+        !identical(list(values$strategy, input$orgDb, input$gos),
+                   values$goLastParams)
       if(active) {
         return(actionButton("go", "Test for GO enrichment"))
       } else {
@@ -745,15 +788,27 @@ function(input, output, session) {
       }
     }
   })
+  goAllowed <- reactive({
+    if(inherits(values$strategy, "BiclusterStrategy")) {
+      allowed <- TRUE
+      # the species dropdown must have loaded
+      if(is.null(input$orgDb)) { allowed <- FALSE } else {
+        if(nchar(input$orgDb) == 0) { allowed <- FALSE }
+      }
+    } else { # there must be biclustering data available to get gene lists from
+      allowed <- FALSE
+    }
+    return(allowed)
+  })
   # Call this anytime BiocInstaller is absent
   requestBiocInstaller <- function() {
     if(!dep$BiocInstaller) {
       showNotification(ui = paste("BiocInstaller must be installed. Clicking",
                                   "below will run",
                                   "https://bioconductor.org/biocLite.R"),
-                     action = actionButton("biocinstaller", "Install"),
-                     id ="biocInstallerNotif", duration = NULL,
-                     closeButton = FALSE)
+                       action = actionButton("biocinstaller", "Install"),
+                       id ="biocInstallerNotif", duration = NULL,
+                       closeButton = FALSE)
       # I hate to make the notification non-closable, but I have no way of
       # detecting the close action. Then the user has no way to install
       # BiocInstaller after closing.
@@ -768,7 +823,7 @@ function(input, output, session) {
         withProgress(
           message = "Installing GOstats...", value = 3/8,
           {suppressWarnings(BiocInstaller::biocLite("GOstats",
-                                                     suppressUpdates = TRUE))
+                                                    suppressUpdates = TRUE))
           })
         withProgress(
           message = "Verifying installation...", value = 7/8,
@@ -818,26 +873,29 @@ function(input, output, session) {
         shinyjs::enable("go")
         # User will have to click the button again AFTER installation
       } else {
-      withProgress(
-        message = "Searching for Gene Ontology enrichment...",
-        value = 0, max = nclust(values$strategy) * length(input$gos),
-        {
-          values$goRes <- withCallingHandlers({
-            # withCallingHandlers handles warnings; errors are trapped by try()
-            try(testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
-                   orgDb = input$orgDb))
-          },
-          message = function(m) {
-            incProgress(1)
-            showNotification(conditionMessage(m), duration = 5)
-          },
-          warning = function(w) {}
-          )
-          if(inherits(values$goRes, "try-error")) {
-            showNotification(values$goRes, duration = NULL)
-            values$goRes <- NULL # return to previous app state
-          }
-        })
+        withProgress(
+          message = "Searching for Gene Ontology enrichment...",
+          value = 0, max = nclust(values$strategy) * length(input$gos),
+          {
+            values$goRes <- withCallingHandlers({
+              # withCallingHandlers handles warnings; errors are trapped by try()
+              try(testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
+                         orgDb = input$orgDb))
+            },
+            message = function(m) {
+              incProgress(1)
+              showNotification(conditionMessage(m), duration = 5)
+            },
+            warning = function(w) {}
+            )
+            if(inherits(values$goRes, "try-error")) {
+              showNotification(values$goRes, duration = NULL)
+              values$goRes <- NULL # return to previous app state
+            } else {
+              # store the running parameters
+              values$goLastParams <- list(values$strategy, input$orgDb, input$gos)
+            }
+          })
       }
     })
   output$species <- renderUI({
@@ -884,7 +942,7 @@ function(input, output, session) {
     return(
       if(length(goRes) > 0) {
         lapply(goRes, function(listOfHyperGs) {
-          # list might contain results for MF, BP, CC
+          # list might contain results for MF, BP, CC. concatenate all
           p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
           adj.p.value <- p.adjust(p.value, method = "BH")
           odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))

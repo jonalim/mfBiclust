@@ -24,7 +24,7 @@ setMethod("biclusterGUI", definition = function(obj, dbg = FALSE) {
   
   shinyApp(
     ui = source(system.file("shinyApp", "ui.R", package = "mfBiclust"),
-           local = TRUE)$value,
+                local = TRUE)$value,
     server = source(system.file("shinyApp", "server.R", package = "mfBiclust"),
                     local = TRUE)$value,
     options = list(launch.browser = TRUE, fullstacktrace = TRUE)
