@@ -64,7 +64,7 @@ genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols,
     biclusterVal <- rep(1, each = length(colRange))
     if(striped == "cols") {
       # stripes will have a uniform distribution; range of 2
-      colstripes <- sample(0:2, length(biclusterVal), replace = TRUE)
+      colstripes <- runif(length(biclusterVal), 0, 2)
       biclusterVal <- biclusterVal + colstripes
     }
     mapply(function(col, value) {

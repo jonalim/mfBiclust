@@ -86,6 +86,7 @@ setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
   
   tryCatch(bc <- do.call(get(method), biclustArgs), # Bicluster
            error = function(c) {
+             warning(paste(c$message))
              warning(paste(method, "failed, switching to PCA."))
              bc <<- svd_pca(obj, k) # fallback to PCA
              method <<- "svd-pca"

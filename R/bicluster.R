@@ -3,7 +3,7 @@
 ###% http://renozao.github.io/NMF
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
-                    eps_conv = 1e-7, duplicable = TRUE, verbose=FALSE, ...){
+                    eps_conv = 1e-7, duplicable = TRUE, verbose=TRUE, ...){
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -30,14 +30,9 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     # initialize random W if no starting point is given
     
     # rank is given by k
-    if(verbose) message('# NOTE: Initialise W internally (runif)')
     W <- matrix(runif(m*k), m,k)
     
     idxWold=rep(0, m); idxHold=rep(0, n); inc=0;
-    
-    # check validity of seed
-    if( any(NAs <- is.na(W)) )
-      stop("ALS-NMF::Invalid initialization - NAs found in the ", if(version=='R') 'basis (W)' else 'coefficient (H)' , " matrix [", sum(NAs), " NAs / ", length(NAs), " entries]")
     
     # normalize columns of W
     frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
@@ -47,36 +42,57 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     Hold <- matrix(runif(k*n), k,n);	
     residNormOld <- maxA
     I_k=diag(eta, k); betavec=rep(sqrt(beta), k); nrestart=0;
+    restart <- function() {
+      # re-initialize random W
+      idxWold <<- rep(0, m); idxHold <<- rep(0, n); inc <<- 0; 
+      erravg1 <<- numeric();# re-initialize base average error
+      W <- matrix(runif(m*k), m,k);
+      
+      # normalize columns of W	
+      frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
+      W <<- sweep(W, 2, frob, FUN = "/")
+    }
+    
     i <- 0L
     while( i < maxIter){
       i <- i + 1L
       
       # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
-      res = .fcnnls(rbind(W, betavec), rbind(A, rep(0, n)))
+      res <- try(.fcnnls(rbind(W, betavec), rbind(A, rep(0, n))), silent = TRUE)
+      if(inherits(res, "try-error")) {
+        nrestart <- nrestart+1;
+        if ( nrestart >= 10 ){
+          warning("NMF::snmf - Factorization failed too many times [Computation stopped after the 9th restart]");
+          break;
+        }
+        restart()
+        next
+      }
       H <- res[[1]]
       
       if ( any(rowSums(H)==0) ){
-        if( verbose ) cat(sprintf("iter%d: 0 row in H eta=%.4e restart!\n",i,eta));
-        nrestart=nrestart+1;
+        nrestart <- nrestart+1;
         if ( nrestart >= 10 ){
-          warning("NMF::snmf - Too many restarts due to too big 'beta' value [Computation stopped after the 9th restart]");
+          warning("NMF::snmf - Factorization failed too many times [Computation stopped after the 9th restart]");
           break;
         }
-        
-        # re-initialize random W
-        idxWold=rep(0, m); idxHold=rep(0, n); inc=0; 
-        erravg1 <- numeric();# re-initialize base average error
-        W <- matrix(runif(m*k), m,k);
-        
-        # JNL normalize columns of W	
-        frob <- apply(W, 2, function(x) sqrt(sum(x ^ 2)) )
-        W <- sweep(W, 2, frob, FUN = "/")
-        
+        restart()
         next
       }
       
-      # min_w ||[H'; I_k]*W' - [A'; 0]||, s.t. W>=0, for given A and H. 
-      res = .fcnnls(rbind(t(H), I_k), rbind(t(A), matrix(0, k,m))); 
+      # min_w ||[H'; I_k]*W' - [A'; 0]||, s.t. W>=0, for given A and H.
+      res = try(.fcnnls(rbind(t(H), I_k), rbind(t(A), matrix(0, k,m))),
+                silent = TRUE)
+      if(inherits(res, "try-error")) {
+        nrestart <- nrestart+1;
+        if ( nrestart >= 10 ){
+          warning("NMF::snmf - Factorization failed too many times [Computation stopped after the 9th restart]");
+          break;
+        }
+        restart()
+        next
+      }
+      
       Wt = res[[1]]
       W <- t(Wt);		
       
@@ -85,8 +101,8 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
       ###% Analysis, vol. 52, no. 1, pp. 155-173.
       residNorm <- sum((A - W %*% H) ^ 2) / length(A)
-      if(abs(residNormOld - residNorm) <= eps_conv) {
-        message("Converged!")
+      if(abs(residNormOld - residNorm) <= eps_conv && verbose) {
+        if(verbose) message("Converged!")
         break
       }
       residNormOld <- residNorm
@@ -114,7 +130,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
   
   res <- new("genericFactorization", W= W, H = H)
   res <- new("genericFit", fit = res, method = "als-nmf")
-  return(invisible(res))
+  return(res)
 }
 
 nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
@@ -142,7 +158,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
 }
 
 nipals_pca_autoclean <- function(A, k, cleanParam = 0, center = FALSE,
-                                 duplicable = FALSE) {
+                                 duplicable = FALSE, verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -157,49 +173,65 @@ nipals_pca_autoclean <- function(A, k, cleanParam = 0, center = FALSE,
   }, error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
       cleanParam <- cleanParam + log10(2 - i)
-      message(paste("Too many NA in the data. Cleaning with maxNAs at",
+      if(verbose) {
+        message(paste("Too many NA in the data. Cleaning with maxNAs at",
                     cleanParam))
+      }
       # pass the original m so indexRemaining is valid for the user's matrix
       nipals_pca_helper(A, k, cleanParam, center, duplicable)
     } else { stop(e) }
   })
 }
 
-plaid <- function(A, k, duplicable = TRUE, ...) {
+plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
   args <- list(...)
+  shuffleMax <- args$shuffle
   args <- c(cluster = args$cluster, fit.model = args$fit.model, 
             background = args$background, 
             background.layer = args$background.layer,
-            background.df = args$background.df, shuffle = args$shuffle, 
+            background.df = args$background.df,
             backfit = args$backfit, iter.startup = args$iter.startup, 
             iter.layer = args$iter.layer, verbose = args$verbose)
-  
+  if(is.null(shuffleMax)) shuffleMax <- 10
   number <- 0
   release <- 0.7
+  shuff <- 3
   best <- NULL
-  while(number < k && release > 0) {
-    dummy <- capture.output({
-      bc <- do.call(biclust::biclust, 
-                    c(list(x = A, method = biclust::BCPlaid(), row.release = release,
-                           col.release = release, max.layers = k), args))
-    })
-    if(bc@Number > number) {
-      number <- bc@Number
-      best <- bc
+  while(shuff <= shuffleMax && number < k) {
+    while(number < k && release > 0) {
+      dummy <- capture.output({
+        bc <- do.call(biclust::biclust, 
+                      c(list(x = A, method = biclust::BCPlaid(),
+                             row.release = release, col.release = release,
+                             max.layers = k, shuffle = shuff), args))
+      })
+      if(bc@Number > number) {
+        number <- bc@Number
+        best <- bc
+      }
+      release <- max(0.1, release - 0.1)
+      # first release decrements from 0.7 to 0.1
     }
-    release <- release - 0.1
+    # then if necessary, shuffle increments from 3 to 10
+    shuff <- shuff + 1
   }
   
   if(k > number) {
     k <- number
     warning(paste("Plaid could only find", k, "biclusters"))
   }
-  
+  if(verbose) {
+    cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
+    cat(paste("row.release =", bc@Parameters$Call$row.release, "\n"))
+    cat(paste("col.release =", bc@Parameters$Call$col.release, "\n"))
+    cat(paste("max.layers =", bc@Parameters$Call$max.layers, "\n"))
+    cat(paste("shuffle =", bc@Parameters$Call$shuffle, "\n"))
+  }
   scoreLoading <- if(k > 0) { 
     biclusters <- biclust::biclusternumber(best)
     biclusterNumber2scoreLoading(biclusters, A, k) 
@@ -222,7 +254,7 @@ plaid <- function(A, k, duplicable = TRUE, ...) {
 #' @param m the target matrix
 #' @param k the size of the reduced dimension
 #' @param beta the starting beta
-snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
+snmf <- function(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -235,7 +267,7 @@ snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
   res <- tryCatch(
     {
       suppressMessages(
-        do.call(NMF::nmf, c(list(x = A, rank = k,  method = "snmf/l", 
+        do.call(NMF::nmf, c(list(x = A, rank = k, method = "snmf/r", 
                                  beta = beta, rng = .Random.seed), args)))
     },
     warning = function(w) {
@@ -248,7 +280,6 @@ snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
         )
       ))) {
         beta <<- beta ^ 2
-        message(paste0("Decreased beta (sparsity parameter) to ", beta))
         res <<- snmf(A, k, beta, verbose, duplicable, ...)
       } else {
         warning(w)
@@ -256,18 +287,20 @@ snmf <- function(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...) {
     },
     error = function(e) {
       stop(e)
-    }#,
-    # finally = function() {
-    #   res
-    # }
+    }
   )
+  if(verbose) {
+    cat(paste("method:", res@method, "\n"))
+    cat(paste("parameters:\n", res@parameters, "\n"))
+  }
   res@method <- "snmf"
   return(res)
 }
 
 # spectral may find over k biclusters, but only k will be returned
 # minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
-spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, ...) {
+spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, 
+                     verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -311,6 +344,15 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, ...) {
   if(k > number) {
     k <- number
     warning(paste("Spectral could only find", k, "biclusters"))
+  }
+  
+  if(verbose) {
+    cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
+    cat(paste("normalization =", bc@Parameters$Call$normalization, "\n"))
+    cat(paste("withinVar =", bc@Parameters$Call$withinVar, "\n"))
+    cat(paste("minr =", bc@Parameters$Call$minr, "\n"))
+    cat(paste("minc =", bc@Parameters$Call$minc, "\n"))
+    cat(paste("numberOfEigenvalues =", bc@Parameters$Call$numberOfEigenvalues, "\n"))
   }
   
   scoreLoading <- if(k > 0) { 
