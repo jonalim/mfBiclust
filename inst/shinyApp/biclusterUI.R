@@ -26,31 +26,34 @@ tabPanel(
     ),
     mainPanel(
       tabsetPanel(
-        tabPanel("Summary",
-                 tags$style(type = "text/css", "#image1 {image-rendering: pixelated !important;}"),
-                 # possible fixes for other browsers:
-                 # image-rendering: optimizeSpeed;
-                 # image-rendering: -moz-crisp-edges;
-                 # image-rendering: -o-crisp-edges;
-                 # image-rendering: -webkit-optimize-contrast;
-                 # image-rendering: optimize-contrast;
-                 
-                 # filled interactive heatmap
-                 # In a imageOutput, passing values for click, dblclick, hover, or brush
-                 # will enable those interactions.
-                 imageOutput("image1",
-                             # Equivalent to: click = clickOpts(id = "image_click")
-                             click = "image_click",
-                             dblclick = dblclickOpts(
-                               id = "image_dblclick"
-                             ),
-                             hover = hoverOpts(
-                               id = "image_hover"
-                             ),
-                             brush = brushOpts(
-                               id = "image_brush"
-                             )
-                 )
+        tabPanel(
+          "Summary",
+          tags$style(
+            type = "text/css",
+            paste0("#bcHighlights {image-rendering: pixelated !important;")),
+          # possible fixes for other browsers:
+          # image-rendering: optimizeSpeed;
+          # image-rendering: -moz-crisp-edges;
+          # image-rendering: -o-crisp-edges;
+          # image-rendering: -webkit-optimize-contrast;
+          # image-rendering: optimize-contrast;
+          
+          # filled interactive heatmap
+          # In a imageOutput, passing values for click, dblclick, hover, or brush
+          # will enable those interactions.
+          imageOutput("bcHighlights",
+                      # Equivalent to: click = clickOpts(id = "bcHighlights_click")
+                      click = "bcHighlights_click",
+                      dblclick = dblclickOpts(
+                        id = "bcHighlights_dblclick"
+                      ),
+                      hover = hoverOpts(
+                        id = "bcHighlights_hover"
+                      ),
+                      brush = brushOpts(
+                        id = "bcHighlights_brush"
+                      )
+          )
         ),
         tabPanel("Samples",
                  column(9,
