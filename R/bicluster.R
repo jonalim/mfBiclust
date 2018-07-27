@@ -114,9 +114,9 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
       # every 5 iterations
       if ( (i %% 5==0)  || (length(erravg1)==0) ){
         if ( verbose && (i %% 5==0) ){ # prints number of changing elements
-          cat("Track:\tIter\tdeltaMaxChange\tdNorm\n")
+          cat("Track:\tIter\tNorm\tdelta\n")
           cat(sprintf("\t%d\t%f\t%f\n",
-                      i,0, residNorm))
+                      i,residNorm, residNormOld - residNorm))
         }
       }
     }

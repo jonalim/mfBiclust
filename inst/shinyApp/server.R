@@ -31,7 +31,70 @@ function(input, output, session) {
     goLastParams = list()
   )
   
+  output$status <- renderText("statusbartext")
+  
   #### DATA I/O ####
+  observeEvent(
+    {input$input_df
+      input$sepchar
+      input$decchar
+      input$quotechar
+      input$skiplines
+      input$row_names
+      input$header
+    },
+    {
+      withProgress({
+        incProgress(1/8)
+        if(!is.null(input$input_df)) {
+          rows <- if(input$row_names) 1 else NULL
+          rawmat <- read.table(input$input_df$datapath, header = input$header,
+                               row.names = rows,
+                               fill = TRUE, comment.char = "",
+                               sep = input$sepchar, quote = input$quotechar,
+                               dec = input$decchar, skip = input$skiplines)
+          incProgress(4/8)
+          rawmat <- as.matrix(rawmat)
+          bce <- BiclusterExperiment(rawmat)
+        } else {
+          # no file -> load user BiclusterExperiment
+          bce <-userBce
+        }
+        incProgress(1/8)
+      }, message = "Parsing data...", value = 0)
+      values$bce <- bce
+      values$bcvValid <- FALSE
+    })
+  
+  observeEvent(input$postUploadUpdate, {
+    validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
+    withProgress(message = "Updating", value = 1/8, {
+      bce <- values$bce
+      if(input$transpose) { 
+        # careful; is all data preserved here?
+        bce <- BiclusterExperiment(t(as.matrix(userBce)))
+      }
+      browser()
+      setProgress(3/8)
+      if(nchar(input$customRowNames) > 0) {
+        ns <- unlist(strsplit(x = input$customRowNames, split = "\\s+"))
+        if(length(ns) == dim(bce)[1]) {
+          featureNames(bce) <- ns
+        }
+      }
+      setProgress(5/8)
+      if(nchar(input$customColNames) > 0) {
+        ns <- unlist(strsplit(x = input$customColNames, split = "\\s+"))
+        if(length(ns) == dim(bce)[2]) {
+          sampleNames(bce) <- ns
+        }
+      }
+      setProgress(7/8)
+      values$bce <- bce
+      values$bcvValid <- FALSE
+    })
+  })
+  
   reactiveSeparator <- observeEvent(input$input_df, {
     # If the file input changes, try automatically changing separator to ","
     if(substr(input$input_df$name, nchar(input$input_df$name) - 2,
@@ -42,7 +105,7 @@ function(input, output, session) {
   )
   
   # Update this central matrix from its source
-  rawmat <- reactive({
+  controls <- reactive({
     if(is.null(input$input_df)) {
       # If the user has not chosen a file yet, look for a BiclusterExperiment in
       # the execution environment of biclusterGUI
@@ -52,12 +115,7 @@ function(input, output, session) {
       shinyjs::disable("sepchar")
       shinyjs::disable("quotechar")
       shinyjs::disable("decchar")
-      validate(need(inherits(userBce, "BiclusterExperiment"), 
-                    "You may import your dataset."))
-      return(as.matrix(values$bce)) # rawmat mirrors values$bce
-    }
-    # If the user has chosen a file, read it and update
-    else {
+    } else {
       shinyjs::enable("row_names")
       shinyjs::enable("header")
       shinyjs::enable("skiplines")
@@ -69,48 +127,15 @@ function(input, output, session) {
       shinyjs::runjs("$('#sepchar').attr('maxlength', 1)")
       shinyjs::runjs("$('#quotechar').attr('maxlength', 1)")
       shinyjs::runjs("$('#decchar').attr('maxlength', 1)")
-      
-      rows <- if(input$row_names) 1 else NULL
-      withProgress({
-        incProgress(1/8)
-        rawmat <- read.table(input$input_df$datapath, header = input$header,
-                             row.names = rows, fill = TRUE, comment.char = "",
-                             sep = input$sepchar, quote = input$quotechar, dec = input$decchar, skip = input$skiplines)
-        incProgress(6/8)
-        rawmat <- as.matrix(rawmat)
-        if(input$sampleCols) rawmat <- t(rawmat)
-        incProgress(1/8)
-      }, message = "Parsing data...", value = 0)
-      values$bce <- BiclusterExperiment(rawmat) # values$bce mirrors rawmat
-      bcvValid <- FALSE
-      return(rawmat)
     }
   })
-  # 
-  # customRowNames <- observeEvent(
-  #   input$customRowNames,
-  #   {
-  #     if(nchar(input$customRowNames) > 0) {
-  #       rn <- scan(text = input$customRowNames, what = "",
-  #            quiet = TRUE)
-  #       if(inherits(rawmat, "matrix")) {
-  #         try(rownames(rawmat) <- rn)
-  #       }
-  #       if(inherits(values$bce, BiclusterStrategy)) {
-  #         
-  #              } else return(character(0))
-  #              }
-  # )
-  
-  # When the raw data matrix changes, trigger other reactive updates
-  # observeEvent(rawmat(), {
-  #   browser()
-  # })
   
   # Render an interactive data.table for the user's benefit
-  output$dt <- DT::renderDT({
-    return(rawmat())
-  }, server = FALSE, selection = "none")
+  output$dt <- suppressWarnings(DT::renderDT({
+    validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
+    return(as.matrix(values$bce))
+  }, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
+  autoHideNavigation = TRUE, server = TRUE, selection = "none"))
   
   # helper functions
   reactiveHeatmapHeight500 <- reactive({ 
@@ -229,11 +254,11 @@ function(input, output, session) {
     values$bce
     input$k
     input$algo
-    },
-    {
+  },
+  {
     if(biclusteringAllowed()) { shinyjs::enable("bicluster") 
-      } else { shinyjs::disable("bicluster") }
-    }
+    } else { shinyjs::disable("bicluster") }
+  }
   )
   biclusteringAllowed <- function() {
     # core data must be available
@@ -282,7 +307,7 @@ function(input, output, session) {
           updateSelectInput(session, inputId = "algo", selected = algo)
           showNotification(
             paste(input$algo, "failed on your dataset, so the", algo,
-                  "algorithm was used instead."), duration = 5)
+                  "algorithm was used instead."), duration = NULL)
         }
         # Whatever the new BiclusterStrategy is, set it as the active strategy
         values$strategy <- getStrat(bce, newStrat)
@@ -314,10 +339,12 @@ function(input, output, session) {
   
   #### Summary ####
   # Reset zoom when the user's input data changes or upon double-click  
-  observeEvent({rawmat()
-    input$image_dblclick
+  observeEvent({
+    values$bce
+    input$bcHighlights_dblclick
   }, {
-    mat <- rawmat()
+    validate(need(values$inherits(bce, "BiclusterExperiment")))
+    mat <- as.matrix(values$bce)
     
     if(inherits(mat, "matrix") && mode(mat) == "numeric") {
       values$zoom <- c(0, 1, 0, 1)
@@ -327,7 +354,8 @@ function(input, output, session) {
   # Re-render the bicluster plot when raw data OR BiclusterStrategy OR selected biclusters changes
   imageArr <- reactive({
     # render the whole heatmap
-    mat <- rawmat()
+    validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
+    mat <- as.matrix(values$bce)
     validate(need(inherits(mat, "matrix") && mode(mat) == "numeric", ""))
     
     m <- mat / max(mat)
@@ -362,7 +390,7 @@ function(input, output, session) {
     arr
   })
   
-  output$image1 <- renderImage({
+  output$bcHighlights <- renderImage({
     arr <- imageArr()
     validate(need(inherits(arr, "array") && 
                     mode(arr) == "numeric" &&
@@ -386,22 +414,23 @@ function(input, output, session) {
     list(
       src = temp,
       contentType = "image/png",
-      title = "Click and drag to zoom in; double-click to reset"
+      title = "Click and drag to zoom in; double-click to reset", height = 723,
+      width = "100%"
     )
   })
   
   # If the user uses the brush, zoom in. Clearing the brush simply allows the
   # GUI to await another brush input.
-  observeEvent(input$image_brush, {
-    brush <- input$image_brush
+  observeEvent(input$bcHighlights_brush, {
+    brush <- input$bcHighlights_brush
     zoom <- values$zoom
     if(!is.null(brush)) {
       # contains fractions of the whole image
-      values$zoom <- c(zoom[1] + (zoom[2] - zoom[1]) * brush$xmin / session$clientData$output_image1_width, 
-                       zoom[1] + (zoom[2] - zoom[1]) * brush$xmax / session$clientData$output_image1_width,
-                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymin / session$clientData$output_image1_height,
-                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymax / session$clientData$output_image1_height)
-      shinyjs::runjs("document.getElementById('image1_brush').remove()")
+      values$zoom <- c(zoom[1] + (zoom[2] - zoom[1]) * brush$xmin / session$clientData$output_bcHighlights_width, 
+                       zoom[1] + (zoom[2] - zoom[1]) * brush$xmax / session$clientData$output_bcHighlights_width,
+                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymin / session$clientData$output_bcHighlights_height,
+                       zoom[3] + (zoom[4] - zoom[3]) * brush$ymax / session$clientData$output_bcHighlights_height)
+      shinyjs::runjs("document.getElementById('bcHighlights_brush').remove()")
     }
   })
   
@@ -431,13 +460,14 @@ function(input, output, session) {
   
   # Download a BiclusterExperiment with all BiclusterStrategy objects
   output$downloadBceAllButton <- renderUI({
-    if(length(strategies(values$bce)) > 0) {
-      downloadButton('downloadBceAll', 'Download all bicluster results',
-                     class="dlButton")
-    } else {
-      actionButton('downloadBceAll', 'Download all bicluster results',
-                   class="dlButton", disabled = TRUE)
+    if(inherits(values$bce, "BiclusterExperiment")) {
+      if(length(strategies(values$bce)) > 0) {
+        return(downloadButton('downloadBceAll', 'Download all bicluster results',
+                              class="dlButton"))
+      }
     }
+    return(actionButton('downloadBceAll', 'Download all bicluster results',
+                        class="dlButton", disabled = TRUE))
   })
   output$downloadBceAll <- downloadHandler(
     filename = function(){
@@ -460,700 +490,701 @@ function(input, output, session) {
                    class="dlButton", disabled = TRUE)
     }
   })
-  output$downloadBceCurrent <- downloadHandler(
-    filename = function(){
-      paste0(substr(Sys.time(), start = 1, stop = 10),
-             "_BiclusterExperiment.Rdata")
-    },
-    content = function(file) {
-      bce <- wipeExcept(values$bce, values$strategy)
-      save(bce, file = file)
-    }
-  )
-  
-  #### Scores ####
-  output$scorePanel <- renderUI({
-    fluidRow(
-      column(9,
-             plotOutput("scoreHeatmap", width = "100%"), 
-             plotOutput("scorePlot", width = "100%")),
-      column(3,
-             uiOutput("scoreBicluster"),
-             checkboxInput("scoreReorder", "Reorder"),
-             checkboxInput("sampNames", "Feature names"))
-    )
-  })
-  
-  output$scoreBicluster <- renderUI({
-    choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
-      names(values$strategy)
-    } else { list() }
-    selectInput("scoreBicluster", "Select bicluster:",
-                choices = choices)
-  })
-  
-  reactiveHeatmapHeight300 <- reactive({
-    bce <- values$bce
-    max(300, length(input$annots) * 33 +
-          sum(unlist(lapply(input$annots, function(annot) {
-            length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
-                                pred(getStrat(bce, input$strategy))
-            )[, annot]))
-          }))) * 22 - 106)})
-  
-  # heatmap of scores for all samples
-  # using renderUI prevents overlapping plots
-  output$scoreHeatmap <- renderUI({
-    height = reactiveHeatmapHeight300()
-    plotOutput("scoreHeatmap", height = height)
-  })
-  output$scoreHeatmap <- renderPlot({
-    gt <- reactiveScoreHeatmap()
-    print(gt)
+output$downloadBceCurrent <- downloadHandler(
+  filename = function(){
+    paste0(substr(Sys.time(), start = 1, stop = 10),
+           "_BiclusterExperiment.Rdata")
   },
-  height = function() { reactiveHeatmapHeight300() })
-  reactiveScoreHeatmap <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
-    bce <- values$bce
-    withProgress(
-      message = "Plotting...",
-      value = 0, {
-        set.seed(1234567)
-        # Create the annotation selector
-        phenoLabels <- intersect(input$annots,
-                                 colnames(Biobase::phenoData(bce)))
-        biclustLabels <- intersect(input$annots,
-                                   names(values$strategy))
-        factorHeatmap(bce = bce, bcs = values$strategy, type = "score",
-                      phenoLabels = phenoLabels,
-                      biclustLabels = biclustLabels,
-                      ordering = if(input$scoreReorder) { "cluster" } else {
-                        "input" },
-                      colNames = input$biclusterSampNames)
-      })
-  })
-  
-  # Plot of feature scores for one bicluster
-  output$scorePlot <- renderPlot({
-    scorePlotHelper()
-  })
-  scorePlotHelper <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy") &&
-                    !is.null(input$scoreBicluster), ""))
-    withProgress(message = "Plotting...", value = 0, {
+  content = function(file) {
+    bce <- wipeExcept(values$bce, values$strategy)
+    save(bce, file = file)
+  }
+)
+
+#### Scores ####
+output$scorePanel <- renderUI({
+  fluidRow(
+    column(9,
+           plotOutput("scoreHeatmap", width = "100%"), 
+           plotOutput("scorePlot", width = "100%")),
+    column(3,
+           uiOutput("scoreBicluster"),
+           checkboxInput("scoreReorder", "Reorder"),
+           checkboxInput("sampNames", "Feature names"))
+  )
+})
+
+output$scoreBicluster <- renderUI({
+  choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
+    names(values$strategy)
+  } else { list() }
+  selectInput("scoreBicluster", "Select bicluster:",
+              choices = choices)
+})
+
+reactiveHeatmapHeight300 <- reactive({
+  bce <- values$bce
+  max(300, length(input$annots) * 33 +
+        sum(unlist(lapply(input$annots, function(annot) {
+          length(unique(cbind(Biobase::pData(Biobase::phenoData(bce)),
+                              pred(getStrat(bce, input$strategy))
+          )[, annot]))
+        }))) * 22 - 106)})
+
+# heatmap of scores for all samples
+# using renderUI prevents overlapping plots
+output$scoreHeatmap <- renderUI({
+  height = reactiveHeatmapHeight300()
+  plotOutput("scoreHeatmap", height = height)
+})
+output$scoreHeatmap <- renderPlot({
+  gt <- reactiveScoreHeatmap()
+  print(gt)
+},
+height = function() { reactiveHeatmapHeight300() })
+reactiveScoreHeatmap <- reactive({
+  validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
+  bce <- values$bce
+  withProgress(
+    message = "Plotting...",
+    value = 0, {
       set.seed(1234567)
-      plotThreshold(bce = values$bce, bcs = values$strategy, type = "score",
-                    bicluster = input$scoreBicluster,
+      # Create the annotation selector
+      phenoLabels <- intersect(input$annots,
+                               colnames(Biobase::phenoData(bce)))
+      biclustLabels <- intersect(input$annots,
+                                 names(values$strategy))
+      factorHeatmap(bce = bce, bcs = values$strategy, type = "score",
+                    phenoLabels = phenoLabels,
+                    biclustLabels = biclustLabels,
                     ordering = if(input$scoreReorder) { "cluster" } else {
                       "input" },
-                    xlabs = input$biclusterSampNames)
+                    colNames = input$biclusterSampNames)
     })
+})
+
+# Plot of feature scores for one bicluster
+output$scorePlot <- renderPlot({
+  scorePlotHelper()
+})
+scorePlotHelper <- reactive({
+  validate(need(inherits(values$strategy, "BiclusterStrategy") &&
+                  !is.null(input$scoreBicluster), ""))
+  withProgress(message = "Plotting...", value = 0, {
+    set.seed(1234567)
+    plotThreshold(bce = values$bce, bcs = values$strategy, type = "score",
+                  bicluster = input$scoreBicluster,
+                  ordering = if(input$scoreReorder) { "cluster" } else {
+                    "input" },
+                  xlabs = input$biclusterSampNames)
   })
-  
-  
-  # render the top tab panel
-  output$top_tabs <- renderUI({
-    tabPanel("Summary", sideBarLayout(
-      uiOutput("uiabundance", width = "100%"),
-      plotOutput("pca", width = "100%"))
-    )
-  })
-  
-  #### Loading #### 
-  
-  #FIXME Invalidate these panels when user changes kSlider, but hasn't clicked
-  #"Run" yet
-  # output$loadingPanel <- renderUI({
-  #   
-  # })
-  # 
-  output$loadingBicluster <- renderUI({
-    choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
-      names(values$strategy)
-    } else { list() }
-    selectInput("loadingBicluster", "Select bicluster:",
-                choices = choices)
-  })
-  
-  # Heatmap of loadings for all samples
-  output$loadingHeatmap <- renderPlot({
-    gt <- reactiveLoadingHeatmap()
-    print(gt)
-  })
-  reactiveLoadingHeatmap <- reactive({
-    validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please bicluster first."))
-    withProgress(
-      message = "Plotting...",
-      value = 0, {
-        set.seed(1234567) # FIXME: use duplicable()
-        factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
-                      ordering = if(input$loadingReorder) { "cluster" } else {
-                        "input"
-                      },
-                      colNames = input$biclusterFeatNames)
-      }
-    )})
-  
-  # Plot of feature loadings for one bicluster
-  output$samplePlot <- renderPlot({
-    validate(need(inherits(values$strategy, "BiclusterStrategy") &&
-                    !is.null(input$loadingBicluster), ""))
-    reactiveMarkers()
-  })
-  reactiveMarkers <- reactive({
-    withProgress(message = "Plotting...", value = 0, {
-      set.seed(1234567)
-      plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
-                    bicluster = input$loadingBicluster,
+})
+
+
+# render the top tab panel
+output$top_tabs <- renderUI({
+  tabPanel("Summary", sideBarLayout(
+    uiOutput("uiabundance", width = "100%"),
+    plotOutput("pca", width = "100%"))
+  )
+})
+
+#### Loading #### 
+
+#FIXME Invalidate these panels when user changes kSlider, but hasn't clicked
+#"Run" yet
+# output$loadingPanel <- renderUI({
+#   
+# })
+# 
+output$loadingBicluster <- renderUI({
+  choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
+    names(values$strategy)
+  } else { list() }
+  selectInput("loadingBicluster", "Select bicluster:",
+              choices = choices)
+})
+
+# Heatmap of loadings for all samples
+output$loadingHeatmap <- renderPlot({
+  gt <- reactiveLoadingHeatmap()
+  print(gt)
+})
+reactiveLoadingHeatmap <- reactive({
+  validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please bicluster first."))
+  withProgress(
+    message = "Plotting...",
+    value = 0, {
+      set.seed(1234567) # FIXME: use duplicable()
+      factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
                     ordering = if(input$loadingReorder) { "cluster" } else {
-                      "input" },
-                    xlabs = input$biclusterFeatNames)
+                      "input"
+                    },
+                    colNames = input$biclusterFeatNames)
+    }
+  )})
+
+# Plot of feature loadings for one bicluster
+output$samplePlot <- renderPlot({
+  validate(need(inherits(values$strategy, "BiclusterStrategy") &&
+                  !is.null(input$loadingBicluster), ""))
+  reactiveMarkers()
+})
+reactiveMarkers <- reactive({
+  withProgress(message = "Plotting...", value = 0, {
+    set.seed(1234567)
+    plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
+                  bicluster = input$loadingBicluster,
+                  ordering = if(input$loadingReorder) { "cluster" } else {
+                    "input" },
+                  xlabs = input$biclusterFeatNames)
+  })
+})
+
+# Get gene list for selected bicluster
+output$biclusterGeneList <- renderText({
+  bce <- values$bce
+  bcs <-  values$strategy
+  bicluster <- input$loadingBicluster
+  validate(need(inherits(bce, "BiclusterExperiment") && 
+                  !is.null(input$loadingBicluster) &&
+                  inherits(bcs, "BiclusterStrategy"), ""))
+  
+  geneI <- which(loading(bcs)[bicluster, ] > loadingThresh(bcs)[bicluster])
+  genes <- featureNames(bce)[geneI]
+  paste(unlist(genes), collapse = "\n")
+})
+
+output$biclusterGeneListLabel <- renderUI({
+  bicluster <- input$loadingBicluster
+  desc <- if(is.null(bicluster)) { "Markers:" } else {
+    paste(bicluster, "markers:")
+  }
+  tags$h6(desc)
+})
+
+#### BI-CROSS-VALIDATION ####
+output$bcvButton <- renderUI({
+  if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
+    # disabled button if invalid data, or BCV already run
+    return(actionButton(inputId = "bcvButton", label = "Perform BCV",
+                        disabled = TRUE))
+  } else if(any(is.na(as.matrix(values$bce)))) {
+    # button redirecting to confirmation dialog
+    return(actionButton(inputId = "bcvCheckButton", label = "Perform BCV"))
+  } else {
+    # BCV immediately
+    return(actionButton(inputId = "bcvButton", label = "Perform BCV"))
+  }
+})
+output$bcvAndBiclusterButton <- renderUI({
+  if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
+    return(actionButton(inputId = "bcvAndBicluster", label = "Perform BCV and bicluster",
+                        disabled = TRUE))
+  } else if(any(is.na(as.matrix(values$bce)))) {
+    return(actionButton(inputId = "bcvCheckAndBicluster", 
+                        label = "Perform BCV and bicluster"))
+  } else {
+    return(actionButton(inputId = "bcvAndBicluster", 
+                        label = "Perform BCV and bicluster"))
+  }
+})
+
+observeEvent(input$bcvCheckButton, {
+  try(removeNotification("bcvNaNotif"))
+  showNotification(
+    id = "bcvNaNotif",
+    ui = paste("Since some matrix elements are NA, bi-cross-validation",
+               "will run\n much more slowly."),
+    action = actionButton(inputId = "bcvButton", label = "Continue"),
+    duration = NULL)
+}
+)
+observeEvent(
+  input$bcvButton,
+  {
+    runBcv()
+  }
+)
+runBcv <- function() {
+  shinyjs::disable("bcvButton")
+  shinyjs::disable("bcvAndBiclusterButton")
+  validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
+  withProgress(
+    message = "Performing bi-cross-validation...",
+    value = 0, max = params$bcvMaxIter, {
+      res <- withCallingHandlers({
+        shinyjs::html("bcvtext", "")
+        suppressWarnings(
+          do.call(auto_bcv,
+                  c(list(Y = as.matrix(values$bce), ks = seq_len(nrow(as.matrix(values$bce))), 
+                         bestOnly = FALSE, verbose = TRUE,
+                         interactive = FALSE),
+                    params$bcvArgs)))
+      },
+      message = function(m) {
+        shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
+                      add = FALSE)
+        incProgress(1)
+      })
+      values$bcvRes <- res$counts
+      values$bcvBest <- res$best
+      values$bcvValid <- TRUE
     })
-  })
-  
-  # Get gene list for selected bicluster
-  output$biclusterGeneList <- renderText({
-    bce <- values$bce
-    bcs <-  values$strategy
-    bicluster <- input$loadingBicluster
-    validate(need(inherits(bce, "BiclusterExperiment") && 
-                    !is.null(input$loadingBicluster) &&
-                    inherits(bcs, "BiclusterStrategy"), ""))
-    
-    geneI <- which(loading(bcs)[bicluster, ] > loadingThresh(bcs)[bicluster])
-    genes <- featureNames(bce)[geneI]
-    paste(unlist(genes), collapse = "\n")
-  })
-  
-  output$biclusterGeneListLabel <- renderUI({
-    bicluster <- input$loadingBicluster
-    desc <- if(is.null(bicluster)) { "Markers:" } else {
-      paste(bicluster, "markers:")
-    }
-    tags$h6(desc)
-  })
-  
-  #### BI-CROSS-VALIDATION ####
-  output$bcvButton <- renderUI({
-    if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
-      # disabled button if invalid data, or BCV already run
-      return(actionButton(inputId = "bcvButton", label = "Perform BCV",
-                          disabled = TRUE))
-    } else if(any(is.na(as.matrix(values$bce)))) {
-      # button redirecting to confirmation dialog
-      return(actionButton(inputId = "bcvCheckButton", label = "Perform BCV"))
-    } else {
-      # BCV immediately
-      return(actionButton(inputId = "bcvButton", label = "Perform BCV"))
-    }
-  })
-  output$bcvAndBiclusterButton <- renderUI({
-    if(!inherits(values$bce, "BiclusterExperiment") || values$bcvValid) {
-      return(actionButton(inputId = "bcvAndBicluster", label = "Perform BCV and bicluster",
-                          disabled = TRUE))
-    } else if(any(is.na(as.matrix(values$bce)))) {
-      return(actionButton(inputId = "bcvCheckAndBicluster", 
-                          label = "Perform BCV and bicluster"))
-    } else {
-      return(actionButton(inputId = "bcvAndBicluster", 
-                          label = "Perform BCV and bicluster"))
-    }
-  })
-  
-  observeEvent(input$bcvCheckButton, {
-    try(removeNotification("bcvNaNotif"))
+}
+
+observeEvent(
+  input$bcvCheckAndBicluster,
+  {
+    try(removeNotification("bcvNaNotifThenBicluster"))
     showNotification(
-      id = "bcvNaNotif",
+      id = "bcvNaNotifThenBicluster",
       ui = paste("Since some matrix elements are NA, bi-cross-validation",
                  "will run\n much more slowly."),
-      action = actionButton(inputId = "bcvButton", label = "Continue"),
+      action = actionButton(inputId = "bcvAndBicluster", label = "Continue"),
       duration = NULL)
   }
-  )
-  observeEvent(
-    input$bcvButton,
-    {
-      runBcv()
-    }
-  )
-  runBcv <- function() {
-    shinyjs::disable("bcvButton")
-    shinyjs::disable("bcvAndBiclusterButton")
-    withProgress(
-      message = "Performing bi-cross-validation...",
-      value = 0, max = params$bcvMaxIter, {
-        res <- withCallingHandlers({
-          shinyjs::html("bcvtext", "")
-          suppressWarnings(
-            do.call(auto_bcv,
-                    c(list(Y = rawmat(), ks = seq_len(nrow(rawmat())), 
-                           bestOnly = FALSE, verbose = TRUE,
-                           interactive = FALSE),
-                      params$bcvArgs)))
-        },
-        message = function(m) {
-          shinyjs::html(id = "bcvtable", html = tableHelper(m$message, nrow = 2),
-                        add = FALSE)
-          incProgress(1)
-        })
-        values$bcvRes <- res$counts
-        values$bcvBest <- res$best
-        values$bcvValid <- TRUE
-      })
-  }
-  
-  observeEvent(
-    input$bcvCheckAndBicluster,
-    {
-      try(removeNotification("bcvNaNotifThenBicluster"))
-      showNotification(
-        id = "bcvNaNotifThenBicluster",
-        ui = paste("Since some matrix elements are NA, bi-cross-validation",
-                   "will run\n much more slowly."),
-        action = actionButton(inputId = "bcvAndBicluster", label = "Continue"),
-        duration = NULL)
-    }
-  )
-  observeEvent(input$bcvAndBicluster, {
-    runBcv()
-    updateSliderInput(session, "k", val = values$bcvBest)
-    if(biclusteringAllowed()) shinyjs::click("bicluster")
-    updateTabsetPanel(session, "navbarpage", selected = "Bicluster")
-  })
-  
-  # A barplot of BCV results
-  output$bcvPlot <- renderPlot({
-    validate(need(length(values$bcvRes) > 0 && values$bcvBest > 0, ""))
-    bcvPlotHelper()
-  })
-  bcvPlotHelper <- reactive({
-    bcvRes <- values$bcvRes
-    cols <- rep("#000000", length(bcvRes))
-    cols[as.integer(values$bcvBest)] <- "#2ca25f"
-    # assume that bcvRes is for k = 1:length(bcvRes
-    barplot(bcvRes, xlab = "# Biclusters", ylab = "Times chosen as optimal", col = cols,
-            axes = FALSE)
-    axis(2, at = 0:4 * (ceiling(max(bcvRes) / 4)), 
-         labels = as.integer(0:4 * (ceiling(max(bcvRes) / 4))))
-  })
-  
-  observeEvent(values$bcvValid,
-               {
-                 if(values$bcvValid == FALSE) {
-                   shinyjs::enable("bcvButton")
-                   shinyjs::enable("bcvAndBiclusterButton")
-                   shinyjs::show("bcvtable")
-                   shinyjs::hide("bcvPlot")
-                 } else {
-                   shinyjs::hide("bcvtable")
-                   shinyjs::show("bcvPlot")
-                 }
+)
+observeEvent(input$bcvAndBicluster, {
+  runBcv()
+  updateSliderInput(session, "k", val = values$bcvBest)
+  if(biclusteringAllowed()) shinyjs::click("bicluster")
+  updateTabsetPanel(session, "navbarpage", selected = "Bicluster")
+})
+
+# A barplot of BCV results
+output$bcvPlot <- renderPlot({
+  validate(need(length(values$bcvRes) > 0 && values$bcvBest > 0, ""))
+  bcvPlotHelper()
+})
+bcvPlotHelper <- reactive({
+  bcvRes <- values$bcvRes
+  cols <- rep("#000000", length(bcvRes))
+  cols[as.integer(values$bcvBest)] <- "#2ca25f"
+  # assume that bcvRes is for k = 1:length(bcvRes
+  barplot(bcvRes, xlab = "# Biclusters", ylab = "Times chosen as optimal", col = cols,
+          axes = FALSE)
+  axis(2, at = 0:4 * (ceiling(max(bcvRes) / 4)), 
+       labels = as.integer(0:4 * (ceiling(max(bcvRes) / 4))))
+})
+
+observeEvent(values$bcvValid,
+             {
+               if(values$bcvValid == FALSE) {
+                 shinyjs::enable("bcvButton")
+                 shinyjs::enable("bcvAndBiclusterButton")
+                 shinyjs::show("bcvtable")
+                 shinyjs::hide("bcvPlot")
+               } else {
+                 shinyjs::hide("bcvtable")
+                 shinyjs::show("bcvPlot")
                }
-  )
-  
-  tableHelper <- function(str, nrow) {
-    elements <- scan(text = str, quiet = TRUE)
-    ncol <- ceiling(length(elements) / nrow)
-    open <- "<table class=\"table table-hover\">\n<thead>\n"
-    content <- do.call(paste0, lapply(seq_len(nrow), function(row) { # to produce each row
-      paste0("<tr>\n", 
-             do.call(paste0, lapply(seq_len(ncol), function(col) {
-               # each th tag in the row
-               paste0("<th>", elements[(row - 1) * ncol + col],  "</th>\n")
-             })),
-             # end of row or row header
-             if(row == 1) "</tr>\n</thead>\n" else "</tr>\n"
-      )
-    }))
-    close <- "</table>"
-    paste0(open, content, close)
-  }
-  
-  #### GO ENRICHMENT ####
-  # FIXME don't crash upon choosing an absent species database
-  # Potential installation of GOstats and BiocInstaller...although BiocInstaller
-  # was required to install dependency biclust
-  output$go <- renderUI({
-    if(!dep$gostats) {
-      return(actionButton("gostats", "Install dependency \"GOstats\""))
+             }
+)
+
+tableHelper <- function(str, nrow) {
+  elements <- scan(text = str, quiet = TRUE)
+  ncol <- ceiling(length(elements) / nrow)
+  open <- "<table class=\"table table-hover\">\n<thead>\n"
+  content <- do.call(paste0, lapply(seq_len(nrow), function(row) { # to produce each row
+    paste0("<tr>\n", 
+           do.call(paste0, lapply(seq_len(ncol), function(col) {
+             # each th tag in the row
+             paste0("<th>", elements[(row - 1) * ncol + col],  "</th>\n")
+           })),
+           # end of row or row header
+           if(row == 1) "</tr>\n</thead>\n" else "</tr>\n"
+    )
+  }))
+  close <- "</table>"
+  paste0(open, content, close)
+}
+
+#### GO ENRICHMENT ####
+# FIXME don't crash upon choosing an absent species database
+# Potential installation of GOstats and BiocInstaller...although BiocInstaller
+# was required to install dependency biclust
+output$go <- renderUI({
+  if(!dep$gostats) {
+    return(actionButton("gostats", "Install dependency \"GOstats\""))
+  } else {
+    # all input must be present, and params must have changed since last run
+    active <- goAllowed() &&
+      !identical(list(values$strategy, input$orgDb, input$gos),
+                 values$goLastParams)
+    if(active) {
+      return(actionButton("go", "Test for GO enrichment"))
     } else {
-      # all input must be present, and params must have changed since last run
-      active <- goAllowed() &&
-        !identical(list(values$strategy, input$orgDb, input$gos),
-                   values$goLastParams)
-      if(active) {
-        return(actionButton("go", "Test for GO enrichment"))
-      } else {
-        return(actionButton("go", "Test for GO enrichment", disabled = TRUE))
-      }
-    }
-  })
-  goAllowed <- reactive({
-    if(inherits(values$strategy, "BiclusterStrategy")) {
-      allowed <- TRUE
-      # the species dropdown must have loaded
-      if(is.null(input$orgDb)) { allowed <- FALSE } else {
-        if(nchar(input$orgDb) == 0) { allowed <- FALSE }
-      }
-    } else { # there must be biclustering data available to get gene lists from
-      allowed <- FALSE
-    }
-    return(allowed)
-  })
-  # Call this anytime BiocInstaller is absent
-  requestBiocInstaller <- function() {
-    if(!dep$BiocInstaller) {
-      showNotification(ui = paste("BiocInstaller must be installed. Clicking",
-                                  "below will run",
-                                  "https://bioconductor.org/biocLite.R"),
-                       action = actionButton("biocinstaller", "Install"),
-                       id ="biocInstallerNotif", duration = NULL,
-                       closeButton = FALSE)
-      # I hate to make the notification non-closable, but I have no way of
-      # detecting the close action. Then the user has no way to install
-      # BiocInstaller after closing.
+      return(actionButton("go", "Test for GO enrichment", disabled = TRUE))
     }
   }
-  # Install GOstats
-  observeEvent(
-    input$gostats,
-    {
-      if(!dep$BiocInstaller) { requestBiocInstaller() } else {
-        shinyjs::disable("gostats") # user may click only once
-        withProgress(
-          message = "Installing GOstats...", value = 3/8,
-          {suppressWarnings(BiocInstaller::biocLite("GOstats",
-                                                    suppressUpdates = TRUE))
-          })
-        withProgress(
-          message = "Verifying installation...", value = 7/8,
-          {
-            if(requireNamespace("GOstats", quietly = TRUE)) {
-              dep$gostats <- TRUE # trigger update of the "Run" button
-              showNotification(ui = "GOstats installed", duration = NULL)
-            } else {
-              showNotification(
-                ui = paste("Unable to install GOstats. Please save your work",
-                           "exit the GUI, and install GOstats manually before",
-                           "attempting to test for functional enrichment."),
-                duration = NULL)
-            }
-          })
-      }
-      shinyjs::enable("gostats") # cleanup? will this button ever display again?
+})
+goAllowed <- reactive({
+  if(inherits(values$strategy, "BiclusterStrategy")) {
+    allowed <- TRUE
+    # the species dropdown must have loaded
+    if(is.null(input$orgDb)) { allowed <- FALSE } else {
+      if(nchar(input$orgDb) == 0) { allowed <- FALSE }
     }
-  )
-  observeEvent(
-    input$biocinstaller,
-    {removeNotification("biocInstallerNotif")
+  } else { # there must be biclustering data available to get gene lists from
+    allowed <- FALSE
+  }
+  return(allowed)
+})
+# Call this anytime BiocInstaller is absent
+requestBiocInstaller <- function() {
+  if(!dep$BiocInstaller) {
+    showNotification(ui = paste("BiocInstaller must be installed. Clicking",
+                                "below will run",
+                                "https://bioconductor.org/biocLite.R"),
+                     action = actionButton("biocinstaller", "Install"),
+                     id ="biocInstallerNotif", duration = NULL,
+                     closeButton = FALSE)
+    # I hate to make the notification non-closable, but I have no way of
+    # detecting the close action. Then the user has no way to install
+    # BiocInstaller after closing.
+  }
+}
+# Install GOstats
+observeEvent(
+  input$gostats,
+  {
+    if(!dep$BiocInstaller) { requestBiocInstaller() } else {
+      shinyjs::disable("gostats") # user may click only once
       withProgress(
-        message = "Running https://bioconductor.org/biocLite.R", value = 3/8,
-        {suppressWarnings(source("https://bioconductor.org/biocLite.R"))
+        message = "Installing GOstats...", value = 3/8,
+        {suppressWarnings(BiocInstaller::biocLite("GOstats",
+                                                  suppressUpdates = TRUE))
+        })
+      withProgress(
+        message = "Verifying installation...", value = 7/8,
+        {
+          if(requireNamespace("GOstats", quietly = TRUE)) {
+            dep$gostats <- TRUE # trigger update of the "Run" button
+            showNotification(ui = "GOstats installed", duration = NULL)
+          } else {
+            showNotification(
+              ui = paste("Unable to install GOstats. Please save your work",
+                         "exit the GUI, and install GOstats manually before",
+                         "attempting to test for functional enrichment."),
+              duration = NULL)
+          }
+        })
+    }
+    shinyjs::enable("gostats") # cleanup? will this button ever display again?
+  }
+)
+observeEvent(
+  input$biocinstaller,
+  {removeNotification("biocInstallerNotif")
+    withProgress(
+      message = "Running https://bioconductor.org/biocLite.R", value = 3/8,
+      {suppressWarnings(source("https://bioconductor.org/biocLite.R"))
+      }
+    )
+    if(requireNamespace("BiocInstaller", quietly = TRUE)) {
+      dep$BiocInstaller <- TRUE
+    }
+  }
+)
+observeEvent(
+  input$go,
+  {validate(need(inherits(values$bce, "BiclusterExperiment") &&
+                   inherits(values$strategy, "BiclusterStrategy") &&
+                   length(input$gos) > 0,
+                 ""))
+    shinyjs::disable("go") # temporarily override the button's own renderUI
+    if(!requireNamespace(input$orgDb, quietly = TRUE)) {
+      try(removeNotification("orgDbInstallNotif"))
+      # If the database needs to be installed, help the user to do so.
+      showNotification(paste(input$orgDb, "must be installed from Bioconductor"),
+                       action = actionButton("orgDbInstall", "Install"),
+                       id = "orgDbInstallNotif", duration = NULL)
+      # the user can click this button repeatedly, but only one notif is shown
+      shinyjs::enable("go")
+      # User will have to click the button again AFTER installation
+    } else {
+      withProgress(
+        message = "Searching for Gene Ontology enrichment...",
+        value = 0, max = nclust(values$strategy) * length(input$gos),
+        {
+          values$goRes <- withCallingHandlers({
+            # withCallingHandlers handles warnings; errors are trapped by try()
+            try(testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
+                       orgDb = input$orgDb))
+          },
+          message = function(m) {
+            incProgress(1)
+            showNotification(conditionMessage(m), duration = 5)
+          },
+          warning = function(w) {}
+          )
+          if(inherits(values$goRes, "try-error")) {
+            showNotification(values$goRes, duration = NULL)
+            values$goRes <- NULL # return to previous app state
+          } else {
+            # store the running parameters
+            values$goLastParams <- list(values$strategy, input$orgDb, input$gos)
+          }
+        })
+    }
+  })
+output$species <- renderUI({
+  if(!dep$BiocInstaller) {
+    # pop up requesting BiocInstaller. Selector will be empty until installed.
+    requestBiocInstaller()
+    return(selectInput("orgDb", "Species:", choices = NULL, selected = NULL))
+  } else {
+    # search for Org.*.db packages on Bioconductor
+    pkgs <- available.packages(repo = BiocInstaller::biocinstallRepos()["BioCann"],
+                               type= "source")
+    orgdbI <- grep(pattern = "^org.*", row.names(pkgs))
+    return(selectInput("orgDb", "Org. database:", choices = 
+                         row.names(pkgs[orgdbI, ])))
+  }
+})
+# Install the selected org.*.Db
+observeEvent(
+  input$orgDbInstall,
+  {
+    if(dep$BiocInstaller) { # this check is redundant
+      try(removeNotification("orgDbInstallNotif"))
+      withProgress(
+        message = paste("Installing", input$orgDb), value = 3/8,
+        {BiocInstaller::biocLite(
+          input$orgDb,
+          suppressUpdates = TRUE,
+          suppressAutoUpdate = TRUE,
+          type = "source")
         }
       )
-      if(requireNamespace("BiocInstaller", quietly = TRUE)) {
-        dep$BiocInstaller <- TRUE
+      if(requireNamespace(input$orgDb, quietly = TRUE)) {
+        # why doesn't this work? shinyjs::click("go") 
+        showNotification(paste(input$orgDb, "installed!"), duration = NULL)
       }
-    }
-  )
-  observeEvent(
-    input$go,
-    {validate(need(inherits(values$bce, "BiclusterExperiment") &&
-                     inherits(values$strategy, "BiclusterStrategy") &&
-                     length(input$gos) > 0,
-                   ""))
-      shinyjs::disable("go") # temporarily override the button's own renderUI
-      if(!requireNamespace(input$orgDb, quietly = TRUE)) {
-        try(removeNotification("orgDbInstallNotif"))
-        # If the database needs to be installed, help the user to do so.
-        showNotification(paste(input$orgDb, "must be installed from Bioconductor"),
-                         action = actionButton("orgDbInstall", "Install"),
-                         id = "orgDbInstallNotif", duration = NULL)
-        # the user can click this button repeatedly, but only one notif is shown
-        shinyjs::enable("go")
-        # User will have to click the button again AFTER installation
-      } else {
-        withProgress(
-          message = "Searching for Gene Ontology enrichment...",
-          value = 0, max = nclust(values$strategy) * length(input$gos),
-          {
-            values$goRes <- withCallingHandlers({
-              # withCallingHandlers handles warnings; errors are trapped by try()
-              try(testFE(bce = values$bce, strategy = values$strategy, go = input$gos,
-                         orgDb = input$orgDb))
-            },
-            message = function(m) {
-              incProgress(1)
-              showNotification(conditionMessage(m), duration = 5)
-            },
-            warning = function(w) {}
-            )
-            if(inherits(values$goRes, "try-error")) {
-              showNotification(values$goRes, duration = NULL)
-              values$goRes <- NULL # return to previous app state
-            } else {
-              # store the running parameters
-              values$goLastParams <- list(values$strategy, input$orgDb, input$gos)
-            }
-          })
-      }
-    })
-  output$species <- renderUI({
-    if(!dep$BiocInstaller) {
-      # pop up requesting BiocInstaller. Selector will be empty until installed.
-      requestBiocInstaller()
-      return(selectInput("orgDb", "Species:", choices = NULL, selected = NULL))
     } else {
-      # search for Org.*.db packages on Bioconductor
-      pkgs <- available.packages(repo = BiocInstaller::biocinstallRepos()["BioCann"],
-                                 type= "source")
-      orgdbI <- grep(pattern = "^org.*", row.names(pkgs))
-      return(selectInput("orgDb", "Org. database:", choices = 
-                           row.names(pkgs[orgdbI, ])))
+      requestBiocInstaller()
     }
   })
-  # Install the selected org.*.Db
-  observeEvent(
-    input$orgDbInstall,
-    {
-      if(dep$BiocInstaller) { # this check is redundant
-        try(removeNotification("orgDbInstallNotif"))
-        withProgress(
-          message = paste("Installing", input$orgDb), value = 3/8,
-          {BiocInstaller::biocLite(
-            input$orgDb,
-            suppressUpdates = TRUE,
-            suppressAutoUpdate = TRUE,
-            type = "source")
-          }
-        )
-        if(requireNamespace(input$orgDb, quietly = TRUE)) {
-          # why doesn't this work? shinyjs::click("go") 
-          showNotification(paste(input$orgDb, "installed!"), duration = NULL)
-        }
-      } else {
-        requestBiocInstaller()
-      }
-    })
-  
-  # a list of hypergeometric test result dataframes, one per bicluster
-  goDF <- reactive({
-    goRes <- values$goRes
-    return(
-      if(length(goRes) > 0) {
-        lapply(goRes, function(listOfHyperGs) {
-          # list might contain results for MF, BP, CC. concatenate all
-          p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
-          adj.p.value <- p.adjust(p.value, method = "BH")
-          odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
-          expected.genes <- do.call(c, lapply(listOfHyperGs, 
-                                              GOstats::expectedCounts))
-          matched.bicluster.ids <- do.call(c, lapply(listOfHyperGs, 
-                                                     Category::geneIdsByCategory))
-          matched.dataset.ids <- do.call(c, lapply(listOfHyperGs,
-                                                   Category::geneIdUniverse))
-          matched.bicluster.genes <- unlist(lapply(matched.bicluster.ids,
-                                                   length))
-          matched.dataset.genes <- unlist(lapply(matched.dataset.ids, length))
-          
-          df <- data.frame(matched.bicluster.genes, matched.dataset.genes, 
-                           expected.genes, odds.ratio, p.value, adj.p.value)
-          df$matched.bicluster.ids <- matched.bicluster.ids
-          df$matched.dataset.ids <- matched.dataset.ids
-          df
-        })
-      } else list()
-    )
-  })
-  
-  goSummary <- reactive({
-    goRes <- values$goRes
-    if(length(goRes) > 1) {
-      # summary data is same regardless of bicluster tested
-      listOfHyperGs <- goRes[[1]]
-      # list of matched IDs for each GO term
-      matchedDatasetIds <- do.call(c, lapply(listOfHyperGs,
-                                             Category::geneIdUniverse))
-      # how many in the dataset were actually GO-annotated
-      matchedDatasetSize <- length(unique(unlist(matchedDatasetIds)))
-      
-      # get the lowest adj. p-value for each bicluster
-      significance <- sapply(goDF(), function(df) min(df$adj.p.value))
-      if(any(significance < .Machine$double.eps)) {
-        significance <- significance + .Machine$double.eps
-      }
-      significance <- sort(-log10(significance), decreasing = TRUE)
-      
-      return(list(universeSize = matchedDatasetSize,
-                  significance = significance))
-    }
-  })
-  
-  # Plot of bicluster significance values
-  output$goSigPlot <- renderPlot({
-    goRes <- values$goRes
-    validate(need(length(goRes) > 0 && !is.null(names(goRes)),
-                  "Please test for functional enrichment"))
+
+# a list of hypergeometric test result dataframes, one per bicluster
+goDF <- reactive({
+  goRes <- values$goRes
+  return(
+    if(length(goRes) > 0) {
+      lapply(goRes, function(listOfHyperGs) {
+        # list might contain results for MF, BP, CC. concatenate all
+        p.value <- do.call(c, lapply(listOfHyperGs, GOstats::pvalues))
+        adj.p.value <- p.adjust(p.value, method = "BH")
+        odds.ratio <- do.call(c, lapply(listOfHyperGs, GOstats::oddsRatios))
+        expected.genes <- do.call(c, lapply(listOfHyperGs, 
+                                            GOstats::expectedCounts))
+        matched.bicluster.ids <- do.call(c, lapply(listOfHyperGs, 
+                                                   Category::geneIdsByCategory))
+        matched.dataset.ids <- do.call(c, lapply(listOfHyperGs,
+                                                 Category::geneIdUniverse))
+        matched.bicluster.genes <- unlist(lapply(matched.bicluster.ids,
+                                                 length))
+        matched.dataset.genes <- unlist(lapply(matched.dataset.ids, length))
+        
+        df <- data.frame(matched.bicluster.genes, matched.dataset.genes, 
+                         expected.genes, odds.ratio, p.value, adj.p.value)
+        df$matched.bicluster.ids <- matched.bicluster.ids
+        df$matched.dataset.ids <- matched.dataset.ids
+        df
+      })
+    } else list()
+  )
+})
+
+goSummary <- reactive({
+  goRes <- values$goRes
+  if(length(goRes) > 1) {
+    # summary data is same regardless of bicluster tested
+    listOfHyperGs <- goRes[[1]]
+    # list of matched IDs for each GO term
+    matchedDatasetIds <- do.call(c, lapply(listOfHyperGs,
+                                           Category::geneIdUniverse))
+    # how many in the dataset were actually GO-annotated
+    matchedDatasetSize <- length(unique(unlist(matchedDatasetIds)))
     
-    bp <- barplot(height = goSummary()$significance, xaxs = "i", yaxs = "i", xaxt = "n",
-                  ylab = "-log10[p-value]")
-    las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
-    axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
-    abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
-  })
-  
-  # Get input bicluster to display results for
-  output$goBicluster <- renderUI({
-    choices <- if(length(goDF()) > 0) names(goDF()) else list()
-    val <- if(length(choices) > 0) choices[[1]] else NULL
-    selectInput("goBicluster", label = "Select bicluster:",
-                choices = choices, selected = val, multiple = FALSE)
-  })
-  
-  # Display detailed GO results for one bicluster
-  output$goTermTable <- DT::renderDT({
-    validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
-                    !is.null(input$goBicluster), "Please test GO enrichment"))
-    df <- goDF()[[input$goBicluster]][, 1:6] # don't include gene lists
-    return(
-      DT::datatable(df, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
-                    autoHideNavigation = TRUE, selection = 'single')
-    )
-  })
-  
-  observeEvent(
-    input$goTabGenes,
-    {selection <- input$goTermTable_rows_selected
-    if(length(selection) > 0) {
-      # assumes goDF() has not changed since goTermTable was rendered
-      selection <- row.names(goDF()[[input$goBicluster]])[selection]
-      
-      updateSelectInput(session, inputId = "goTerm", selected = selection)
+    # get the lowest adj. p-value for each bicluster
+    significance <- sapply(goDF(), function(df) min(df$adj.p.value))
+    if(any(significance < .Machine$double.eps)) {
+      significance <- significance + .Machine$double.eps
     }
-    updateTabsetPanel(session, inputId = "goTab", selected = "Genes")
-    })
-  
-  # Keep the choices in input$goTerm updated so that the "Inspect Genes"
-  # button works.
-  observeEvent({
-    goDF()
-    input$goBicluster
-  }, {
-    bicluster <- input$goBicluster
-    if(!is.null(bicluster) && bicluster %in% names(goDF())) {
-      choices <- row.names(goDF()[[bicluster]])
-      updateSelectInput(session, inputId = "goTerm",
-                        choices = choices,
-                        selected = choices[1])
-    }
-  })
-  
-  output$goBiclusterGenes <- renderText({
-    validate(need(length(goDF()) > 0, "Please test GO enrichment"))
-    validate(need(!is.null(input$goTerm), "Please select a goTerm"))
-    validate(need(input$goBicluster %in% names(goDF()), 
-                  "Please select a valid bicluster"))
+    significance <- sort(-log10(significance), decreasing = TRUE)
     
-    genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.bicluster.ids"]
-    paste(unlist(genes), collapse = "\n")
-  })
+    return(list(universeSize = matchedDatasetSize,
+                significance = significance))
+  }
+})
+
+# Plot of bicluster significance values
+output$goSigPlot <- renderPlot({
+  goRes <- values$goRes
+  validate(need(length(goRes) > 0 && !is.null(names(goRes)),
+                "Please test for functional enrichment"))
   
-  output$goUniverseGenes <- renderText({
-    validate(need(length(goDF()) > 0, "Please test GO enrichment"))
-    validate(need(!is.null(input$goTerm), "Please select a goTerm"))
-    validate(need(input$goBicluster %in% names(goDF()), 
-                  "Please select a valid bicluster"))
+  bp <- barplot(height = goSummary()$significance, xaxs = "i", yaxs = "i", xaxt = "n",
+                ylab = "-log10[p-value]")
+  las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
+  axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
+  abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
+})
+
+# Get input bicluster to display results for
+output$goBicluster <- renderUI({
+  choices <- if(length(goDF()) > 0) names(goDF()) else list()
+  val <- if(length(choices) > 0) choices[[1]] else NULL
+  selectInput("goBicluster", label = "Select bicluster:",
+              choices = choices, selected = val, multiple = FALSE)
+})
+
+# Display detailed GO results for one bicluster
+output$goTermTable <- DT::renderDT({
+  validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
+                  !is.null(input$goBicluster), "Please test GO enrichment"))
+  df <- goDF()[[input$goBicluster]][, 1:6] # don't include gene lists
+  return(
+    DT::datatable(df, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
+                  autoHideNavigation = TRUE, selection = 'single')
+  )
+})
+
+observeEvent(
+  input$goTabGenes,
+  {selection <- input$goTermTable_rows_selected
+  if(length(selection) > 0) {
+    # assumes goDF() has not changed since goTermTable was rendered
+    selection <- row.names(goDF()[[input$goBicluster]])[selection]
     
-    genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.dataset.ids"]
-    paste(unlist(genes), collapse = "\n")
+    updateSelectInput(session, inputId = "goTerm", selected = selection)
+  }
+  updateTabsetPanel(session, inputId = "goTab", selected = "Genes")
   })
+
+# Keep the choices in input$goTerm updated so that the "Inspect Genes"
+# button works.
+observeEvent({
+  goDF()
+  input$goBicluster
+}, {
+  bicluster <- input$goBicluster
+  if(!is.null(bicluster) && bicluster %in% names(goDF())) {
+    choices <- row.names(goDF()[[bicluster]])
+    updateSelectInput(session, inputId = "goTerm",
+                      choices = choices,
+                      selected = choices[1])
+  }
+})
+
+output$goBiclusterGenes <- renderText({
+  validate(need(length(goDF()) > 0, "Please test GO enrichment"))
+  validate(need(!is.null(input$goTerm), "Please select a goTerm"))
+  validate(need(input$goBicluster %in% names(goDF()), 
+                "Please select a valid bicluster"))
   
-  # PANEL DESCRIPTIONS
-  # output$explanation <- renderUI({
-  #   res <- ""
-  #   if (length(input$main_panel) > 0) {
-  #     if ("Abundance" == input$main_panel) {
-  #       res <- HTML(
-  #         "Abundance shows a Z-score heatmap of the original matrix
-  #         of metabolite peaks. Default ordering is distance-based by
-  #         cluster membership. Sidebar options allow reordering
-  #         of rows to highlight samples that are members of the
-  #         currently selected cluster.
-  #         Currently the annotations 'species' and 'tissue' are fictitious."
-  #       )
-  #     }
-  # if ("Stability" == input$main_panel) {
-  #   res <- HTML(
-  #     "Stability index shows how stable each cluster
-  #     is accross the selected range of <i>k</i>s.
-  #     The stability index varies between 0 and 1, where
-  #     1 means that the same cluster appears in every
-  #     solution for different <i>k</i>."
-  #   )
-  # }
-  # if ("Biomarkers" == input$main_panel) {
-  #   res <- HTML(
-  #     paste0(
-  #       "This is a plot of loading, a statistic that
-  #       quantifies the importance of each feature in distinguishing
-  #       samples that are members of this bicluster."
-  #     )
-  #     )
-  # }
-  # if ("Bicluster members" == input$main_panel) {
-  #   res <- HTML(
-  #     "This is a score thresholding plot, showing which
-  #     samples are above the threshold. The user should be
-  #     told which thresholding method was used."
-  #   )
-  # }
-  # return(res)
-  # }
-  # })
+  genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.bicluster.ids"]
+  paste(unlist(genes), collapse = "\n")
+})
+
+output$goUniverseGenes <- renderText({
+  validate(need(length(goDF()) > 0, "Please test GO enrichment"))
+  validate(need(!is.null(input$goTerm), "Please select a goTerm"))
+  validate(need(input$goBicluster %in% names(goDF()), 
+                "Please select a valid bicluster"))
   
-  # plotHeightMark <- function() {
-  #   return(150 + 10.8 * nrow(values$mark.res))
-  # }
-  
-  # REACTIVE BUTTONS
-  # is_biology <- reactive({
-  #   return(biology)
-  # })
-  #
-  
-  #### REACTIVE DATA #######################################################
-  
-  # observer for marker genes
-  # observe({
-  #   if (FALSE) {
-  #     # biology) {
-  #     # get all marker genes
-  #     markers <- organise_marker_genes(object, input$strategy, 
-  #                                      as.numeric(input$pValMark), 
-  #                                      as.numeric(input$auroc.threshold))
-  #     user$n.markers <- nrow(markers)
-  #     # get top 10 marker genes of each cluster
-  #     markers <- markers_for_heatmap(markers)
-  #     clusts <- unique(markers[, 1])
-  #     if (is.null(clusts)) {
-  #       clusts <- "None"
-  #     }
-  #     user$mark.res <- markers
-  #     updateSelectInput(session, "cluster", choices = clusts)
-  #   } else {
-  #     user$n.markers <- 0
-  #   }
-  # })
-  # 
-  # 
-  # output$has_biomarkers <- reactive({
-  #   return(TRUE)
-  # })
-  
-  # stop App on closing the browser
-  session$onSessionEnded(function() {
-    stopApp()
-  })
-  # 
-  # outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
+  genes <- goDF()[[input$goBicluster]][input$goTerm, "matched.dataset.ids"]
+  paste(unlist(genes), collapse = "\n")
+})
+
+# PANEL DESCRIPTIONS
+# output$explanation <- renderUI({
+#   res <- ""
+#   if (length(input$main_panel) > 0) {
+#     if ("Abundance" == input$main_panel) {
+#       res <- HTML(
+#         "Abundance shows a Z-score heatmap of the original matrix
+#         of metabolite peaks. Default ordering is distance-based by
+#         cluster membership. Sidebar options allow reordering
+#         of rows to highlight samples that are members of the
+#         currently selected cluster.
+#         Currently the annotations 'species' and 'tissue' are fictitious."
+#       )
+#     }
+# if ("Stability" == input$main_panel) {
+#   res <- HTML(
+#     "Stability index shows how stable each cluster
+#     is accross the selected range of <i>k</i>s.
+#     The stability index varies between 0 and 1, where
+#     1 means that the same cluster appears in every
+#     solution for different <i>k</i>."
+#   )
+# }
+# if ("Biomarkers" == input$main_panel) {
+#   res <- HTML(
+#     paste0(
+#       "This is a plot of loading, a statistic that
+#       quantifies the importance of each feature in distinguishing
+#       samples that are members of this bicluster."
+#     )
+#     )
+# }
+# if ("Bicluster members" == input$main_panel) {
+#   res <- HTML(
+#     "This is a score thresholding plot, showing which
+#     samples are above the threshold. The user should be
+#     told which thresholding method was used."
+#   )
+# }
+# return(res)
+# }
+# })
+
+# plotHeightMark <- function() {
+#   return(150 + 10.8 * nrow(values$mark.res))
+# }
+
+# REACTIVE BUTTONS
+# is_biology <- reactive({
+#   return(biology)
+# })
+#
+
+#### REACTIVE DATA #######################################################
+
+# observer for marker genes
+# observe({
+#   if (FALSE) {
+#     # biology) {
+#     # get all marker genes
+#     markers <- organise_marker_genes(object, input$strategy, 
+#                                      as.numeric(input$pValMark), 
+#                                      as.numeric(input$auroc.threshold))
+#     user$n.markers <- nrow(markers)
+#     # get top 10 marker genes of each cluster
+#     markers <- markers_for_heatmap(markers)
+#     clusts <- unique(markers[, 1])
+#     if (is.null(clusts)) {
+#       clusts <- "None"
+#     }
+#     user$mark.res <- markers
+#     updateSelectInput(session, "cluster", choices = clusts)
+#   } else {
+#     user$n.markers <- 0
+#   }
+# })
+# 
+# 
+# output$has_biomarkers <- reactive({
+#   return(TRUE)
+# })
+
+# stop App on closing the browser
+session$onSessionEnded(function() {
+  stopApp()
+})
+# 
+# outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
 }

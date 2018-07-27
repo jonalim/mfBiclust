@@ -1,26 +1,42 @@
 tabPanel(
-  "Data", 
-  tags$head(tags$style(type="text/css", # Enables auto width for rendered image1
-                       "#image1 img {max-width: 100%; width: 100%; height: 100%}")),
+  "Data",
+  tags$head(tags$style(type="text/css", # Enables auto width for rendered abundance
+                       "#abundance{max-width: 100%; width: 100%; height: 100vh !important;}")),
   #### sidebar ####
-  sidebarLayout( 
+  sidebarLayout(
     sidebarPanel(
-      fileInput("input_df", "Import data", accept=c('text/csv','text/comma-separated-values,text/plain','.csv')),
-      checkboxInput("sampleCols", "Samples as columns"),
+      h3("Upload options"),
+      fileInput("input_df", "File:",
+                accept=c('text/csv','text/comma-separated-values,text/plain',
+                         '.csv')),
       checkboxInput("row_names", "Row names?", FALSE),
       checkboxInput("header", "Header?", FALSE),
       numericInput("skiplines", "Skip additional lines", 0, min = 0),
       textInput("sepchar", "Sep. (empty = whitespace)", ""),
       textInput("quotechar", "Quote", ""),
       textInput("decchar", "Decimal", "."),
-      textAreaInput("customRowNames", "Custom row names",
-                    placeholder = "Line-separated ENSEMBL IDs", resize = "vertical"),
       width = 3
     ),
     #### main panel and description column ####
+    
     mainPanel( 
       tabsetPanel(
-        tabPanel("Table", fluidRow(DT::DTOutput("dt"))),
+        tabPanel("Table",
+                 tags$style(type = "text/css", "#dt {height: calc(90vh - 80px) !important;}"),
+                 sidebarLayout(
+                   sidebarPanel(
+                     h3("Post-upload options"),
+                     checkboxInput("transpose", "Transpose (samples must be in columns)"),
+                     textAreaInput("customRowNames", "Custom feature names",
+                                   placeholder = "Line-separated names;\nENSEMBL IDs required for GO analysis",
+                                   resize = "vertical"),
+                     textAreaInput("customColNames", "Custom sample names", resize = "vertical"),
+                     actionButton(inputId = "postUploadUpdate", label = "Update"),
+                     width = 3
+                   ),
+                   mainPanel(DT::DTOutput("dt"), width = 9),
+                   position = "right"
+                 )),
         tabPanel(
           "Heatmap",
           fluidRow(
@@ -62,5 +78,7 @@ tabPanel(
         )
       ),
       width = 9
-    ), fluid = FALSE
-  ))
+    )
+  ),
+  position = "left", fluid = FALSE
+)

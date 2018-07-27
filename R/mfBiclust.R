@@ -8,7 +8,6 @@
 #' algorithms ITA and FCM is planned.
 #'
 #' @section Functions:
-#'   \code{\link{mfbc}}
 #'   \code{\link{biclusterGUI}}
 #'   \code{\link{BiclusterExperiment}}
 #'   \code{\link{BiclusterStrategy}}
