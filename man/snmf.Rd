@@ -4,7 +4,7 @@
 \alias{snmf}
 \title{Wrapper for NMF::nmf(method = "snmf/l")}
 \usage{
-snmf(A, k, beta = 0.01, verbose = FALSE, duplicable = TRUE, ...)
+snmf(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...)
 }
 \arguments{
 \item{k}{the size of the reduced dimension}
