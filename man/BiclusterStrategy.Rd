@@ -2,7 +2,7 @@
 % Please edit documentation in R/BiclusterStrategy.R
 \name{BiclusterStrategy}
 \alias{BiclusterStrategy}
-\title{Construct a BiclusterStrategy}
+\title{details}
 \usage{
 BiclusterStrategy(obj, k, method = c("als-nmf", "svd-pca", "snmf",
   "nipals-pca", "plaid", "spectral"), threshAlgo = "otsu",
@@ -19,13 +19,6 @@ bicluster is "plaid" or "bimax"}
 \item{bicluster}{the biclustering algorithm to use}
 }
 \description{
-This class encapsulates bicluster results for one biclustering algorithm, one
-thresholding algorithms, and one quantity of biclusters. To visualize results
-in a GUI, call \code{\link{addStrat()}} on a
-\code{\link{BiclusterExperiment}}, then call \code{\link{biclusterGUI()}}
-on the resulting BiclusterExperiment.
-}
-\details{
 details
 }
 \section{Custom thresholds}{

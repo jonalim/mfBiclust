@@ -8,6 +8,7 @@ NULL
 #' Opens a GUI to visualize analysis results contained in a BiclusterExperiment
 #' object
 #'
+#' @example R/examples/addStrat-biclusterGUI.R
 #' @export
 setGeneric("biclusterGUI", signature = "obj", function(obj = NULL, ...) {
   standardGeneric("biclusterGUI")

@@ -146,7 +146,7 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
     warning(paste("Using NIPALS-PCA because some matrix elements are NA",
                   "This feature might fail if too many elements are NA."))
     pca <- function(Y, k) { 
-      res <- nipals_pca_autoclean(Y, k, center = TRUE)$genericFit
+      res <- nipals_pca(Y, k, center = TRUE)$genericFit
       list(scores = res@fit@W, loadings = res@fit@H)
     }
   } else {

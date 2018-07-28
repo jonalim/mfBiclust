@@ -13,7 +13,7 @@ setClass("genericFactorization", slots = list(W = "matrix", H = "matrix"))
 #' 
 #' Contains the results and metadata from running a biclustering algorithm.
 #' 
-#' @slot fit a \code{\link{genericFactorization}} object
+#' @slot fit a \code{\link{genericFactorization-class}} object
 #' @slot method the name of the biclustering algorithm used
 #' @export
 setClass("genericFit", slots = list(fit = "genericFactorization", 

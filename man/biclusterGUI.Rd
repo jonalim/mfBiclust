@@ -19,3 +19,8 @@ object
 \item \code{ANY}: Open GUI for a BiclusterExperiment
 }}
 
+\examples{
+#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
+#' addStrat(bce, k = 3)
+#' biclusterGUI(bce)
+}

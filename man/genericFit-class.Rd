@@ -10,7 +10,7 @@ Contains the results and metadata from running a biclustering algorithm.
 \section{Slots}{
 
 \describe{
-\item{\code{fit}}{a \code{\link{genericFactorization}} object}
+\item{\code{fit}}{a \code{\link{genericFactorization-class}} object}
 
 \item{\code{method}}{the name of the biclustering algorithm used}
 }}
