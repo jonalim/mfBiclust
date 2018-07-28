@@ -1,9 +1,57 @@
-###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe. (2018)
-###% https://cran.r-project.org/web/packages/NMF/
-###% http://renozao.github.io/NMF
+#' Biclustering algorithms
+#'
+#' The \code{method} argument of \code{\link{addStrat}()} provides access to
+#' functions from packages \code{\link{[NMF]}} and \code{\link{[biclust]}}.
+#' Initially \code{addStrat()} uses the default parameters provided by the
+#' respective developers, then progressively relaxes certain parameters if
+#' needed to return the desired number of biclusters. Method-specific parameters
+#' besides those automatically manipulated can be provided by name to
+#' \code{addStrat()}. Please see respective documentation in other packages for
+#' method-specific parameters.
+#' 
+#' \describe{ 
+#' \item{als_nmf}{The alternating-least-squares non-negative matrix
+#' factorization algorithm. The original algorithm by Paatero and Tapper (1994)
+#' is run \code{reps} times, then the result that most accurately factorized the
+#' matrix \code{A} is returned. \code{als_nmf} is fast for a small number of
+#' bicluster, but running time rapidly increases with \code{k}.}
+#' \item{svd_pca}{The singular vector decomposition algorithm. Each principal
+#' component is interpreted as the degree of membership in a single bicluster.
+#' The resulting score matrix is thresholded to binarize bicluster membership.
+#' \code{svd_pca} is the fastest provided algorithm.}
+#' \item{nipals_pca}{An iterative PCA algorithm that may tolerate missing data.
+#'   Slower than \code{svd_pca}, but still faster than the other algorithms.}
+#' \item{plaid}{The plaid algorithm}
+#' \item{snmf}{Sparse non-negative matrix factorization. The core algorithm is
+#' Paatero and Tapper's alternating least-squares (1994), and the
+#' sparsity-inducing regularization factors were introduced by Kim and Park
+#' (2007).}
+#' \item{spectral}{The Spectral algorithm. For smaller matrices, the parameter
+#'   \code{numberOfEigenvalues} is automatically set to enable finding the
+#'   number of biclusters requested. The parameter \code{withinVar} is allowed
+#'   to increase up to 10 times the smaller matrix dimension.}
+#' }
+#' 
+#' @param A a numeric matrix to bicluster
+#' @param k the number of biclusters to report
+#' @param duplicable causes biclutsering to be non-stochastic
+#' @param verbose report details such as convergence and the underlying function
+#'   calls
+#'   
+#' @seealso \code{\link[NMF]{nmfAlgorithm.SNMF_R}}
+#' @seealso \code{\link[biclust]{BCSpectral}}
+#' @seealso \code{\link[biclust]{BCPlaid}}
+#' @seealso \code{\link[nipals]{nipals}}
+#' @name bicluster
+NULL
+
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
                     eps_conv = 1e-7, duplicable = TRUE, verbose=TRUE, ...){
+  ###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe.
+  ###% (2018)
+  ###% https://cran.r-project.org/web/packages/NMF/
+  ###% http://renozao.github.io/NMF
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -141,7 +189,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
   
   np <- tryCatch({
     nipals::nipals(x = A, ncomp = k, center = center, scale = FALSE, 
-                   tol = 1e-6, ...)
+                   tol = 1e-6)
   },
   error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
@@ -157,7 +205,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
       method = "nipals-pca")
 }
 
-nipals_pca_autoclean <- function(A, k, cleanParam = 0, center = FALSE,
+nipals_pca <- function(A, k, cleanParam = 0, center = FALSE,
                                  duplicable = FALSE, verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
@@ -242,18 +290,6 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
                               W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "plaid")
 }
 
-#' Wrapper for NMF::nmf(method = "snmf/l")
-#'
-#' This wrapper explicitly enables use of the non-regularized alternating least
-#' squares algorithm devised by Paatero and Tapper (1994), with optional
-#' parameters providing access to coefficients of the regularization factors
-#' introduced by Kim and Park (2007)
-#'
-#' An \code{NMFfit} object
-#'
-#' @param m the target matrix
-#' @param k the size of the reduced dimension
-#' @param beta the starting beta
 snmf <- function(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
@@ -266,6 +302,8 @@ snmf <- function(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...) {
   
   res <- tryCatch(
     {
+      # /r causes columns (sample membership) to be sparse. Presumably,
+      # samples are more likely than features to correspond 1:1 with a bicluster
       suppressMessages(
         do.call(NMF::nmf, c(list(x = A, rank = k, method = "snmf/r", 
                                  beta = beta, rng = .Random.seed), args)))
@@ -297,10 +335,10 @@ snmf <- function(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...) {
   return(res)
 }
 
-# spectral may find over k biclusters, but only k will be returned
-# minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
 spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, 
                      verbose = TRUE, ...) {
+  # spectral may find over k biclusters, but only k will be returned
+  # minSize can be used to force biclusters to be a certain fraction of the smaller matrix dimension
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -319,7 +357,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
   # are samples. The user can, however, override withinVar. The GUI uses this
   # parameter in debug mode to limit running time.
   if(is.null(withinVar)) {
-    withinVar <- nrow(A)
+    withinVar <- min(nrow(A), ncol(A))
   }
   
   # the number of eigenvalues to consider. This can limit number of biclusters
@@ -330,7 +368,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
   }
   
   best <- NULL
-  while(number < k && withinVar <= 10L * nrow(A)) {
+  while(number < k && withinVar <= 10L * min(nrow(A), ncol(A))) {
     bc <- do.call(biclust::biclust,
                   list(x = A, method = biclust::BCSpectral(),
                        normalization = "log", withinVar= withinVar, minr = minx,
@@ -366,12 +404,6 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
       method = "spectral")
 }
 
-#' Wrapper for prcomp
-#'
-#' Returns a \code{\link{genericFit}} object.
-#'
-#' @param m the target matrix
-#' @param k the number of principal components
 svd_pca <- function(A, k, duplicable = NULL, ...) {
   prcmp <- prcomp(t(A), rank. = k, retx = TRUE, center = FALSE)
   new(

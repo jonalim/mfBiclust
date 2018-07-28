@@ -4,9 +4,10 @@
 NULL
 
 #### CLASS #####################################################################
-#threshold algos must be characters pointing to columns of scoreThresh and
-#loadingThresh. If NULL, then all functions assume the first column determines
-#bicluster membership.
+#' Class "BiclusterStrategy" for biclusters
+#'
+#' This class encapsulates bicluster results for one biclustering algorithm, one
+#' thresholding algorithm, and one quantity of biclusters.
 setClass(
   "BiclusterStrategy",
   slots = list(
@@ -21,13 +22,9 @@ setClass(
 )
 
 #### CONSTRUCTOR ###############################################################
-#' Construct a BiclusterStrategy
-#'
-#' This class encapsulates bicluster results for one biclustering algorithm, one
-#' thresholding algorithms, and one quantity of biclusters. To visualize results
-#' in a GUI, call \code{\link{addStrat()}} on a
-#' \code{\link{BiclusterExperiment}}, then call \code{\link{biclusterGUI()}}
-#' on the resulting BiclusterExperiment.
+# Constructs a BiclusterStrategy
+#
+# The function addStrat() is the exported wrapper that calls this constructor.
 #'
 #' details
 #' @section Custom thresholds:
@@ -340,6 +337,7 @@ setMethod("names", "BiclusterStrategy", function(x) {
   colnames(x@factors@fit@W)
 })
 
+#' @describeIn BiclusterStrategy Number of clusters in a BiclusterStrategy
 setMethod("nclust", c(bcs = "BiclusterStrategy"), function(bcs) {
   ncol(bcs@factors@fit@W)
 })

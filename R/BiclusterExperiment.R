@@ -4,15 +4,17 @@
 NULL
 
 #### CLASS #####################################################################
-#' Class "BiclusterExperiment" for multiple biclustering results
+#' Class "BiclusterExperiment" for data and biclusters
 #'
-#' This class encapsulates factorization and thresholding data for one or more
-#' biclustering runs. Objects can be created using the
+#' This class encapsulates data for one or more biclustering runs derived from
+#' the same abundance data. Objects can be created using the
 #' \code{\link{BiclusterExperiment}} constructor.
 #'
 #' @slot data Object of class \code{\link{matrix}}. The original data.
 #' @slot annot Object of class \code{\link{data.frame}}. Annotations provided by the user
 #' @slot strategies A \code{\link{list}} of \code{BiclusterStrategy} objects
+#' 
+#' @example R/examples/addStrat-biclusterGUI.R
 #' @importClassesFrom Biobase eSet
 setClass("BiclusterExperiment", slots = list(
   strategies = "list"
@@ -36,32 +38,22 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 })
 
 #### CONSTRUCTOR ###############################################################
-#' Perform multiple biclustering runs
+#' Construct a container for biclustering runs
 #'
-#' BiclusterExperiment constructs an object holding data from multiple
-#' biclustering runs.
-#'
-#' This function is useful for constructing one BiclusterExperiment
-#' encapsulating results of different pipelines (e.g. comparing NMF with PCA).
-#' For comparing results from the same pipeline with differing values of
-#' \code{k}, add multiple BiclusterStrategy objects to a single
-#' BiclusterExperiment.
+#' Constructs a \code{\link{BiclusterExperiment-class}} object holding data,
+#' with a slot for future biclustering runs performed on that data. To run
+#' biclustering, use \code{\link{addStrat}()}.
 #' 
-#' @param m the data matrix defining this BiclusterExperiment. Should have rows
-#'   as samples and features as columns
-#' @return an instance of BiclusterExperiment-class
-#'   containing the following slots, accessed with @@: 
-#'   data: Object of class \code{\link{matrix}}. The original data. 
-#'   annot: Object of class \code{\link{data.frame}}. Annotations provided by the user
-#'   strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
+#' @param m the data matrix defining this BiclusterExperiment. Should have
+#'   samples as columns and features as rows.
+#'
+#' @example R/examples/addStrat-biclusterGUI.R
 #' @export
 setGeneric("BiclusterExperiment", function(m, bcs = list(), phenoData = Biobase::annotatedDataFrameFrom(m, byrow = FALSE), featureData = annotatedDataFrameFrom(m, byrow = TRUE), pp = FALSE, maxNa = 0.5) {
   standardGeneric("BiclusterExperiment")
 })
 
-#' Careful, for m, rows are samples and columns are features
-#' eSet objects store assayData transposed: rows are features and columns are samples.
-#' For this reason I wrote a getter that returns a matrix with rows as samples, columns as features.
+# eSet objects store assayData: rows are features and columns are samples.
 setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, featureData, pp, maxNa) {
   if(pp) {
     m <- clean(m, maxNa)
@@ -130,20 +122,6 @@ setValidity("BiclusterExperiment", validBiclusterExperiment)
 #' 
 #' Returns a BiclusterExperiment identical to \code{bce} with the addition of a
 #' BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
-#' 
-#' @export
-setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
-                                                           method = c("als-nmf", "svd-pca", "snmf",
-                                                                      "nipals-pca", "plaid", "spectral"),
-                                                           duplicable = TRUE, silent = FALSE, 
-                                                           ...) {
-  standardGeneric("addStrat")
-})
-
-#' Add a BiclusterStrategy calculated with the given k and method
-#'
-#' Returns a BiclusterExperiment identical to \code{bce} with the addition of a
-#' BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
 #'
 #' The provided \code{method} is used to compute a number of biclusters,
 #' sets comprising both samples and features. Matrix factorization methods will
@@ -157,11 +135,19 @@ setGeneric("addStrat", signature = c("bce", "k"), function(bce, k,
 #' warning override user parameters. Also, if any elements of 
 #' \code{abund(BiclusterExperiment)} are missing, the row and column
 #' containing those elements may be removed with warning.
-#'
-#' @describeIn addStrat
+#' 
+#' @example R/examples/addStrat-biclusterGUI.R
+#' @export
+setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
+                                                           method = c("als-nmf", "svd-pca", "snmf",
+                                                                      "nipals-pca", "plaid", "spectral"),
+                                                           duplicable = TRUE, silent = FALSE, 
+                                                           ...) {
+  standardGeneric("addStrat")
+})
 setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"), 
           function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
-                                      "nipals-pca", "plaid", "spectral"), maxNa, 
+                                      "nipals-pca", "plaid", "spectral"), 
                    duplicable, silent, ...) {
             # Validate parameters
             # k must be whole number, smaller than both dimensions of m
@@ -180,7 +166,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"),
                 warning(paste("Since some data is NA, the NIPALS-PCA",
                               "algorithm must be used."))
               }
-              nipals.res <- nipals_pca_autoclean(A = m, cleanParam = 0,
+              nipals.res <- nipals_pca(A = m, cleanParam = 0,
                                                  k = k, center = FALSE,
                                                  duplicable = duplicable)
               bcs <- BiclusterStrategy(obj = nipals.res$genericFit, k = k,
@@ -209,11 +195,7 @@ setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"),
           })
 
 setGeneric("as.matrix")
-#' Get abundance values in a BiclusterExperiment
-#'
-#' Returns a numeric matrix
-#'
-#' @describeIn BiclusterExperiment
+#' @describeIn BiclusterExperiment Get abundance values in a BiclusterExperiment
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
@@ -233,84 +215,54 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object,
   if(validObject(bce, test = FALSE)) return(bce)
 })
 
-#' Access a BiclusterStrategy contained by a BiclusterExperiment
-#' 
-#' Returns one BiclusterStrategy. Alternatively, a list of BiclusterStrategy
-#' objects contained by a BiclusterExperiment can be retrieved using
-#' \code{strategies(bce)}.
-#' 
-#' @param bce A BiclusterExperiment to access
-#' @param id Either the integer index or the name of the BiclusterStrategy to 
-#'   get
-#' 
-#' @describeIn BiclusterExperiment
-#' @export
 setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
+#' @describeIn BiclusterExperiment Get a BiclusterStrategy contained by a
+#'   BiclusterExperiment, by providing either name or integer index
+#' @export
 setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
   strategies(bce)[[id]] 
 })
 
-#' Names of BiclusterStrategies in this BiclusterExperiment
-#' 
-#' @describeIn BiclusterExperiment
+#' @describeIn BiclusterExperiment Character names of BiclusterStrategies in this BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
-#' Remove all BiclusterStrategy objects from this BiclusterExperiment
-#' 
-#' Returns a BiclusterExperiment containing only abundance data
-#' 
-#' @describeIn BiclusterExperiment
-#' @export
 setGeneric("wipe", signature = "bce", function(bce) {standardGeneric("wipe")})
+#' @describeIn BiclusterExperiment Return this BiclusterExperiment with all BiclusterStrategy objects removed
+#' @export
 setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
   strategies(bce) <- list()
   return(bce)
 })
 
-#' Removes all BiclusterStrategy objects except one
-#' 
-#' Returns a BiclusterExperiment encapsulating only the named BiclusterStrategy.
-#' Can be useful to store the final results.
-#' 
-#' @describeIn BiclusterExperiment
-#' @export
-setGeneric("wipeExcept", signature = c("bce", "bcs"),
+setGeneric("wipeExcept", signature = c("bce"),
            function(bce, bcs) {standardGeneric("wipeExcept")})
-setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "numeric"),
-          function(bce, bcs) {
-            wipeExcept(bce, getStrat(bce, bcs))
-          }
-)
-setMethod("wipeExcept", c(bce = "BiclusterExperiment", bcs = "character"),
-          function(bce, bcs) {
-            wipeExcept(bce, getStrat(bce, bcs))
-          }
-)
-setMethod("wipeExcept", c(bce = "BiclusterExperiment",
-                          bcs = "BiclusterStrategy"),
-          function(bce, bcs) {
-            if(any(names(bce) == name(bcs))) {
-              bce@strategies <- list()
-              bce@strategies[[name(bcs)]] <- bcs
-              return(bce)
-            } else {
-              stop(paste("The given BiclusterStrategy is not contained by the",
-                         "given BiclusterExperiment. Please create the BiclusterStrategy first."))
-            }
-          }
-)
-
-
-#' Access strategies contained by a BiclusterExperiment
-#'
-#' Returns a list of BiclusterStrategy objects 
-#'
-#' @describeIn BiclusterExperiment
+#' @describeIn BiclusterExperiment Return this BiclusterExperiment with all
+#'   BiclusterStrategy objects removed except \code{bcs}. Argument \code{bcs}
+#'   can be passed as a name, integer index, or the BiclusterStrategy itself.
 #' @export
+setMethod("wipeExcept", c(bce = "BiclusterExperiment"), function(bce, bcs) {
+  if(inherits(bcs, "character") || inherits(bcs, "numeric")) {
+    bcs <- getStrat(bce, bcs)
+  }
+  if(any(names(bce) == name(bcs))) {
+    bce@strategies <- list()
+    bce@strategies[[name(bcs)]] <- bcs
+    return(bce)
+  } else {
+    stop(paste("The given BiclusterStrategy is not contained by the",
+               "given BiclusterExperiment. Please create the BiclusterStrategy",
+               "first."))
+  }
+}
+)
+
 setGeneric("strategies", signature = "bce", function(bce) {
   standardGeneric("strategies")
 })
+#' @describeIn BiclusterExperiment Get/set a list of the BiclusterStrategy objects
+#'   contained by this BiclusterExperiment.
+#' @export
 setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
   bce@strategies
 })

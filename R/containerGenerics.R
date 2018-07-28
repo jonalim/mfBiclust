@@ -10,10 +10,6 @@ setGeneric("clean", function(object, cleanParam = 0, dimsRemain = FALSE) {
   standardGeneric("clean")
 })
 
-
-#' Number of clusters in a BiclusterStrategy
-#' 
-#' @describeIn BiclusterStrategy
 #' @export
 setGeneric("nclust", signature = "bcs", function(bcs) {standardGeneric("nclust")})
 

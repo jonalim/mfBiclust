@@ -11,3 +11,24 @@ addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
 Returns a BiclusterExperiment identical to \code{bce} with the addition of a
 BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
 }
+\details{
+The provided \code{method} is used to compute a number of biclusters,
+sets comprising both samples and features. Matrix factorization methods will
+store intermediate data in the \code{factors} slot of the BiclusterStrategy.
+That intermediate data is then thresholded to yield the matrices in the
+\code{clusteredSamples} and \code{clusteredFeatures} slots of the
+BiclusterStrategy.
+}
+\section{Potential side effects}{
+
+Due to requirements of various biclustering methods, this function may with
+warning override user parameters. Also, if any elements of 
+\code{abund(BiclusterExperiment)} are missing, the row and column
+containing those elements may be removed with warning.
+}
+
+\examples{
+#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
+#' addStrat(bce, k = 3)
+#' biclusterGUI(bce)
+}

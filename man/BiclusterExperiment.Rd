@@ -2,7 +2,7 @@
 % Please edit documentation in R/BiclusterExperiment.R
 \name{BiclusterExperiment}
 \alias{BiclusterExperiment}
-\title{Perform multiple biclustering runs}
+\title{Construct a container for biclustering runs}
 \usage{
 BiclusterExperiment(m, bcs = list(),
   phenoData = Biobase::annotatedDataFrameFrom(m, byrow = FALSE),
@@ -10,24 +10,16 @@ BiclusterExperiment(m, bcs = list(),
   maxNa = 0.5)
 }
 \arguments{
-\item{m}{the data matrix defining this BiclusterExperiment. Should have rows
-as samples and features as columns}
-}
-\value{
-an instance of BiclusterExperiment-class
-  containing the following slots, accessed with @: 
-  data: Object of class \code{\link{matrix}}. The original data. 
-  annot: Object of class \code{\link{data.frame}}. Annotations provided by the user
-  strategies: A \code{\link{list}} of \code{BiclusterStrategy} objects
+\item{m}{the data matrix defining this BiclusterExperiment. Should have
+samples as columns and features as rows.}
 }
 \description{
-BiclusterExperiment constructs an object holding data from multiple
-biclustering runs.
+Constructs a \code{\link{BiclusterExperiment-class}} object holding data,
+with a slot for future biclustering runs performed on that data. To run
+biclustering, use \code{\link{addStrat}()}.
 }
-\details{
-This function is useful for constructing one BiclusterExperiment
-encapsulating results of different pipelines (e.g. comparing NMF with PCA).
-For comparing results from the same pipeline with differing values of
-\code{k}, add multiple BiclusterStrategy objects to a single
-BiclusterExperiment.
+\examples{
+#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
+#' addStrat(bce, k = 3)
+#' biclusterGUI(bce)
 }
