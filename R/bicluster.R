@@ -3,50 +3,72 @@
 #' The \code{method} argument of \code{\link{addStrat}()} provides access to
 #' functions from packages \code{\link{[NMF]}} and \code{\link{[biclust]}}.
 #' Initially \code{addStrat()} uses the default parameters provided by the
-#' respective developers, then progressively relaxes certain parameters if
+#' respective developers, then progressively relaxes parameters as
 #' needed to return the desired number of biclusters. Method-specific parameters
 #' besides those automatically manipulated can be provided by name to
-#' \code{addStrat()}. Please see respective documentation in other packages for
-#' method-specific parameters.
+#' \code{addStrat()}. Method-specific parameters for "als-nmf", "svd-pca" and
+#' "nipals-pca" are described in their respective sections. For parameters specific to other methods,
+#' please see respective documentation in other packages.
 #' 
 #' \describe{ 
-#' \item{als_nmf}{The alternating-least-squares non-negative matrix
-#' factorization algorithm. The original algorithm by Paatero and Tapper (1994)
-#' is run \code{reps} times, then the result that most accurately factorized the
-#' matrix \code{A} is returned. \code{als_nmf} is fast for a small number of
-#' bicluster, but running time rapidly increases with \code{k}.}
-#' \item{svd_pca}{The singular vector decomposition algorithm. Each principal
+#' \item{\link{als_nmf}}{Alternating-least-squares non-negative matrix
+#' approximation. Fast at low values of \code{k}, but rapidly slows as \code{k}
+#' increases.}
+#' \item{svd_pca}{The Singular value decmoposition algorithm. Each principal
 #' component is interpreted as the degree of membership in a single bicluster.
 #' The resulting score matrix is thresholded to binarize bicluster membership.
 #' \code{svd_pca} is the fastest provided algorithm.}
 #' \item{nipals_pca}{An iterative PCA algorithm that may tolerate missing data.
 #'   Slower than \code{svd_pca}, but still faster than the other algorithms.}
-#' \item{plaid}{The plaid algorithm}
-#' \item{snmf}{Sparse non-negative matrix factorization. The core algorithm is
-#' Paatero and Tapper's alternating least-squares (1994), and the
-#' sparsity-inducing regularization factors were introduced by Kim and Park
-#' (2007).}
+#' \item{plaid}{The plaid algorithm as described in Turner et al., 2003.
+#' \code{release} is decremented towards 0.1 in steps of 0.1, then
+#' \code{shuffle} is incremented towards 10 in steps of 1.}
+#' \item{snmf}{Sparse non-negative matrix factorization. Alternating
+#' least-squares with the sparsity-inducing regularization factors introduced by
+#' Kim and Park (2007). \code{eta} and \code{beta} are initialized at
+#' mean(\code{A}) and are halved progressively as needed.}
 #' \item{spectral}{The Spectral algorithm. For smaller matrices, the parameter
 #'   \code{numberOfEigenvalues} is automatically set to enable finding the
-#'   number of biclusters requested. The parameter \code{withinVar} is allowed
-#'   to increase up to 10 times the smaller matrix dimension.}
+#'   number of biclusters requested. The parameter \code{withinVar} is initialized
+#'   equal to the smaller matrix dimension and allowed to increase up to 10
+#'   times the smaller matrix dimension.}
 #' }
 #' 
-#' @param A a numeric matrix to bicluster
+#' @param A the numeric matrix to bicluster
 #' @param k the number of biclusters to report
-#' @param duplicable causes biclutsering to be non-stochastic
-#' @param verbose report details such as convergence and the underlying function
-#'   calls
-#'   
+#' @param duplicable fixes the random seed internally
+#' @param verbose report details about the underlying function calls
+#' 
+#' @seealso \code{\link{als_nmf}}
 #' @seealso \code{\link[NMF]{nmfAlgorithm.SNMF_R}}
 #' @seealso \code{\link[biclust]{BCSpectral}}
 #' @seealso \code{\link[biclust]{BCPlaid}}
 #' @seealso \code{\link[nipals]{nipals}}
-#' @name bicluster
+#' @name bicluster-methods
 NULL
 
+#' Alternating-least-squares non-negative matrix approximation
+#' 
+#' Approximates a non-negative matrix as the product of two non-negative matrix
+#' factors using the alternating-least-squares algorithm by Paatero and Tapper
+#' (1994).
+#' 
+#' Factorization is performed \code{reps} times, then the result with the
+#' minimum mean squared-error is returned. \code{als_nmf()} is fast for a small
+#' number of biclusters, but running time rapidly increases with \code{k}.
+#' 
+#' @param A the matrix to factorize
+#' @param k the number of factors to calculate
+#' @param reps the number of replications to choose from
+#' @param maxIter the maximum number of least-squares steps
+#' @param eps_conv convergence tolerance
+#' @param duplicable fix the random seed internally
+#' @param verbose Print the mean squared error every 10 iterations
+#' 
+#' @returns a \code{\link{genericFit}} object
+#' @export
 #' @importFrom NMF .fcnnls
-als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00, 
+als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
                     eps_conv = 1e-7, duplicable = TRUE, verbose=TRUE, ...){
   ###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe.
   ###% (2018)
@@ -57,20 +79,18 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   } else { reps <- 1 }
   
+  if(any(A < 0)) {stop("Negative values are not allowed")}
+  
   m = nrow(A); n = ncol(A); erravg1 = numeric();
   
   # to do with sparsity constraints
-  maxA=max(A); if ( eta<0 ) eta=maxA;
-  eta2=eta^2;
+  maxA=max(A)
   
   ## VALIDITY of parameters
   # eps_conv
   if( eps_conv <= 0 )
     stop("SNMF/", version, "::Invalid argument 'eps_conv' - value should be positive")
-  # beta
-  if( beta < 0 )
-    stop("SNMF/", version, "::Invalid argument 'beta' - value should be positive")
-  
+
   solutions <- lapply(seq_len(reps), function(i) {
     W <- NULL # these are the results of each replicate
     H <- NULL
@@ -89,7 +109,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     Wold <- W
     Hold <- matrix(runif(k*n), k,n);	
     residNormOld <- maxA
-    I_k=diag(eta, k); betavec=rep(sqrt(beta), k); nrestart=0;
+    nrestart=0;
     restart <- function() {
       # re-initialize random W
       idxWold <<- rep(0, m); idxHold <<- rep(0, n); inc <<- 0; 
@@ -105,8 +125,8 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
     while( i < maxIter){
       i <- i + 1L
       
-      # min_h ||[[W; 1 ... 1]*H  - [A; 0 ... 0]||, s.t. H>=0, for given A and W.
-      res <- try(.fcnnls(rbind(W, betavec), rbind(A, rep(0, n))), silent = TRUE)
+      # min_h ||W*H - A||, s.t. H>=0, for given A and W.
+      res <- try(.fcnnls(W, A), silent = TRUE)
       if(inherits(res, "try-error")) {
         nrestart <- nrestart+1;
         if ( nrestart >= 10 ){
@@ -128,8 +148,8 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
         next
       }
       
-      # min_w ||[H'; I_k]*W' - [A'; 0]||, s.t. W>=0, for given A and H.
-      res = try(.fcnnls(rbind(t(H), I_k), rbind(t(A), matrix(0, k,m))),
+      # min_w ||H' * W' - A'||, s.t. W>=0, for given A and H.
+      res = try(.fcnnls(t(H), t(A)),
                 silent = TRUE)
       if(inherits(res, "try-error")) {
         nrestart <- nrestart+1;
@@ -159,9 +179,9 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
       Hold <- H
       Wold <- W
       
-      # every 5 iterations
-      if ( (i %% 5==0)  || (length(erravg1)==0) ){
-        if ( verbose && (i %% 5==0) ){ # prints number of changing elements
+      # every 10 iterations
+      if ( (i %% 10==0)  || (length(erravg1)==0) ){
+        if ( verbose ){ # prints number of changing elements
           cat("Track:\tIter\tNorm\tdelta\n")
           cat(sprintf("\t%d\t%f\t%f\n",
                       i,residNorm, residNormOld - residNorm))
@@ -181,15 +201,21 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L, eta=0L, beta=0.00,
   return(res)
 }
 
-nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
+nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
+  args <- list(...)
+  args <- c(scale = args$scale, center = args$center, maxiter = args$maxiter,
+            tol = args$tol,
+            startcol = args$startcol, fitted = args$fitted,
+            force.na = args$force.na, gramschmidt = args$gramschmidt,
+            verbose = args$verbose)
   np <- tryCatch({
-    nipals::nipals(x = A, ncomp = k, center = center, scale = FALSE, 
-                   tol = 1e-6)
+    do.call(nipals::nipals, c(list(x = A, ncomp = k,
+                   tol = 1e-6), args))
   },
   error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
@@ -205,8 +231,32 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, center = FALSE, ...) {
       method = "nipals-pca")
 }
 
-nipals_pca <- function(A, k, cleanParam = 0, center = FALSE,
-                                 duplicable = FALSE, verbose = TRUE, ...) {
+#' Principal component dimensionality reduction using NIPALS
+#' 
+#' Factorizes matrix \code{A} as the product of score and loading matrices
+#' respectively truncated to \code{k} rows and \code{k} columns. Uses the 
+#' Nonlinear Iterative Partial Least Squares algorithm to compute principal
+#' components in the presence of missing matrix elements.
+#' 
+#' If NIPALS fails, this function will recursively call itself with decreasing
+#' values of \code{cleanParam} until NIPALS succeeds.
+#' 
+#' @param A the matrix to factorize
+#' @param k the number of factors to compute
+#' @param cleanParam passed to \code{\link{clean}()}
+#' @param duplicable fix the random seed internally
+#' @param verbose report recursive calls and all values of \code{cleanParam}
+#' 
+#' @returns a list containing
+#'   \describe{
+#'   \item{m}{the data matrix after any cleaning}
+#'   \item{genericFit}{a \code{\link{genericFit-class}} object}
+#'   \item{indexRemaining}{a list of the row and column indexes remaining after
+#'   cleaning}
+#'   }
+#' @export
+nipals_pca <- function(A, k, cleanParam = 0,
+                       duplicable = FALSE, verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -216,17 +266,17 @@ nipals_pca <- function(A, k, cleanParam = 0, center = FALSE,
   indexRem <- cleanRes$dimsRemain
   
   tryCatch({
-    list(m = mClean, genericFit = nipals_pca_nocatch(mClean, k, center = center),
-         indexRemaining = indexRem)
+    return(list(m = mClean, genericFit = nipals_pca_nocatch(mClean, k, ...),
+         indexRemaining = indexRem))
   }, error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
       cleanParam <- cleanParam + log10(2 - i)
       if(verbose) {
-        message(paste("Too many NA in the data. Cleaning with maxNAs at",
-                    cleanParam))
+        message(paste("Too many NA in the data. Cleaning with cleanParam at",
+                      cleanParam))
       }
       # pass the original m so indexRemaining is valid for the user's matrix
-      nipals_pca_helper(A, k, cleanParam, center, duplicable)
+      return(nipals_pca_helper(A, k, cleanParam, duplicable))
     } else { stop(e) }
   })
 }
@@ -290,46 +340,58 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
                               W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "plaid")
 }
 
-snmf <- function(A, k, beta = 0.01, verbose = TRUE, duplicable = TRUE, ...) {
+snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
+  
   args <- list(...)
   args <- c(maxIter = args$maxIter, eta = args$eta,bi_conv = args$bi_conv, 
             eps_conv = args$eps_conv, .options = args$.options)
+  res <- NULL
   
-  res <- tryCatch(
-    {
-      # /r causes columns (sample membership) to be sparse. Presumably,
-      # samples are more likely than features to correspond 1:1 with a bicluster
-      suppressMessages(
-        do.call(NMF::nmf, c(list(x = A, rank = k, method = "snmf/r", 
-                                 beta = beta, rng = .Random.seed), args)))
-    },
-    warning = function(w) {
-      if (any(suppressWarnings(
-        grepl(
-          "too big 'beta' value",
-          w$message,
-          ignore.case = TRUE,
-          fixed = TRUE
+  number <- 0
+  beta <- mean(A)
+  eta <- mean(A)
+  while(eta >= 0 && !inherits(res, "NMFfit")) {
+    while(beta >= .Machine$double.eps && !inherits(res, "NMFfit")) {
+      res <- withCallingHandlers({
+        # /r causes columns (sample membership) to be sparse. Presumably,
+        # samples are more likely than features to correspond 1:1 with a bicluster
+        suppressMessages(
+          try(
+            do.call(NMF::nmf, c(list(x = A, rank = k, method = "snmf/r", 
+                                     beta = beta, eta = eta, rng = .Random.seed), args))
+          )
         )
-      ))) {
-        beta <<- beta ^ 2
-        res <<- snmf(A, k, beta, verbose, duplicable, ...)
-      } else {
-        warning(w)
+      },
+      warning = function(w) {
+        browser()
+        if (any(suppressWarnings(
+          grepl(
+            "too big 'beta' value",
+            w$message,
+            fixed = TRUE
+          )
+        ))) {
+          beta <- beta / 2
+        } else {
+          warning(w)
+        }
+      })
+      if(inherits(res, "try-error") && any(grepl("system is computationally singular",
+                                                 res[[1]], fixed = TRUE)
+      )) {
+        eta <- eta / 2
       }
-    },
-    error = function(e) {
-      stop(e)
     }
-  )
+  }
+  
   if(verbose) {
     cat(paste("method:", res@method, "\n"))
-    cat(paste("parameters:\n", res@parameters, "\n"))
+    cat(paste("parameters:\nbeta:", res@parameters[[1]], "\neta:", res@parameters[[2]], "\n"))
   }
   res@method <- "snmf"
   return(res)
@@ -404,6 +466,17 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
       method = "spectral")
 }
 
+#' Principal component dimensionality reduction using SVD
+#' 
+#' Factorizes matrix \code{A} as the product of score and loading matrices
+#' respectively truncated to \code{k} rows and \code{k} columns.
+#' 
+#' @param A the matrix to factorize
+#' @param k the number of factors to compute
+#' @param duplicable fix the random seed internally
+#' 
+#' @returns a \code{\link{genericFit-class}} object
+#' @export
 svd_pca <- function(A, k, duplicable = NULL, ...) {
   prcmp <- prcomp(t(A), rank. = k, retx = TRUE, center = FALSE)
   new(

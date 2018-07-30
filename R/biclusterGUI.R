@@ -1,23 +1,24 @@
 #' @include BiclusterExperiment.R
 NULL
 
-# Please remember to use clusterProfiler for testing GO enrichment
-
-#' Explore a BiclusterExperiment
-#'
-#' Opens a GUI to visualize analysis results contained in a BiclusterExperiment
-#' object
-#'
-#' @example R/examples/addStrat-biclusterGUI.R
-#' @export
 setGeneric("biclusterGUI", signature = "obj", function(obj = NULL, ...) {
   standardGeneric("biclusterGUI")
 })
 
-# clusters must be a named list of matrices
-#' @describeIn biclusterGUI Open GUI for a BiclusterExperiment
+#' Explore a BiclusterExperiment
+#'
+#' Opens a shiny GUI to visualize analysis results contained in a
+#' BiclusterExperiment object
+#' 
+#' @param dbg Runs in a debug mode that uses algorithm parameters increasing
+#'   sacrificing accuracy for speed.
+#'
+#' @example R/examples/addStrat-biclusterGUI.R
+#' @export
+#' @name biclusterGUI
 #' @import shiny
-setMethod("biclusterGUI", definition = function(obj, dbg = FALSE) {
+setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), 
+          definition = function(obj, dbg = FALSE) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300

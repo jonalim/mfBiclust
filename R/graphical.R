@@ -54,7 +54,7 @@ setMethod("plot", c(x = "BiclusterExperiment"),
 #### Distance heatmap #########################################################
 #' @export
 setGeneric("plotDist", signature = "bce", function(bce, type, distType, ordering,
-                                                ...) {
+                                                   ...) {
   standardGeneric("plotDist")
 })
 
@@ -110,7 +110,7 @@ setMethod(
         clusteredFeatures
       }
       clus <- hclus(dist(clusFunction(getStrat(bce, strategy)),
-                          method = "euclidean"))
+                         method = "euclidean"))
       ph <- pheatmap::pheatmap(data, cluster_rows = clus,
                                cluster_cols = clus, 
                                show_rownames = rowColNames, 
@@ -118,45 +118,32 @@ setMethod(
                                annotation_row = annots)
     }
   })
-#' 
-#' #### Cluster stability plot ####################################################
-#' #' @export
-#' setGeneric("plotClustStab", signature = "obj", function(obj, ...) {
-#'   standardGeneric("plotClustStab")
-#' })
-#' 
-#' #' Cluster stability plot
-#' #'
-#' #' Plots the stability of clusters in the given BiclusterExperiment.
-#' #'
-#' #' @rdname plotClustStab
-#' #' @aliases plotClustStab
-#' setMethod(
-#'   "plotClustStab", signature(obj = "BiclusterExperiment"),
-#'   function(obj, clusters) {
-#'     if (length(obj@strategies) == 0) {
-#'       warning(paste0("Please calculate clusters first!"))
-#'       return(obj)
-#'     }
-#'     
-#'     # calculate consensus too?
-#'     
-#'     # calculate stability of the clusters check if there are more than 1 k value in ks range
-#'     stability <- NULL
-#'     # stability <- calculate_stability(metadata(object)$sc3$consensus, k)
-#'     stability <- abs(runif(n = clusters, min = 0, max = 1))
-#'     
-#'     d <- data.frame(Cluster = factor(1:length(stability)), Stability = stability)
-#'     ggplot2::ggplot(d, ggplot2::aes_string(x = "Cluster", y = "Stability")) +
-#'       ggplot2::geom_bar(stat = "identity") + ggplot2::ylim(0, 1) +
-#'       ggplot2::labs(x = "Cluster", y = "Stability Index") + ggplot2::theme_bw()
-#'   }
-#' )
 
 #### Factor matrix heatmap ###################################################
+#' Plot a heatmap showing bicluster membership of samples or features
+#' 
+#' Uses the data from the \code{factors} slot of a BiclusterStrategy to show
+#' bicluster membership across all samples or features.
+#' 
+#' @param bce A BiclusterExperiment object
+#' @param bcs The name or index of a BiclusterStrategy contained by \code{bce},
+#'   or the BiclusterStrategy object itself
+#' @param type either "score" for feature-bicluster membership or "loading" for
+#'   sample-bicluster membership
+#' @param phenoLabels an optional character vector of labels to annotate. If \code{type = "score"},
+#' \code{phenoLabels} should be column names of \code{Biobase::phenoData(bce)}
+#' @param biclustLabels an optional character vector of labels to annotate.
+#'   Should be elements of \code{names(bcs)}. Both \code{phenoLabels} and
+#'   \code{biclustLabels} may be specified.
+#' @param ordering \code{ordering = "distance"} to reorder by Euclidean distance
+#'   on \code{as.matrix(BiclusterExperiment)}. \code{ordering = "cluster"} to
+#'   reorder by Euclidean distance on the appropriate bicluster-membership
+#'   matrix in \code{bcs}.
+#' @param colnames if \code{TRUE}, labels the samples/features
 #' @export
-setGeneric("factorHeatmap", signature = c("bce", "bcs"), function(bce, bcs,
-                                                                  type, ...) {
+setGeneric("factorHeatmap", signature = c("bce", "bcs"), 
+           function(bce, bcs, type = c("score", "loading"),
+                    ordering = c("input", "distance", "cluster"), ...) {
   standardGeneric("factorHeatmap")
 })
 setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "character"),
@@ -167,17 +154,14 @@ setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "numeric"),
           function(bce, bcs, type, ...) {
             factorHeatmap(bce, getStrat(bce, bcs), type, ...)
           })
-#' Factor matrix heatmap
-#' 
-#' Display scores for all clusters in one heatmap
 setMethod(
   "factorHeatmap", c(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"),
   function(
     bce, bcs, type = c("score", "loading"), phenoLabels = c(),
-    biclustLabels = c(), ordering = c("input", "distance", "cluster"),
+    biclustLabels = c(), ordering,
     colNames = FALSE) {
     type <- match.arg(type)
-    
+
     if(type == "score") {
       data <- t(score(bcs))
       # Validate requested annotations and parse into a dataframe
@@ -224,6 +208,21 @@ setMethod(
     ph
   }
 )
+
+#' Quickly preview a matrix as a heatmap
+#' 
+#' Uses R's \code{image()} function to visualize a matrix.
+#' 
+#' @export
+matrixHeatmap <- function(m) {
+  old.par <- par(no.readonly = T)
+  par(mar = c(0, 0, 0, 0))
+  image(t(apply(m, 2, rev)), useRaster = TRUE, axes = FALSE, col = RColorBrewer::brewer.pal(9, "BuPu"))
+  legend(grconvertX(0.5, "device"), grconvertY(1, "device"),
+         c(min(m), round(max(m), digits = 3)),
+         fill = RColorBrewer::brewer.pal(9, "BuPu")[c(1, 9)])
+  par(old.par)
+}
 
 #### Threshold plot ################################################################
 #' @param thresholds A single numeric, vector, or matrix of thresholds. See 
@@ -352,3 +351,62 @@ setMethod("pca", signature(bce = "BiclusterExperiment"), function(bce) {
                      var2, 
                      "% variance"))
 })
+
+# Create annotations dataframe for heatmaps
+# 
+# Checks phenoLabels and biclustLabels for validity and then joins the
+# corresponding data extracted from the provided BiclusterExperiment.
+# 
+# Annotation tracks are converted to named dataframe columns.
+# 
+# @param x a BiclusterExperiment
+# @param names the names of entities annotated- required
+# @param strategy a strategy in x. Required whenever length(biclustLabels) > 0
+# @param phenoLabels any phenotype labels in x
+# @param biclustLabels any bicluster labels in x
+createAnnots <-
+  function(x,
+           names,
+           strategy = "",
+           phenoLabels = c(),
+           biclustLabels = c()) {
+    annots <- NA
+    # Process phenotype labels
+    phenoLabels <- validatePhenoNames(phenoLabels, x)
+    if (length(phenoLabels) > 0) {
+      phData <-
+        as.data.frame(Biobase::pData(Biobase::phenoData(x))[, phenoLabels])
+      colnames(phData) <- phenoLabels
+    }
+    
+    # Process bicluster labels
+    if (length(strategy) > 0 && length(biclustLabels) == 0) {
+    } else if (length(biclustLabels) > 0) {
+      validateStratName(strategy, x) # if no strategy, stop
+      bcs <- getStrat(x, strategy) # get BiclusterStrategy
+      biclustLabels <- validateBiclustNames(biclustLabels, bcs)
+      predData <- as.data.frame(pred(bcs)[, biclustLabels])
+      
+      # bicluster annotations should be discrete
+      predData[] <- as.data.frame(lapply(predData, as.factor))
+      colnames(predData) <- biclustLabels
+    }
+    
+    # Concatenate phenotype and bicluster labels if both requested
+    annots <-
+      if (length(phenoLabels) > 0 && length(biclustLabels) > 0) {
+        cbind(phData, predData)
+      } else if (length(phenoLabels) > 0) {
+        phData
+      }
+    else if (length(biclustLabels) > 0) {
+      predData
+    }
+    
+    # pheatmap throws cryptic error without rownames
+    if (inherits(annots, "data.frame")) {
+      row.names(annots) <- names
+    }
+    annots
+  }
+

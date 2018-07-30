@@ -19,7 +19,7 @@ with a slot for future biclustering runs performed on that data. To run
 biclustering, use \code{\link{addStrat}()}.
 }
 \examples{
-#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
-#' addStrat(bce, k = 3)
-#' biclusterGUI(bce)
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+addStrat(bce, k = 3)
+biclusterGUI(bce)
 }

@@ -2,40 +2,35 @@
 % Please edit documentation in R/graphical.R
 \name{factorHeatmap}
 \alias{factorHeatmap}
-\title{#### Cluster stability plot ####################################################
-#' @export
-setGeneric("plotClustStab", signature = "obj", function(obj, ...) {
-  standardGeneric("plotClustStab")
-})}
+\title{Plot a heatmap showing bicluster membership of samples or features}
 \usage{
-factorHeatmap(bce, bcs, type, ...)
+factorHeatmap(bce, bcs, type = c("score", "loading"), ordering = c("input",
+  "distance", "cluster"), ...)
+}
+\arguments{
+\item{bce}{A BiclusterExperiment object}
+
+\item{bcs}{The name or index of a BiclusterStrategy contained by \code{bce},
+or the BiclusterStrategy object itself}
+
+\item{type}{either "score" for feature-bicluster membership or "loading" for
+sample-bicluster membership}
+
+\item{ordering}{\code{ordering = "distance"} to reorder by Euclidean distance
+on \code{as.matrix(BiclusterExperiment)}. \code{ordering = "cluster"} to
+reorder by Euclidean distance on the appropriate bicluster-membership
+matrix in \code{bcs}.}
+
+\item{phenoLabels}{an optional character vector of labels to annotate. If \code{type = "score"},
+\code{phenoLabels} should be column names of \code{Biobase::phenoData(bce)}}
+
+\item{biclustLabels}{an optional character vector of labels to annotate.
+Should be elements of \code{names(bcs)}. Both \code{phenoLabels} and
+\code{biclustLabels} may be specified.}
+
+\item{colnames}{if \code{TRUE}, labels the samples/features}
 }
 \description{
-#' Cluster stability plot
-#'
-#' Plots the stability of clusters in the given BiclusterExperiment.
-#'
-#' @rdname plotClustStab
-#' @aliases plotClustStab
-setMethod(
-  "plotClustStab", signature(obj = "BiclusterExperiment"),
-  function(obj, clusters) {
-    if (length(obj@strategies) == 0) {
-      warning(paste0("Please calculate clusters first!"))
-      return(obj)
-    }
-    
-    # calculate consensus too?
-    
-    # calculate stability of the clusters check if there are more than 1 k value in ks range
-    stability <- NULL
-    # stability <- calculate_stability(metadata(object)$sc3$consensus, k)
-    stability <- abs(runif(n = clusters, min = 0, max = 1))
-    
-    d <- data.frame(Cluster = factor(1:length(stability)), Stability = stability)
-    ggplot2::ggplot(d, ggplot2::aes_string(x = "Cluster", y = "Stability")) +
-      ggplot2::geom_bar(stat = "identity") + ggplot2::ylim(0, 1) +
-      ggplot2::labs(x = "Cluster", y = "Stability Index") + ggplot2::theme_bw()
-  }
-)
+Uses the data from the \code{factors} slot of a BiclusterStrategy to show
+bicluster membership across all samples or features.
 }
