@@ -32,8 +32,8 @@ genSimData <- function(n, overlapped = FALSE, file = "",
   })
   
   res <- genSimDataHelper(sizeX = x, sizeY = y, biclusterRows = xCoords,
-                       biclusterCols = yCoords, striped = striped,
-                       noise = noise)
+                          biclusterCols = yCoords, striped = striped,
+                          noise = noise)
   
   if (nchar(file) > 0) { 
     png(paste0(file, ".png"))
@@ -70,15 +70,18 @@ genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols,
     mapply(function(col, value) {
       # overlapping biclusters will be additive
       res[rowRange, col] <<- res[rowRange, col] + value
-      },
-      col = colRange, value = biclusterVal)
+    },
+    col = colRange, value = biclusterVal)
   },
   rowRange = biclusterRows, colRange = biclusterCols))
   
-  # multiply every column in res by a random integer in the set [1,5]
-  k <- ceiling(runif(n = sizeY, min = 0, max = 5))
-  res <- res * rep(k, rep.int(nrow(res), length(k)))
+  if(striped == "cols") {
+    # multiply every column in res by a random integer in the set [1,5]
+    k <- ceiling(runif(n = sizeY, min = 0, max = 5))
+    res <- res * rep(k, rep.int(nrow(res), length(k)))
+  }
   
+  # add Gaussian noise and shift so min(res) == 0
   res <- res + noise * matrix(rnorm(n = sizeX * sizeY), nrow = sizeX)
   res <- res - min(res)
   

@@ -1,7 +1,7 @@
 #' Simulated bicluster datasets
 #' 
 #' Simulated matrices containing biclusters and mild normally-distributed noise.
-#' Generated using \code{genSimData}.
+#' Generated using \code{\link{genSimData}()}.
 #' 
 #' @format A list of 4 matrices named:
 #' \describe{
@@ -38,7 +38,7 @@
 #' Redistributed from biclustlib: A Python library of biclustering algorithms
 #' and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
 #' 
-#' @format A list of 17 data.frames where columns are samples and rows are
+#' @format A list of 17 matrices where columns are samples and rows are
 #'   genes, with ENSEMBL names
 #'
 #' @source \url{https://github.com/padilha/biclustlib/tree/master/}

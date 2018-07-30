@@ -16,6 +16,6 @@ simdata
 }
 \description{
 Simulated matrices containing biclusters and mild normally-distributed noise.
-Generated using \code{genSimData}.
+Generated using \code{\link{genSimData}()}.
 }
 \keyword{datasets}

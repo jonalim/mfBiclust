@@ -1,12 +1,16 @@
+#' @include generics.R
+NULL
+
 #' Convert logical matrices to two lists of rows and columns
 #'
-#' Given two logical matrices m x k and k x n showing which rows and columns are
-#' in bicluster k, create two lists. The first lists the rows in each bicluster.
-#' The second lists the columns in each bicluster.
+#' Given two logical matrices \eqn{A_{m,k}} and \eqn{B_{k,n}} showing which rows
+#' and columns are in bicluster k, returns two \code{\link{list}s}. The first
+#' lists the rows in each bicluster. The second lists the columns in each
+#' bicluster.
 #' 
 #' @param rowxBicluster an m x k logical matrix
 #' @param biclusterxCol a k x n logical matrix
-#' @export 
+#' @export
 biclusterMatrix2List <- function(rowxBicluster, biclusterxCol) {
   biclusterRows <- lapply(seq_len(ncol(rowxBicluster)), 
                           function(k) which(rowxBicluster[, k]))
@@ -67,70 +71,11 @@ setMethod("clean", c(object = "matrix"), function(object, cleanParam,
   
 })
 
-
-#' Create annotations dataframe for heatmaps
-#'
-#' Checks phenoLabels and biclustLabels for validity and then joins the
-#' corresponding data extracted from the provided BiclusterExperiment.
-#'
-#' Annotation tracks are converted to named dataframe columns.
-#'
-#' @param x a BiclusterExperiment
-#' @param names the names of entities annotated- required
-#' @param strategy a strategy in x. Required whenever length(biclustLabels) > 0
-#' @param phenoLabels any phenotype labels in x
-#' @param biclustLabels any bicluster labels in x
-createAnnots <-
-  function(x,
-           names,
-           strategy = "",
-           phenoLabels = c(),
-           biclustLabels = c()) {
-    annots <- NA
-    # Process phenotype labels
-    phenoLabels <- validatePhenoNames(phenoLabels, x)
-    if (length(phenoLabels) > 0) {
-      phData <-
-        as.data.frame(Biobase::pData(Biobase::phenoData(x))[, phenoLabels])
-      colnames(phData) <- phenoLabels
-    }
-    
-    # Process bicluster labels
-    if (length(strategy) > 0 && length(biclustLabels) == 0) {
-    } else if (length(biclustLabels) > 0) {
-      validateStratName(strategy, x) # if no strategy, stop
-      bcs <- getStrat(x, strategy) # get BiclusterStrategy
-      biclustLabels <- validateBiclustNames(biclustLabels, bcs)
-      predData <- as.data.frame(pred(bcs)[, biclustLabels])
-      
-      # bicluster annotations should be discrete
-      predData[] <- as.data.frame(lapply(predData, as.factor))
-      colnames(predData) <- biclustLabels
-    }
-    
-    # Concatenate phenotype and bicluster labels if both requested
-    annots <-
-      if (length(phenoLabels) > 0 && length(biclustLabels) > 0) {
-        cbind(phData, predData)
-      } else if (length(phenoLabels) > 0) {
-        phData
-      }
-    else if (length(biclustLabels) > 0) {
-      predData
-    }
-    
-    # pheatmap throws cryptic error without rownames
-    if (inherits(annots, "data.frame")) {
-      row.names(annots) <- names
-    }
-    annots
-  }
-
-#' Use a string to set the random seed
-#'
-#' Returns the output of .Random.seed. Call
-#' \code{on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-#' } to restore the random seed.
+# Use a string to set the random seed
+#
+# Returns the output of .Random.seed. Call
+# \code{on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+# } to restore the random seed.
 duplicable <- function(str) {
   if (!exists(".Random.seed", mode="numeric")) sample(NA)
   oldSeed <- .Random.seed
@@ -140,23 +85,6 @@ duplicable <- function(str) {
     warning("Argument could not be encoded as numeric. Seed set to 12345")
   }
   oldSeed
-}
-
-#' Error bars
-#' 
-#' Function adapted from James Holland Jones, 2009.
-#' http://monkeysuncle.stanford.edu/?p=485
-#' 
-#' @param x the result of a call to barplot()
-#' @param y the ys provided to barplot()
-#' @param upper vector of lengths of upper error bars
-#' @param lower vector of lengths of lower error bars; by default, same as 
-#'   upper
-#' @export
-error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
-  if(length(x) != length(y) | length(y) !=length(lower) | length(lower) != length(upper))
-    stop("vectors must be same length")
-  suppressWarnings(arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...))
 }
 
 #' Filter biclusters by overlap and quantity
@@ -256,6 +184,7 @@ overlap <- function(BiclusterRows, BiclusterCols, matrix = FALSE) {
     return(overlaps)
   }
 }
+
 pseudovalues <- function(m) {
   if(any(m < 0)) {
     message(paste("Converting to pseudovalues (x + abs(min(x))) just for",
@@ -265,6 +194,8 @@ pseudovalues <- function(m) {
   }
   return(m)
 }
+
+
 
 #' Calculate the size of all biclusters
 #' 
@@ -278,41 +209,6 @@ sizes <- function(biclusterRows, biclusterCols) {
   })
   return(size)
 }
-
-#### threshold ####
-#' Apply threshold to a score or loading matrix
-#'
-#' Returns a binary matrix of the same size as \code{m} where all elements over
-#' the threshold are 1.
-#'
-#' If th is a vector, the first element of th will be used as threshold for the
-#' first col/row in m, etc.
-#' 
-#' @export
-setGeneric("threshold", signature = c("m", "th"), function(m, th, MARGIN = 2) {
-  standardGeneric("threshold")
-})
-setMethod("threshold", c(m = "matrix", th = "numeric"), function(m, th,
-                                                                 MARGIN) {
-  # Get all values further from 0 than the provided threshold
-  if(MARGIN == 1) {
-    if(length(th) != nrow(m)) { stop("Length of th must equal nrow(m).") }
-    mat <- do.call(rbind, lapply(seq_len(nrow(m)), function(row) {
-      if(th[row] < 0) compare <- `<` else compare <- `>` 
-      compare(m[row, ], th[row])
-    }))
-  } else {
-    if(length(th) != ncol(m)) { stop("Length of th must equal ncol(m)") }
-    mat <- do.call(cbind, lapply(seq_len(ncol(m)), function(col) {
-      if(th[col] < 0) compare <- `<` else compare <- `>` 
-      compare(m[, col], th[col])
-    }))
-  }
-  colnames(mat) <- colnames(m)
-  rownames(mat) <- rownames(m)
-  return(mat)
-}
-)
 
 #' Create a binary matrix containing a union of biclusters
 #'

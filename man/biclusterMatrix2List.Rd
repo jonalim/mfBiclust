@@ -12,7 +12,8 @@ biclusterMatrix2List(rowxBicluster, biclusterxCol)
 \item{biclusterxCol}{a k x n logical matrix}
 }
 \description{
-Given two logical matrices m x k and k x n showing which rows and columns are
-in bicluster k, create two lists. The first lists the rows in each bicluster.
-The second lists the columns in each bicluster.
+Given two logical matrices \eqn{A_{m,k}} and \eqn{B_{k,n}} showing which rows
+and columns are in bicluster k, returns two \code{\link{list}s}. The first
+lists the rows in each bicluster. The second lists the columns in each
+bicluster.
 }

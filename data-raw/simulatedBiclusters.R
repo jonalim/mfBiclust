@@ -5,7 +5,7 @@ nonoverlap_15biclusters <- genSimData(n = 15, overlapped = FALSE, noise = 0.03,
                                       dynamSize = FALSE, dimx = 40)
 
 nonoverlap_10height <- genSimData(n= 3, overlapped = FALSE, noise = 0.03,
-                               dynamSize = FALSE, dimx = 400, dimy = 50)
+                                  dynamSize = FALSE, dimx = 400, dimy = 50)
 
 nonoverlap_10width <- genSimData(n= 3, overlapped = FALSE, noise = 0.03,
                                  dynamSize = FALSE, dimx = 50, dimy = 400)

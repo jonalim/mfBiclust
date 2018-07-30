@@ -4,16 +4,55 @@
 \name{BiclusterStrategy-class}
 \alias{BiclusterStrategy-class}
 \alias{nclust,BiclusterStrategy-method}
+\alias{clusteredSamples,BiclusterStrategy-method}
+\alias{clusteredFeatures,BiclusterStrategy-method}
+\alias{threshAlgo,BiclusterStrategy-method}
 \title{Class "BiclusterStrategy" for biclusters}
 \usage{
 \S4method{nclust}{BiclusterStrategy}(bcs)
+
+\S4method{clusteredSamples}{BiclusterStrategy}(bcs)
+
+\S4method{clusteredFeatures}{BiclusterStrategy}(bcs)
+
+\S4method{threshAlgo}{BiclusterStrategy}(bcs)
 }
 \description{
 This class encapsulates bicluster results for one biclustering algorithm, one
-thresholding algorithm, and one quantity of biclusters.
+thresholding algorithm, and one bicluster quantity \eqn{k}.
 }
 \section{Methods (by generic)}{
 \itemize{
 \item \code{nclust}: Number of clusters in a BiclusterStrategy
+
+\item \code{clusteredSamples}: A binary matrix showing sample-bicluster
+membership
+
+\item \code{clusteredFeatures}: A binary matrix showing feature-bicluster
+membership
+
+\item \code{threshAlgo}: The algorithm used to calculate biclustering
+thresholds
+}}
+
+\section{Slots}{
+
+\describe{
+\item{\code{factors}}{a \code{\link[NMF]{NMFfit-class}} or \code{\link{genericFit}}
+containing a pair of matrices \eqn{L_{m,k}} and \eqn{R_{k,n}}.}
+
+\item{\code{scoreThresh}}{a vector of thresholds of length \eqn{k}}
+
+\item{\code{loadingThresh}}{a vector of thresholds of length \eqn{k}}
+
+\item{\code{threshAlgo}}{the name of the thresholding algorithm, or "user"}
+
+\item{\code{clusteredSamples}}{a logical matrix \eqn{A_{m,k}} giving the bicluster
+membership of each sample}
+
+\item{\code{clusteredFeatures}}{a logical matrix \eqn{B_{k, n}} giving the bicluster
+membership of each feature}
+
+\item{\code{name}}{a display friendly character string describing the object}
 }}
 

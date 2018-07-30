@@ -3,24 +3,20 @@
 \docType{methods}
 \name{biclusterGUI}
 \alias{biclusterGUI}
-\alias{biclusterGUI,ANY-method}
 \title{Explore a BiclusterExperiment}
 \usage{
-biclusterGUI(obj = NULL, ...)
-
-\S4method{biclusterGUI}{ANY}(obj, dbg = FALSE)
+\S4method{biclusterGUI}{BiclusterExperiment}(obj, dbg = FALSE)
+}
+\arguments{
+\item{dbg}{Runs in a debug mode that uses algorithm parameters increasing
+sacrificing accuracy for speed.}
 }
 \description{
-Opens a GUI to visualize analysis results contained in a BiclusterExperiment
-object
+Opens a shiny GUI to visualize analysis results contained in a
+BiclusterExperiment object
 }
-\section{Methods (by class)}{
-\itemize{
-\item \code{ANY}: Open GUI for a BiclusterExperiment
-}}
-
 \examples{
-#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
-#' addStrat(bce, k = 3)
-#' biclusterGUI(bce)
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+addStrat(bce, k = 3)
+biclusterGUI(bce)
 }

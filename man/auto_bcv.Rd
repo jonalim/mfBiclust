@@ -2,16 +2,19 @@
 % Please edit documentation in R/bcv.R
 \name{auto_bcv}
 \alias{auto_bcv}
-\title{Perform bcv until convergence}
+\title{Use BCV to estimate the optimal k until convergence}
 \usage{
-auto_bcv(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10^-4),
-  bestOnly = TRUE, verbose = TRUE, duplicable = TRUE,
-  interactive = TRUE)
+auto_bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
+  maxIter = 100L, tol = (10^-4), bestOnly = FALSE, verbose = TRUE,
+  duplicable = TRUE, interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}
 
 \item{ks}{a vector of bicluster quantities to consider}
+
+\item{holdouts}{the number of row and column partitions. The true number of
+holdouts will be \code{holdouts} ^ 2.}
 
 \item{maxIter}{maximum number of iterations}
 
@@ -19,19 +22,26 @@ auto_bcv(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10^-4),
 
 \item{bestOnly}{if FALSE, both the predicted number of biclusters and a table
 of result counts is returned}
+
+\item{verbose}{provide output after each iteration}
+
+\item{duplicable}{fix the random seed internally}
+
+\item{interactive}{prompt before running bcv on matrices with missing values}
 }
 \description{
-Performs BCV until the the distribution of results has converged. Often this
-requires less than 50 iterations.
+Repeatedly chooses the k that minimizes the BCV until the the distribution of
+k's has converged. The median k is reported as "best".
 }
 \details{
-The returned number of biclusters is the median of the results from
-\code{maxIter} iterations.
+Often less than 50 iterations are required. Decreasing \code{holdouts} will
+speed up each iteration at the cost of accuracy, and will also limit the
+highest testable k to \eqn{(\code{holdouts} - 1) / \code{holdouts} * \min(m,
+n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can
+be tested. To minimize unnecessary computation, it is often helpful to run
+with \code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
+necessary to determine the range of results.
 }
-\section{Deciding the maximum k}{
-
-To tune kLimit, it might be helpful to run with \code{maxIter} around 10 and
-\code{bestOnly = TRUE} to determine if there is an obvious upper bound on the
-results.
+\seealso{
+\code{\link{bcv}()}
 }
-

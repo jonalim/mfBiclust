@@ -4,7 +4,7 @@
 \name{yeast_benchmark}
 \alias{yeast_benchmark}
 \title{Gene expression datasets for benchmarking detection of biological signal}
-\format{A list of 17 data.frames where columns are samples and rows are
+\format{A list of 17 matrices where columns are samples and rows are
   genes, with ENSEMBL names}
 \source{
 \url{https://github.com/padilha/biclustlib/tree/master/}

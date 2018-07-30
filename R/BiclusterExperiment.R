@@ -1,6 +1,5 @@
 #' @include BiclusterStrategy.R
-#' @include helperFunctions.R
-#' @include containerGenerics.R
+#' @include generics.R
 NULL
 
 #### CLASS #####################################################################
@@ -8,12 +7,25 @@ NULL
 #'
 #' This class encapsulates data for one or more biclustering runs derived from
 #' the same abundance data. Objects can be created using the
-#' \code{\link{BiclusterExperiment}} constructor.
+#' \code{\link{BiclusterExperiment}} constructor. A subclass of
+#' \code{\link[Biobase]{eSet}}.
 #'
-#' @slot data Object of class \code{\link{matrix}}. The original data.
-#' @slot annot Object of class \code{\link{data.frame}}. Annotations provided by the user
-#' @slot strategies A \code{\link{list}} of \code{BiclusterStrategy} objects
-#' 
+#' @slot assayData Object of class \code{\link[Biobase]{AssayData-class}} in the
+#'   "list" storage mode. \code{assayData} must have a matrix named
+#'   "abund" with rows representing features and columns representing samples.
+#'   Any other matrices in assayData are ignored by this package.
+#' @slot strategies A \code{\link{list}} of
+#'   \code{\link{BiclusterStrategy-class}} objects
+#' @slot phenoData See \code{\link[Biobase]{eSet}}.
+#' @slot featureData \code{\link[Biobase]{eSet}}.
+#' @slot experimentData \code{\link[Biobase]{eSet}}. Not accessed by any 
+#'   functions in \code{\link{mfBiclust}}.
+#' @slot annotation \code{\link[Biobase]{eSet}}. Not accessed by any 
+#'   functions in \code{\link{mfBiclust}}.
+#' @slot protocolData \code{\link[Biobase]{eSet}}. Not accessed by any 
+#'   functions in \code{\link{mfBiclust}}.
+#'
+#' @seealso \code{\link[Biobase]{eSet}}
 #' @example R/examples/addStrat-biclusterGUI.R
 #' @importClassesFrom Biobase eSet
 setClass("BiclusterExperiment", slots = list(
@@ -117,84 +129,6 @@ validBiclusterExperiment <- function( object ) {
 }
 setValidity("BiclusterExperiment", validBiclusterExperiment)
 
-#### addStrat ####
-#' Add a BiclusterStrategy to a BiclusterExperiment
-#' 
-#' Returns a BiclusterExperiment identical to \code{bce} with the addition of a
-#' BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
-#'
-#' The provided \code{method} is used to compute a number of biclusters,
-#' sets comprising both samples and features. Matrix factorization methods will
-#' store intermediate data in the \code{factors} slot of the BiclusterStrategy.
-#' That intermediate data is then thresholded to yield the matrices in the
-#' \code{clusteredSamples} and \code{clusteredFeatures} slots of the
-#' BiclusterStrategy.
-#'
-#' @section Potential side effects:
-#' Due to requirements of various biclustering methods, this function may with
-#' warning override user parameters. Also, if any elements of 
-#' \code{abund(BiclusterExperiment)} are missing, the row and column
-#' containing those elements may be removed with warning.
-#' 
-#' @example R/examples/addStrat-biclusterGUI.R
-#' @export
-setGeneric("addStrat", signature = c("bce", "k"), function(bce, k, 
-                                                           method = c("als-nmf", "svd-pca", "snmf",
-                                                                      "nipals-pca", "plaid", "spectral"),
-                                                           duplicable = TRUE, silent = FALSE, 
-                                                           ...) {
-  standardGeneric("addStrat")
-})
-setMethod("addStrat", c(bce = "BiclusterExperiment", k = "numeric"), 
-          function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
-                                      "nipals-pca", "plaid", "spectral"), 
-                   duplicable, silent, ...) {
-            # Validate parameters
-            # k must be whole number, smaller than both dimensions of m
-            m <- as.matrix(bce)
-            method <- match.arg(method)
-            if(length(method) > 1) {
-              stop("Argument \"method\" must be a single string")
-            }
-            # do this so that the recursive calls with a NULL method are also silent
-            method.orig <- method
-            
-            k <- validateKM(k, m, method)
-            # Special code for NIPALS or missing data
-            if (method == "nipals-pca" || any(is.na(m))) {
-              if(method != "nipals-pca") {
-                warning(paste("Since some data is NA, the NIPALS-PCA",
-                              "algorithm must be used."))
-              }
-              nipals.res <- nipals_pca(A = m, cleanParam = 0,
-                                                 k = k, center = FALSE,
-                                                 duplicable = duplicable)
-              bcs <- BiclusterStrategy(obj = nipals.res$genericFit, k = k,
-                                       method = "nipals-pca")
-              oldDims <- dim(bce)
-              bce <- bce[unlist(nipals.res$indexRemaining[[1]]),
-                         unlist(nipals.res$indexRemaining[[2]])]
-              if(!identical(oldDims, dim(bce))) {
-                warning(paste("Some samples or features with too much missing",
-                              "data were removed. sampleNames(bce) and",
-                              "featureNames(bce) can be called to see the",
-                              "remaining samples and features."))
-              }
-            } else {
-              #### DEFUALT CALL ####
-              bcs <- BiclusterStrategy(obj = m, k = k, method = method, 
-                                       duplicable = duplicable, ...)
-            }
-            
-            name <- name(bcs)
-            strategies(bce)[[name]] <- bcs
-            if(validObject(bce)) {
-              message(paste("Added BiclusterStrategy named", name))
-              return(bce)
-            }
-          })
-
-setGeneric("as.matrix")
 #' @describeIn BiclusterExperiment Get abundance values in a BiclusterExperiment
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
@@ -212,10 +146,13 @@ setMethod("clean", c(object = "BiclusterExperiment"), function(object,
   bce <- object[results[[2]][[2]], results[[2]][[1]]]
   strategies(bce) <- bce@strategies
   
-  if(validObject(bce, test = FALSE)) return(bce)
+  if(validObject(bce, test = FALSE)) {
+    if(dimsRemain) {
+      return(list(obj = bce, dimsRemain = results[[2]]))
+    } else { bce }
+    }
 })
 
-setGeneric("getStrat", signature = "bce", function(bce, id) {standardGeneric("getStrat")})
 #' @describeIn BiclusterExperiment Get a BiclusterStrategy contained by a
 #'   BiclusterExperiment, by providing either name or integer index
 #' @export
@@ -227,7 +164,6 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
-setGeneric("wipe", signature = "bce", function(bce) {standardGeneric("wipe")})
 #' @describeIn BiclusterExperiment Return this BiclusterExperiment with all BiclusterStrategy objects removed
 #' @export
 setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
@@ -235,8 +171,6 @@ setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
   return(bce)
 })
 
-setGeneric("wipeExcept", signature = c("bce"),
-           function(bce, bcs) {standardGeneric("wipeExcept")})
 #' @describeIn BiclusterExperiment Return this BiclusterExperiment with all
 #'   BiclusterStrategy objects removed except \code{bcs}. Argument \code{bcs}
 #'   can be passed as a name, integer index, or the BiclusterStrategy itself.
@@ -257,9 +191,6 @@ setMethod("wipeExcept", c(bce = "BiclusterExperiment"), function(bce, bcs) {
 }
 )
 
-setGeneric("strategies", signature = "bce", function(bce) {
-  standardGeneric("strategies")
-})
 #' @describeIn BiclusterExperiment Get/set a list of the BiclusterStrategy objects
 #'   contained by this BiclusterExperiment.
 #' @export
@@ -267,7 +198,6 @@ setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
   bce@strategies
 })
 
-setGeneric("strategies<-", function(object, value) standardGeneric("strategies<-"))
 setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
                                          value = "list"),
                  function(object, value) { 

@@ -1,28 +1,44 @@
-#' Perform bcv until convergence
+#' Use BCV to estimate the optimal k until convergence
 #'
-#' Performs BCV until the the distribution of results has converged. Often this
-#' requires less than 50 iterations.
-#'
-#' The returned number of biclusters is the median of the results from
-#' \code{maxIter} iterations.
-#'
-#' @section Deciding the maximum k:
-#' To tune kLimit, it might be helpful to run with \code{maxIter} around 10 and
-#' \code{bestOnly = TRUE} to determine if there is an obvious upper bound on the
-#' results.
+#' Repeatedly chooses the k that minimizes the BCV until the the distribution of
+#' k's has converged. The median k is reported as "best".
+#' 
+#' Often less than 50 iterations are required. Decreasing \code{holdouts} will
+#' speed up each iteration at the cost of accuracy, and will also limit the
+#' highest testable k to \eqn{(\code{holdouts} - 1) / \code{holdouts} * \min(m,
+#' n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can
+#' be tested. To minimize unnecessary computation, it is often helpful to run
+#' with \code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
+#' necessary to determine the range of results.
 #'
 #' @param Y the input matrix
 #' @param ks a vector of bicluster quantities to consider
+#' @param holdouts the number of row and column partitions. The true number of
+#'   holdouts will be \code{holdouts} ^ 2.
 #' @param maxIter maximum number of iterations
 #' @param tol tolerance used to determine convergence
 #' @param bestOnly if FALSE, both the predicted number of biclusters and a table
 #'   of result counts is returned
-#'
+#' @param verbose provide output after each iteration
+#' @param duplicable fix the random seed internally
+#' @param interactive prompt before running bcv on matrices with missing values
+#' 
+#' @seealso \code{\link{bcv}()}
 #' @export
-auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = TRUE,
+auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = FALSE,
                      verbose = TRUE, duplicable = TRUE, interactive = TRUE) {
   oldSeed <- duplicable("autobc") # do not modify the R global environment
   on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
+  
+  #validate input
+  if(!inherits(Y, "matrix")) Y <- as.matrix(Y)
+  if(any(is.na(Y)) && interactive) {
+    message(paste("Since some elements of the matrix are NA, BCV will run a",
+                  "much slower iterative algorithm. Continue?"))
+    if (menu(c("Yes", "No")) != 1) {
+      stop("User choice")
+    }
+  }
   
   # set up variables for testing convergence of the results
   distr <- rep(1L, each = length(ks))
@@ -32,7 +48,8 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   converged <- FALSE
   while(!converged && i < maxIter) {
     # Get the number of biclusters with lowest bcv value
-    res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts, interactive)
+    res <- bcv(Y, ks, duplicable = FALSE, holdouts = holdouts,
+               interactive = FALSE)
     bcvRes <- names(which.min(res))
     distr[bcvRes] <- distr[bcvRes] + 1L
     
@@ -40,12 +57,16 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
     # This should occur on the first iteration only.
     if(length(distr) > length(res)) distr <- distr[seq_along(res)]
     names(distr) <- names(res)
+    distrOld <- distrOld[seq_along(distr)] # in case any ks were rejected
     
     resid <- unlist(mapply(function(d, dOld) {
       (d / sum(distr) - dOld / sum(distrOld)) ^ 2
     }, d = distr, dOld = distrOld))
     if(verbose) {
-      cat(paste("Iteration", i + 1L, "\n")) 
+      cat(paste("Iteration", i + 1L, "\n"))
+      cat(paste("Current best:",
+                names(distr[min(which(cumsum(distr - 1) > (sum(distr - 1) / 2)))]),
+                "\n"))
       cat("BCV result distribution:\n")
       message(paste0(
         do.call(paste, as.list(c(as.list(names(distr)), sep = "\t"))), "\n",
@@ -68,23 +89,27 @@ auto_bcv <- function(Y, ks, holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bes
   else { list(best = med, counts = distr) }
 }
 
-#' Perform bi-cross-validation
+#' Calculate bi-cross-validation
 #'
-#' The number of biclusters yielding the lowest BCV value is the predicted best.
-#' It is recommended to use auto_bcv to perform several replications of
-#' bi-cross-validation, and use the median of the results as the predicted
-#' number of biclusters.
+#' Calculates the bi-cross-validation of a Singular value decmoposition of
+#' matrix \code{Y}.
 #'
-#' A named vector of BCV values corresponding to the various numbers of
-#' biclusters evaluated. The range of biclusters may be non-contiguous.
+#' It is recommended to use auto_bcv to perform and analyze several replications
+#' of bi-cross-validation.
 #'
 #' @param Y the input matrix
-#' @param ks the range of biclusters to evaluate
-#' @param holdouts the number of holdouts to perform along each dimension of
-#'   matrix \code{Y}
+#' @param ks a vector of bicluster quantities to evaluate
+#' @param holdouts the number of row and column partitions. The true number of
+#'   holdouts will be \code{holdouts} ^ 2.
+#' @param duplicable fix the random seed internally
+#' @param interactive prompt before running if \code{Y} is missing values
 #'
+#' @returns A named vector of BCV values corresponding to the various numbers of
+#'   biclusters evaluated.
+#' @seealso \code{\link{auto_bcv}()}
 #' @export
-bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE) {
+bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L, 
+                duplicable = FALSE, interactive = TRUE) {
   if(duplicable) {
     oldSeed <- duplicable("bcv") # do not modify the R global environment
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
@@ -93,8 +118,8 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE) {
   #validate input
   if(!inherits(Y, "matrix")) Y <- as.matrix(Y)
   if(any(is.na(Y)) && interactive) {
-    message(paste("Since some elements of the matrix are NA, BCV will run the",
-                  "slower iterative algorithm. Continue?"))
+    message(paste("Since some elements of the matrix are NA, BCV will run a",
+                  "much slower iterative algorithm. Continue?"))
     if (menu(c("Yes", "No")) != 1) {
       stop("User choice")
     }
@@ -108,8 +133,12 @@ bcv <- function(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE) {
                   "tested."))
   }
   ks <- ks[ks < kLimit]
-  if(length(ks) < 1) { stop(paste("ks must be a range of integers less than the",
-                                  "smaller matrix dimension"))
+  if(length(ks) > 1 || is.numeric(ks)) {
+    if (any(ks < 1) || any(!is.wholenumber(ks))) {
+      stop(paste("ks must be a vector of positive whole numbers"))
+    }
+  } else {
+    stop(paste("ks must be a vector of positive whole numbers"))
   }
   
   # Automatically decrease the number of holdouts if necessary
@@ -143,10 +172,8 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   
   # Try NIPALS-PCA if any NA values
   if(any(is.na(Y))) {
-    warning(paste("Using NIPALS-PCA because some matrix elements are NA",
-                  "This feature might fail if too many elements are NA."))
     pca <- function(Y, k) { 
-      res <- nipals_pca(Y, k, center = TRUE)$genericFit
+      res <- nipals_pca(Y, k, center = TRUE, scale = FALSE)$genericFit
       list(scores = res@fit@W, loadings = res@fit@H)
     }
   } else {
@@ -180,10 +207,10 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
       # Returns k norms. Must sum these up to obtain rcvs
       holdoutRes <- sapply(ks, function(k) {
         # PCA-based approximation of the hold-in quadrant
-        estD_k <- MASS::ginv(tcv[, 1L:k, drop = FALSE] %*% pcv[1L:k, , drop = FALSE])
+        estD_k <- tcv[, 1L:k, drop = FALSE] %*% pcv[1L:k, , drop = FALSE]
         
         # Approximation of the hold-out quadrant
-        estA <- Y[rInd, -sInd, drop = FALSE] %*% estD_k %*% Y[-rInd, sInd, drop = FALSE]
+        estA <- Y[rInd, -sInd, drop = FALSE] %*% MASS::ginv(estD_k) %*% Y[-rInd, sInd, drop = FALSE]
         
         resid <- A - estA # residual holdout matrix
         sum(resid ^ 2, na.rm = TRUE) # squared Frobenius norm

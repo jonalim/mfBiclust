@@ -2,25 +2,31 @@
 % Please edit documentation in R/bcv.R
 \name{bcv}
 \alias{bcv}
-\title{Perform bi-cross-validation}
+\title{Calculate bi-cross-validation}
 \usage{
-bcv(Y, ks, holdouts = 10L, duplicable = TRUE, interactive = TRUE)
+bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
+  duplicable = FALSE, interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}
 
-\item{ks}{the range of biclusters to evaluate}
+\item{ks}{a vector of bicluster quantities to evaluate}
 
-\item{holdouts}{the number of holdouts to perform along each dimension of
-matrix \code{Y}}
+\item{holdouts}{the number of row and column partitions. The true number of
+holdouts will be \code{holdouts} ^ 2.}
+
+\item{duplicable}{fix the random seed internally}
+
+\item{interactive}{prompt before running if \code{Y} is missing values}
 }
 \description{
-The number of biclusters yielding the lowest BCV value is the predicted best.
-It is recommended to use auto_bcv to perform several replications of
-bi-cross-validation, and use the median of the results as the predicted
-number of biclusters.
+Calculates the bi-cross-validation of a Singular value decmoposition of
+matrix \code{Y}.
 }
 \details{
-A named vector of BCV values corresponding to the various numbers of
-biclusters evaluated. The range of biclusters may be non-contiguous.
+It is recommended to use auto_bcv to perform and analyze several replications
+of bi-cross-validation.
+}
+\seealso{
+\code{\link{auto_bcv}()}
 }

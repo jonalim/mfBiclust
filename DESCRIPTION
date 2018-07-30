@@ -32,17 +32,18 @@ Imports:
     shinythemes
 RoxygenNote: 6.0.1
 Collate: 
-    'containerGenerics.R'
-    'helperFunctions.R'
+    'generics.R'
     'helperClasses.R'
     'BiclusterStrategy.R'
     'BiclusterExperiment.R'
+    'addStrat.R'
     'bcv.R'
     'bicluster.R'
     'biclusterGUI.R'
     'data.R'
     'functionalAnnotation.R'
     'genBiclusters.R'
+    'helperFunctions.R'
     'graphical.R'
     'mfBiclust.R'
 Suggests: 

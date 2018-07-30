@@ -3,9 +3,9 @@ files <- list.files(path = dir)
 yeast_benchmark <- lapply(files, function(x) {
   tab <- read.table(file = paste0(dir, x), sep = "",
                     header = FALSE, row.names = 2, stringsAsFactors = FALSE)
-  tab[, 2:ncol(tab)]
+  as.matrix(tab[, 2:ncol(tab)])
 })
-usethis::use_data(yeast_benchmark)
+usethis::use_data(yeast_benchmark, overwrite = TRUE)
 
 dir = "../biclustlib-master/biclustlib/datasets/data/cancer_benchmark/"
 files <- c("chen-2002_database.txt",
