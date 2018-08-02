@@ -29,6 +29,12 @@ of result counts is returned}
 
 \item{interactive}{prompt before running bcv on matrices with missing values}
 }
+\value{
+if \code{bestOnly = FALSE}, the predicted bicluster quantity. if
+  \code{bestOnly = TRUE}, a \code{\link{list}} containing: \describe{
+  \item{best}{the predicted bicluster quantity} \item{counts}{a named table
+  of result counts} }
+}
 \description{
 Repeatedly chooses the k that minimizes the BCV until the the distribution of
 k's has converged. The median k is reported as "best".
@@ -37,9 +43,9 @@ k's has converged. The median k is reported as "best".
 Often less than 50 iterations are required. Decreasing \code{holdouts} will
 speed up each iteration at the cost of accuracy, and will also limit the
 highest testable k to \eqn{(\code{holdouts} - 1) / \code{holdouts} * \min(m,
-n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can
-be tested. To minimize unnecessary computation, it is often helpful to run
-with \code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
+n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can be
+tested. To minimize unnecessary computation, it is often helpful to run with
+\code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
 necessary to determine the range of results.
 }
 \seealso{

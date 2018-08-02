@@ -4,7 +4,7 @@
 \alias{scoreThresh}
 \title{Score thresholds}
 \usage{
-scoreThresh(bcs)
+scoreThresh(bcs, allBc = FALSE)
 }
 \description{
 Score thresholds

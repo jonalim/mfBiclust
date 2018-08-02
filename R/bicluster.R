@@ -65,7 +65,7 @@ NULL
 #' @param duplicable fix the random seed internally
 #' @param verbose Print the mean squared error every 10 iterations
 #' 
-#' @returns a \code{\link{genericFit}} object
+#' @return a \code{\link{genericFit}} object
 #' @export
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
@@ -180,7 +180,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
       Wold <- W
       
       # every 10 iterations
-      if ( (i %% 10==0)  || (length(erravg1)==0) ){
+      if (i %% 10==0){
         if ( verbose ){ # prints number of changing elements
           cat("Track:\tIter\tNorm\tdelta\n")
           cat(sprintf("\t%d\t%f\t%f\n",
@@ -198,8 +198,9 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
   
   res <- new("genericFactorization", W= W, H = H)
   res <- new("genericFit", fit = res, method = "als-nmf")
+  
   return(res)
-}
+  }
 
 nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
   if(duplicable) {
@@ -225,6 +226,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
       stop(e)
     }
   })
+  
   new("genericFit", fit = new("genericFactorization",
                               W = np$scores,
                               H = t(np$loadings)),
@@ -247,7 +249,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
 #' @param duplicable fix the random seed internally
 #' @param verbose report recursive calls and all values of \code{cleanParam}
 #' 
-#' @returns a list containing
+#' @return a list containing
 #'   \describe{
 #'   \item{m}{the data matrix after any cleaning}
 #'   \item{genericFit}{a \code{\link{genericFit-class}} object}
@@ -281,6 +283,7 @@ nipals_pca <- function(A, k, cleanParam = 0,
   })
 }
 
+# Returns a biclust::Biclust-class object
 plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
   if(duplicable) {
     oldSeed <- duplicable("biclus") # do not modify the R global environment
@@ -324,20 +327,14 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
     warning(paste("Plaid could only find", k, "biclusters"))
   }
   if(verbose) {
-    cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
-    cat(paste("row.release =", bc@Parameters$Call$row.release, "\n"))
-    cat(paste("col.release =", bc@Parameters$Call$col.release, "\n"))
-    cat(paste("max.layers =", bc@Parameters$Call$max.layers, "\n"))
-    cat(paste("shuffle =", bc@Parameters$Call$shuffle, "\n"))
+    cat(paste("method =", class(best@Parameters$Call$method), "\n"))
+    cat(paste("row.release =", best@Parameters$Call$row.release, "\n"))
+    cat(paste("col.release =", best@Parameters$Call$col.release, "\n"))
+    cat(paste("max.layers =", best@Parameters$Call$max.layers, "\n"))
+    cat(paste("shuffle =", best@Parameters$Call$shuffle, "\n"))
   }
-  scoreLoading <- if(k > 0) { 
-    biclusters <- biclust::biclusternumber(best)
-    biclusterNumber2scoreLoading(biclusters, A, k) 
-  } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
-                matrix(rep(NA, ncol(A)), nrow = 1)) }
   
-  new("genericFit", fit = new("genericFactorization",
-                              W = scoreLoading[[1]], H = scoreLoading[[2]]), method = "plaid")
+  return(best)
 }
 
 snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
@@ -368,11 +365,10 @@ snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
         )
       },
       warning = function(w) {
-        browser()
         if (any(suppressWarnings(
           grepl(
             "too big 'beta' value",
-            w$message,
+            message(w),
             fixed = TRUE
           )
         ))) {
@@ -397,6 +393,7 @@ snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
   return(res)
 }
 
+# Returns a biclust::Biclust-class object
 spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE, 
                      verbose = TRUE, ...) {
   # spectral may find over k biclusters, but only k will be returned
@@ -406,20 +403,19 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
   }
   
-  minx <- if(is.null(minSize)) 2 else floor(min(nrow(A), ncol(A)) * minSize)
+  minDim <- min(nrow(A), ncol(A))
+  minx <- if(is.null(minSize)) 2 else floor(minDim * minSize)
   if(nrow(A) < 6 || ncol(A) < 6) {
     stop("For Spectral the minimum size of m is 6x6")
   }
-  number <- 0 # save the biclustering solution with the most clusters
   
   withinVar <- list(...)$withinVar
-  
   # JNL try to find the lowest value of withinVar that yields enough biclusters.
   # 10 * nrow(m) is an arbitrary cutoff designed for when rows
   # are samples. The user can, however, override withinVar. The GUI uses this
   # parameter in debug mode to limit running time.
   if(is.null(withinVar)) {
-    withinVar <- min(nrow(A), ncol(A))
+    withinVar <- minDim
   }
   
   # the number of eigenvalues to consider. This can limit number of biclusters
@@ -429,8 +425,9 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     e <- ceiling(k / (nrow(A) / minx * ncol(A) / minx))
   }
   
+  number <- 0 # save the biclustering solution with the most clusters
   best <- NULL
-  while(number < k && withinVar <= 10L * min(nrow(A), ncol(A))) {
+  while(number < k && withinVar <= 10L * minDim) {
     bc <- do.call(biclust::biclust,
                   list(x = A, method = biclust::BCSpectral(),
                        normalization = "log", withinVar= withinVar, minr = minx,
@@ -439,7 +436,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
       number <- bc@Number
       best <- bc
     }
-    withinVar <- withinVar + nrow(A)
+    withinVar <- withinVar + minDim
   }
   if(k > number) {
     k <- number
@@ -447,23 +444,15 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
   }
   
   if(verbose) {
-    cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
-    cat(paste("normalization =", bc@Parameters$Call$normalization, "\n"))
-    cat(paste("withinVar =", bc@Parameters$Call$withinVar, "\n"))
-    cat(paste("minr =", bc@Parameters$Call$minr, "\n"))
-    cat(paste("minc =", bc@Parameters$Call$minc, "\n"))
-    cat(paste("numberOfEigenvalues =", bc@Parameters$Call$numberOfEigenvalues, "\n"))
+    cat(paste("method =", class(best@Parameters$Call$method), "\n"))
+    cat(paste("normalization =", best@Parameters$Call$normalization, "\n"))
+    cat(paste("withinVar =", best@Parameters$Call$withinVar, "\n"))
+    cat(paste("minr =", best@Parameters$Call$minr, "\n"))
+    cat(paste("minc =", best@Parameters$Call$minc, "\n"))
+    cat(paste("numberOfEigenvalues =", best@Parameters$Call$numberOfEigenvalues, "\n"))
   }
   
-  scoreLoading <- if(k > 0) { 
-    biclusters <- biclust::biclusternumber(best)
-    biclusterNumber2scoreLoading(biclusters, A, k) 
-  } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
-                matrix(rep(NA, ncol(A)), nrow = 1)) }
-  
-  new("genericFit", fit = new("genericFactorization", W = scoreLoading[[1]], 
-                              H = scoreLoading[[2]]),
-      method = "spectral")
+  return(best)
 }
 
 #' Principal component dimensionality reduction using SVD
@@ -475,7 +464,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
 #' @param k the number of factors to compute
 #' @param duplicable fix the random seed internally
 #' 
-#' @returns a \code{\link{genericFit-class}} object
+#' @return a \code{\link{genericFit-class}} object
 #' @export
 svd_pca <- function(A, k, duplicable = NULL, ...) {
   prcmp <- prcomp(t(A), rank. = k, retx = TRUE, center = FALSE)

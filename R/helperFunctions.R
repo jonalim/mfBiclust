@@ -14,8 +14,8 @@ NULL
 biclusterMatrix2List <- function(rowxBicluster, biclusterxCol) {
   biclusterRows <- lapply(seq_len(ncol(rowxBicluster)), 
                           function(k) which(rowxBicluster[, k]))
-  biclusterCols <- lapply(seq_len(ncol(biclusterxCol)), 
-                          function(k) which(biclusterxCol[, k]))
+  biclusterCols <- lapply(seq_len(nrow(biclusterxCol)), 
+                          function(k) which(biclusterxCol[k, ]))
   list(biclusterRows, biclusterCols)
 }
 
@@ -152,6 +152,10 @@ is.wholenumber <-
     abs(x - round(x)) < tol
   }
 
+logicalMatrix2Numeric <- function(m) {
+  matrix(as.numeric(m), dim(m), dimnames = dimnames(m))
+}
+
 #' Calculate overlaps between every pair of biclusters.
 #' 
 #' @param BiclusterRows a list, each element containing row indices in the
@@ -230,7 +234,7 @@ union.biclust <- function(RowxBiclust, BiclustxCol,
 
 validateBiclustNames <- function(biclustNames, bcs) {
   if (length(biclustNames) > 0) {
-    validNames <- names(bcs)
+    validNames <- bcNames(bcs, allBc = TRUE)
     if (any(!biclustNames %in% validNames)) {
       warning(
         paste0(

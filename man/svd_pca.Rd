@@ -13,6 +13,9 @@ svd_pca(A, k, duplicable = NULL, ...)
 
 \item{duplicable}{fix the random seed internally}
 }
+\value{
+a \code{\link{genericFit-class}} object
+}
 \description{
 Factorizes matrix \code{A} as the product of score and loading matrices
 respectively truncated to \code{k} rows and \code{k} columns.

@@ -9,17 +9,20 @@
 \alias{threshAlgo,BiclusterStrategy-method}
 \title{Class "BiclusterStrategy" for biclusters}
 \usage{
-\S4method{nclust}{BiclusterStrategy}(bcs)
+\S4method{nclust}{BiclusterStrategy}(bcs, allBc = FALSE)
 
-\S4method{clusteredSamples}{BiclusterStrategy}(bcs)
+\S4method{clusteredSamples}{BiclusterStrategy}(bcs, allBc = FALSE)
 
-\S4method{clusteredFeatures}{BiclusterStrategy}(bcs)
+\S4method{clusteredFeatures}{BiclusterStrategy}(bcs, allBc = FALSE)
 
 \S4method{threshAlgo}{BiclusterStrategy}(bcs)
 }
 \description{
 This class encapsulates bicluster results for one biclustering algorithm, one
-thresholding algorithm, and one bicluster quantity \eqn{k}.
+thresholding algorithm, and one bicluster quantity \eqn{k}. If the
+biclustering algorithm returns more than biclusters than the value of
+\code{k} provided to \code{\link{addStrat}()}, the extra biclusters will
+be stored with a warning. See note on slot \code{k} below.
 }
 \section{Methods (by generic)}{
 \itemize{
@@ -47,11 +50,13 @@ containing a pair of matrices \eqn{L_{m,k}} and \eqn{R_{k,n}}.}
 
 \item{\code{threshAlgo}}{the name of the thresholding algorithm, or "user"}
 
-\item{\code{clusteredSamples}}{a logical matrix \eqn{A_{m,k}} giving the bicluster
-membership of each sample}
+\item{\code{biclust}}{a \code{\link[biclust]{biclust-class}} object containing
+logical bicluster membership matrices and other information}
 
-\item{\code{clusteredFeatures}}{a logical matrix \eqn{B_{k, n}} giving the bicluster
-membership of each feature}
+\item{\code{k}}{the value of parameter \code{k} in \code{\link{addStrat}()}.
+\code{k} causes accessor methods to hide any extra biclusters stored
+in this object, unless said accessor methods are called with 
+\code{allBc = TRUE}}
 
 \item{\code{name}}{a display friendly character string describing the object}
 }}

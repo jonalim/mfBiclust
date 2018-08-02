@@ -1,15 +1,13 @@
 #' @include BiclusterExperiment.R
 NULL
 
-setGeneric("biclusterGUI", signature = "obj", function(obj = NULL, ...) {
-  standardGeneric("biclusterGUI")
-})
-
 #' Explore a BiclusterExperiment
 #'
 #' Opens a shiny GUI to visualize analysis results contained in a
 #' BiclusterExperiment object
 #' 
+#' @param obj a BiclusterExperiment, an ExpressionSet, or an object
+#'   coercible to a matrix
 #' @param dbg Runs in a debug mode that uses algorithm parameters increasing
 #'   sacrificing accuracy for speed.
 #'
@@ -17,11 +15,21 @@ setGeneric("biclusterGUI", signature = "obj", function(obj = NULL, ...) {
 #' @export
 #' @name biclusterGUI
 #' @import shiny
+setGeneric("biclusterGUI", signature = "obj",
+           function(obj = NULL, ...) 
+             standardGeneric("biclusterGUI"))
+
 setMethod("biclusterGUI", c(obj = "BiclusterExperiment"), 
-          definition = function(obj, dbg = FALSE) {
+          definition = function(obj, ...) {
   ## define UI parameters
   plotHeight <- 600
   plotHeightSmall <- 300
+  
+  dbg <- list(...)$dbg
+  if(is.null(dbg)) { dbg <- FALSE }
+  
+  # what server.R is expecting, if no good BiclusterExperiment is available
+  if(all(is.na(as.matrix(obj)))) { obj <- NULL }
   userBce <- obj # server.R has access to this variable
   
   shinyApp(
@@ -32,3 +40,15 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"),
     options = list(launch.browser = TRUE, fullstacktrace = TRUE)
   )
 })
+
+setMethod("biclusterGUI", c(obj = "ExpressionSet"), 
+          definition = function(obj, ...) {
+            biclusterGUI(as.BiclusterExperiment(obj), ...)
+          })
+setMethod("biclusterGUI", c(obj = "missing"), function(...) {
+  biclusterGUI(obj = BiclusterExperiment(m = matrix()), ...)
+})
+setMethod("biclusterGUI", c(obj = "ANY"), 
+          definition = function(obj, ...) {
+            biclusterGUI(BiclusterExperiment(obj), ...)
+          })

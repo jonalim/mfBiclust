@@ -8,21 +8,21 @@ NULL
 #' This class encapsulates data for one or more biclustering runs derived from
 #' the same abundance data. Objects can be created using the
 #' \code{\link{BiclusterExperiment}} constructor. A subclass of
-#' \code{\link[Biobase]{eSet}}.
+#' \code{\link[Biobase]{eSet-class}}.
 #'
 #' @slot assayData Object of class \code{\link[Biobase]{AssayData-class}} in the
-#'   "list" storage mode. \code{assayData} must have a matrix named
+#'   "list" storage mode. \code{AssayData} must have a matrix named
 #'   "abund" with rows representing features and columns representing samples.
 #'   Any other matrices in assayData are ignored by this package.
 #' @slot strategies A \code{\link{list}} of
 #'   \code{\link{BiclusterStrategy-class}} objects
-#' @slot phenoData See \code{\link[Biobase]{eSet}}.
-#' @slot featureData \code{\link[Biobase]{eSet}}.
-#' @slot experimentData \code{\link[Biobase]{eSet}}. Not accessed by any 
+#' @slot phenoData See \code{\link[Biobase]{eSet-class}}.
+#' @slot featureData \code{\link[Biobase]{eSet-class}}.
+#' @slot experimentData \code{\link[Biobase]{eSet-class}}. Not accessed by any 
 #'   functions in \code{\link{mfBiclust}}.
-#' @slot annotation \code{\link[Biobase]{eSet}}. Not accessed by any 
+#' @slot annotation \code{\link[Biobase]{eSet-class}}. Not accessed by any 
 #'   functions in \code{\link{mfBiclust}}.
-#' @slot protocolData \code{\link[Biobase]{eSet}}. Not accessed by any 
+#' @slot protocolData \code{\link[Biobase]{eSet-class}}. Not accessed by any 
 #'   functions in \code{\link{mfBiclust}}.
 #'
 #' @seealso \code{\link[Biobase]{eSet}}
@@ -56,8 +56,9 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
 #' with a slot for future biclustering runs performed on that data. To run
 #' biclustering, use \code{\link{addStrat}()}.
 #' 
-#' @param m the data matrix defining this BiclusterExperiment. Should have
-#'   samples as columns and features as rows.
+#' @param m The data on which derived BiclusterStrategy objects will be
+#'   calculated. Should be a matrix or a class coercible to matrix, with samples
+#'   as columns and features as rows
 #'
 #' @example R/examples/addStrat-biclusterGUI.R
 #' @export
@@ -92,7 +93,9 @@ setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, fe
   new("BiclusterExperiment", assayData = ad, phenoData = phenoData,
       featureData = featureData, strategies = bcs)
 })
-
+setMethod("BiclusterExperiment", c(m = "ANY"), function(m, bcs, phenoData, featureData, pp, maxNa) {
+  BiclusterExperiment(as.matrix(m), bcs, phenoData, featureData, pp, maxNa)
+})
 #### METHODS ###################################################################
 
 validBiclusterExperiment <- function( object ) {

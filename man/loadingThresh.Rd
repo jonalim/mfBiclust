@@ -4,7 +4,7 @@
 \alias{loadingThresh}
 \title{Loading thresholds}
 \usage{
-loadingThresh(bcs)
+loadingThresh(bcs, allBc = FALSE)
 }
 \description{
 Loading thresholds

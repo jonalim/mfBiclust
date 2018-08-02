@@ -3,41 +3,59 @@
 #' Optional noise parameter
 #'
 #' @export
-genSimData <- function(n, overlapped = FALSE, file = "",
-                       striped = c("cols", ""), noise = 0.01, dynamSize = FALSE,
-                       dimx = 50, dimy = dimx) {
-  
-  striped <- match.arg(striped)
-  
-  if(dynamSize) {
-    # scale up in size if more biclusters
-    x <- 5 * n
-    y <- 5 * n
-  } else {
-    # cram all biclusters into the same space. scale dimensions manually
-    x <- dimx
-    y <- dimy
+genSimData <- function(n = 1, clusterHeight = 20, clusterWidth = 20,
+                       dimx = 80, dimy = 80, 
+                       overlapRows = 0, overlapCols = 0,
+                       biclusterConstant = NULL, biclusterShift = 0, 
+                       rowShift = 0, rowScale = NULL,
+                       colShift = 0, colScale = NULL,
+                       bgConst = 0, bgNorm = 0, bgUnif = 0, 
+                       shuffle = TRUE, file = "") {
+  if(!(
+    (length(clusterHeight) == 1 || length(clusterHeight) == n) &&
+    (length(clusterWidth) == 1 || length(clusterWidth) == n) &&
+    all(overlapRows <= clusterHeight) &&
+    all(overlapCols <= clusterWidth) &&
+    clusterHeight + (clusterHeight - overlapRows) * (n - 1) <= dimx &&
+    clusterWidth + (clusterWidth - overlapCols) * (n - 1) <= dimy
+    )) {
+    stop(paste("Incompatible dimensions. Arguments must satisfy:\n",
+               "(length(clusterHeight) == 1 || length(clusterHeight) == n) &&
+                 (length(clusterWidth) == 1 || length(clusterWidth) == n) &&
+                 all(overlapRows <= clusterHeight) &&
+                 all(overlapCols <= clusterWidth) &&
+                 clusterHeight + (clusterHeight - overlapRows) * (n - 1)",
+               "<= dimx &&
+                 clusterWidth + (clusterWidth - overlapCols) * (n - 1)",
+               "<= dimy\n"))
   }
-  xCoords <- sample(1:x, 2 * n, replace = FALSE)
-  yCoords <- sample(1:y, 2 * n, replace = FALSE)
-  if(!overlapped) {
-    if(runif(1) > 0.5) { xCoords <- sort(xCoords) }
-    else {yCoords <- sort(yCoords)}
+  
+  xStarts <- (clusterHeight - overlapRows) * (seq_len(n) - 1) + 1
+  xStops <- xStarts + clusterWidth - 1
+  yStarts <- (clusterWidth - overlapCols) * (seq_len(n) - 1) + 1
+  yStops <- yStarts + clusterHeight - 1
+
+  xCoords <- mapply(`:`, xStarts, xStops, SIMPLIFY = FALSE)
+  yCoords <- mapply(`:`, yStarts, yStops, SIMPLIFY = FALSE)
+  
+  res <- genSimDataHelper(sizeX = dimx, sizeY = dimy, 
+                          biclusterConstant = biclusterConstant,
+                          biclusterShift = biclusterShift,
+                          biclusterRows = xCoords,
+                          biclusterCols = yCoords, 
+                          rowShift = rowShift, rowScale = rowScale,
+                          colShift = colShift,
+                          colScale = colScale,
+                          bgConst = bgConst, bgNorm = bgNorm, bgUnif = bgUnif)
+  
+  if(shuffle) {
+    res <- res[sample(1:dimx, size = dimx, replace = FALSE),
+               sample(1:dimy, size = dimy, replace = FALSE)]
   }
-  xCoords <- lapply(seq_len(n), function(i) {
-    xCoords[i*2-1]:xCoords[i*2]
-  })
-  yCoords <- lapply(seq_len(n), function(i) {
-    yCoords[i*2-1]:yCoords[i*2]
-  })
-  
-  res <- genSimDataHelper(sizeX = x, sizeY = y, biclusterRows = xCoords,
-                          biclusterCols = yCoords, striped = striped,
-                          noise = noise)
-  
   if (nchar(file) > 0) { 
     png(paste0(file, ".png"))
-    write.csv(res, row.names = FALSE, file = paste0(file, ".csv"))}
+    write.csv(res, row.names = FALSE, file = paste0(file, ".csv"))
+    }
   
   #plot
   old.par <- par(no.readonly = T)
@@ -52,38 +70,57 @@ genSimData <- function(n, overlapped = FALSE, file = "",
 }
 
 genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols, 
-                             noise = 0, striped = c("", "cols")) {
+                             biclusterConstant,
+                             biclusterShift,
+                             rowShift, rowScale, colScale, colShift,
+                             bgConst, bgNorm, bgUnif) {
   if (length(biclusterRows) != length(biclusterCols)) {
     stop("biclusterRows and biclusterCols must be the same length")
   }
-  striped <- match.arg(striped)
   
-  res <- matrix(0, nrow = sizeX, ncol = sizeY)
+  res <- matrix(bgConst, nrow = sizeX, ncol = sizeY)
   
+  # add Gaussian noise
+  res <- res + bgNorm * matrix(rnorm(n = sizeX * sizeY), nrow = sizeX)
+  
+  # add uniform background
+  res <- res + matrix(runif(n = sizeX * sizeY, 0, bgUnif), nrow = sizeX)
+  
+  # Every bicluster set to the same value
+  if(!is.null(biclusterConstant)) {
   invisible(mapply(function(rowRange, colRange) {
-    biclusterVal <- rep(1, each = length(colRange))
-    if(striped == "cols") {
-      # stripes will have a uniform distribution; range of 2
-      colstripes <- runif(length(biclusterVal), 0, 2)
-      biclusterVal <- biclusterVal + colstripes
-    }
-    mapply(function(col, value) {
-      # overlapping biclusters will be additive
-      res[rowRange, col] <<- res[rowRange, col] + value
-    },
-    col = colRange, value = biclusterVal)
+    res[rowRange, colRange] <<- biclusterConstant
   },
   rowRange = biclusterRows, colRange = biclusterCols))
-  
-  if(striped == "cols") {
-    # multiply every column in res by a random integer in the set [1,5]
-    k <- ceiling(runif(n = sizeY, min = 0, max = 5))
-    res <- res * rep(k, rep.int(nrow(res), length(k)))
   }
   
-  # add Gaussian noise and shift so min(res) == 0
-  res <- res + noise * matrix(rnorm(n = sizeX * sizeY), nrow = sizeX)
-  res <- res - min(res)
+  # make biclusters additive if desired
+  invisible(mapply(function(rowRange, colRange) {
+    res[rowRange, colRange] <<- res[rowRange, colRange] + rnorm(1, 0, biclusterShift)
+
+    # multiply every column in the bicluster by a random number in the set 
+    # [1, colScale], normally distributed
+    if(!is.null(colScale)) {
+      k <- rnorm(n = length(colRange), mean = 0, sd = colScale)
+      res[rowRange, colRange] <<- res[rowRange, colRange] * 
+        rep(k, rep.int(length(rowRange), length(k)))
+    }
+    
+    # add to every bicluster column a random number in the set [1, colShift],
+    # normally distributed
+    k <- rnorm(n = length(colRange), mean = 0, sd = colShift)
+    res[rowRange, colRange] <<- res[rowRange, colRange] + rep(k, rep.int(length(rowRange), length(k)))
+
+        # same for rows
+    if(!is.null(rowScale)) {
+      k <- rnorm(n = length(rowRange), mean = 0, sd = rowScale)
+      res[rowRange, colRange] <<- res[rowRange, colRange] * rep(k, times = length(colRange))
+    }
+    
+    k <- rnorm(n = length(rowRange), mean = 0, sd = rowShift)
+    res[rowRange, colRange] <<- res[rowRange, colRange] + rep(k, times = length(colRange))
+  },
+  rowRange = biclusterRows, colRange = biclusterCols))
   
   old.par <- par(no.readonly=T) 
   par(mar=c(0, 0, 0, 0))

@@ -37,7 +37,7 @@ setMethod("plot", c(x = "BiclusterExperiment"),
               cdist <- NULL
             } else if (ordering == "distance") {
               cluster_cols <- TRUE
-              cdist <- dist(t(as.matrix(bce)))
+              cdist <- dist(t(as.matrix(x)))
             } else if(ordering == "cluster") {
               cluster_cols <- TRUE
               browser()
@@ -142,32 +142,30 @@ setMethod(
 #' @param colnames if \code{TRUE}, labels the samples/features
 #' @export
 setGeneric("factorHeatmap", signature = c("bce", "bcs"), 
-           function(bce, bcs, type = c("score", "loading"),
-                    ordering = c("input", "distance", "cluster"), ...) {
+           function(bce, bcs, type, ordering = "input", ...) 
   standardGeneric("factorHeatmap")
-})
+)
 setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "character"),
           function(bce, bcs, type, ...) {
-            factorHeatmap(bce, getStrat(bce, bcs), type, ...)
+            factorHeatmap(bce, getStrat(bce, bcs), type, ordering, ...)
           })
 setMethod("factorHeatmap", c(bce = "BiclusterExperiment", bcs = "numeric"),
           function(bce, bcs, type, ...) {
-            factorHeatmap(bce, getStrat(bce, bcs), type, ...)
+            factorHeatmap(bce, getStrat(bce, bcs), type, ordering, ...)
           })
 setMethod(
   "factorHeatmap", c(bce = "BiclusterExperiment", bcs = "BiclusterStrategy"),
-  function(
-    bce, bcs, type = c("score", "loading"), phenoLabels = c(),
-    biclustLabels = c(), ordering,
-    colNames = FALSE) {
+  function(bce, bcs, type = c("score", "loading"),
+           ordering = c("input", "distance", "cluster"), phenoLabels = c(),
+    biclustLabels = c(), colNames = FALSE) {
     type <- match.arg(type)
-
+    
     if(type == "score") {
-      data <- t(score(bcs))
+      data <- t(logicalMatrix2Numeric(fuzzyFeatures(bcs)))
       # Validate requested annotations and parse into a dataframe
       annots <- createAnnots(bce, colnames(data), bcs, phenoLabels, biclustLabels)
     } else {
-      data <- loading(bcs)
+      data <- logicalMatrix2Numeric(fuzzySamples(bcs))
       annots <- NA
     }
     
@@ -277,8 +275,10 @@ setMethod(
       else {length(thresholds)}, 
       "Dark2"
     )
-    data <- if(type == "score") { get(type)(bcs) } else {
-      t(get(type)(bcs))
+    data <- if(type == "score") {
+      logicalMatrix2Numeric(fuzzyFeatures(bcs, allBc = TRUE))
+      } else {
+      t(logicalMatrix2Numeric(fuzzySamples(bcs, allBc = TRUE)))
     }
     data <- data[, bicluster, drop = TRUE]
     

@@ -11,6 +11,6 @@ tagList(
     source(system.file('shinyApp', "bcvUI.R", package='mfBiclust'), local = TRUE)$value, 
     source(system.file('shinyApp', "goUI.R", package='mfBiclust'), local = TRUE)$value,
     id = "navbarpage", fluid = TRUE,
-    footer = tags$footer(textOutput("status"))
+    footer = tags$footer(verbatimTextOutput("status"))
   )
 )

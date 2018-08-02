@@ -38,7 +38,7 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
   geneLists <- lapply(seq_len(ncol(clusteredFeatures(bcs))), function(biclust) {
     rownames(bce)[biclusterxCol[, biclust] == 1]
   })
-  names(geneLists) <- names(strategy)
+  names(geneLists) <- bcNames(strategy)
   universe <- rownames(bce) # these must be ENSEMBL
   # Returns a list of results for each bicluster: a list with one element per
   # ontology
