@@ -138,6 +138,7 @@ setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
 })
 
+#' @describeIn BiclusterExperiment Remove rows and columns with less than \code{cleanParam} entries present
 setMethod("clean", c(object = "BiclusterExperiment"), function(object,
                                                                cleanParam) {
   if(!(cleanParam <= 1 && cleanParam >= 0)) {
