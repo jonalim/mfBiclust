@@ -19,6 +19,10 @@ holdouts will be \code{holdouts} ^ 2.}
 
 \item{interactive}{prompt before running if \code{Y} is missing values}
 }
+\value{
+A named vector of BCV values corresponding to the various numbers of
+  biclusters evaluated.
+}
 \description{
 Calculates the bi-cross-validation of a Singular value decmoposition of
 matrix \code{Y}.

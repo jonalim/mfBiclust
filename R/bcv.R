@@ -2,13 +2,13 @@
 #'
 #' Repeatedly chooses the k that minimizes the BCV until the the distribution of
 #' k's has converged. The median k is reported as "best".
-#' 
+#'
 #' Often less than 50 iterations are required. Decreasing \code{holdouts} will
 #' speed up each iteration at the cost of accuracy, and will also limit the
 #' highest testable k to \eqn{(\code{holdouts} - 1) / \code{holdouts} * \min(m,
-#' n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can
-#' be tested. To minimize unnecessary computation, it is often helpful to run
-#' with \code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
+#' n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can be
+#' tested. To minimize unnecessary computation, it is often helpful to run with
+#' \code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
 #' necessary to determine the range of results.
 #'
 #' @param Y the input matrix
@@ -22,7 +22,11 @@
 #' @param verbose provide output after each iteration
 #' @param duplicable fix the random seed internally
 #' @param interactive prompt before running bcv on matrices with missing values
-#' 
+#'
+#' @return if \code{bestOnly = FALSE}, the predicted bicluster quantity. if
+#'   \code{bestOnly = TRUE}, a \code{\link{list}} containing: \describe{
+#'   \item{best}{the predicted bicluster quantity} \item{counts}{a named table
+#'   of result counts} }
 #' @seealso \code{\link{bcv}()}
 #' @export
 auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L, maxIter = 100L, tol = (10 ^ -4), bestOnly = FALSE,
@@ -39,6 +43,8 @@ auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
       stop("User choice")
     }
   }
+  # validate ks with warning if any are invalid
+  ks <- kLimiter(holdouts, min(ncol(Y), nrow(Y)), ks)
   
   # set up variables for testing convergence of the results
   distr <- rep(1L, each = length(ks))
@@ -84,7 +90,7 @@ auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
   
   distr <- distr - 1 # remove the pseudocount that was added
   
-  med <- names(distr[min(which(cumsum(distr) > (sum(distr) / 2)))])
+  med <- as.numeric(names(distr[min(which(cumsum(distr) > (sum(distr) / 2)))]))
   if(bestOnly) { med }
   else { list(best = med, counts = distr) }
 }
@@ -104,7 +110,7 @@ auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
 #' @param duplicable fix the random seed internally
 #' @param interactive prompt before running if \code{Y} is missing values
 #'
-#' @returns A named vector of BCV values corresponding to the various numbers of
+#' @return A named vector of BCV values corresponding to the various numbers of
 #'   biclusters evaluated.
 #' @seealso \code{\link{auto_bcv}()}
 #' @export
@@ -124,15 +130,9 @@ bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
       stop("User choice")
     }
   }
-  p <- ncol(Y)
-  n <- nrow(Y)
+  minDim <- min(ncol(Y), nrow(Y))
+  ks <- kLimiter(holdouts, minDim, ks)
   
-  kLimit <- floor((holdouts - 1L) / holdouts * min(p, n))
-  if(sum(ks < kLimit) < length(ks)) {
-    warning(paste("Due to holdouts, some of the highest requested ks will not be",
-                  "tested."))
-  }
-  ks <- ks[ks < kLimit]
   if(length(ks) > 1 || is.numeric(ks)) {
     if (any(ks < 1) || any(!is.wholenumber(ks))) {
       stop(paste("ks must be a vector of positive whole numbers"))
@@ -143,8 +143,8 @@ bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
   
   # Automatically decrease the number of holdouts if necessary
   # Ex: for dimension = 8, holdouts = 10, the result is 8
-  if(holdouts > min(p, n)) {
-    holdouts <- min(p, n)
+  if(holdouts > minDim) {
+    holdouts <- minDim
     warning(paste("Using", holdouts, "holdouts to ensure non-zero holdout",
                   "size."))
   }
@@ -236,4 +236,13 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   #   min(rcv, var_k)
   # }, rcv = rcvs, subtract = subtract, var_k = var_k, SIMPLIFY = TRUE)
   rcvVals
+}
+
+kLimiter <- function(holdouts, dim, ks) {
+  kLimit <- floor((holdouts - 1L) / holdouts * dim)
+  if(sum(ks < kLimit) < length(ks)) {
+    warning(paste("Due to holdouts, some of the highest requested ks will not be",
+                  "tested."))
+  }
+  return(ks[ks < kLimit])
 }

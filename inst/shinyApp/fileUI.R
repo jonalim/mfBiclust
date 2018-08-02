@@ -25,7 +25,7 @@ tabPanel(
                  tags$style(type = "text/css", "#dt {height: calc(90vh - 80px) !important;}"),
                  sidebarLayout(
                    sidebarPanel(
-                     h3("Post-upload options"),
+                     h3("Formatting"),
                      checkboxInput("transpose", "Transpose (samples must be in columns)"),
                      textAreaInput("customRowNames", "Custom feature names",
                                    placeholder = "Line-separated names;\nENSEMBL IDs required for GO analysis",

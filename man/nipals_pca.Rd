@@ -17,6 +17,15 @@ nipals_pca(A, k, cleanParam = 0, duplicable = FALSE, verbose = TRUE, ...)
 
 \item{verbose}{report recursive calls and all values of \code{cleanParam}}
 }
+\value{
+a list containing
+  \describe{
+  \item{m}{the data matrix after any cleaning}
+  \item{genericFit}{a \code{\link{genericFit-class}} object}
+  \item{indexRemaining}{a list of the row and column indexes remaining after
+  cleaning}
+  }
+}
 \description{
 Factorizes matrix \code{A} as the product of score and loading matrices
 respectively truncated to \code{k} rows and \code{k} columns. Uses the 

@@ -4,8 +4,7 @@
 \alias{factorHeatmap}
 \title{Plot a heatmap showing bicluster membership of samples or features}
 \usage{
-factorHeatmap(bce, bcs, type = c("score", "loading"), ordering = c("input",
-  "distance", "cluster"), ...)
+factorHeatmap(bce, bcs, type, ordering = "input", ...)
 }
 \arguments{
 \item{bce}{A BiclusterExperiment object}

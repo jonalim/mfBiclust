@@ -31,7 +31,17 @@ function(input, output, session) {
     goLastParams = list()
   )
   
-  output$status <- renderText("statusbartext")
+  output$status <- renderText({
+    
+    if(input$navbarpage == "Functional Annotation") {
+      enrichedBc <- length(goSummary()$significance < 0.05)
+      totalBc <- length(goSummary()$significance)
+      desc <- paste(enrichedBc, "/", totalBc, "biclusters enriched (p < 0.05)",
+                    "|", goSummary()$universeSize, "/", nrow(values$bce),
+                    "genes matched to GO terms")
+    } else { desc <- "" }
+    return(desc)
+    })
   
   #### DATA I/O ####
   observeEvent(
@@ -132,7 +142,8 @@ function(input, output, session) {
   
   # Render an interactive data.table for the user's benefit
   output$dt <- suppressWarnings(DT::renderDT({
-    validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
+    validate(need(inherits(values$bce, "BiclusterExperiment"), 
+                  "You may import your dataset"))
     return(as.matrix(values$bce))
   }, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
   autoHideNavigation = TRUE, server = TRUE, selection = "none"))
@@ -178,7 +189,7 @@ function(input, output, session) {
     }
     phenoLabels <- intersect(input$annots, colnames(Biobase::phenoData(bce)))
     # biclustLabels <- if(length(names(bce)) > 0) {
-    #   intersect(input$annots, names(getStrat(bce, input$strategy)))
+    #   intersect(input$annots, bcNames(getStrat(bce, input$strategy)))
     plot(bce, logBase = logBase, phenoLabels = phenoLabels,
          ordering = if(input$heatmapReorder) "distance" else "input",
          strategy = input$strategy,
@@ -444,14 +455,13 @@ function(input, output, session) {
                                  clusteredSamples(bcs))
       biclusterRows <- rc[[1]]
       biclusterCols <- rc[[2]]
-      
       # Check for overlaps with any other biclusters. Since a bicluster
       # always overlaps with itself completely, test sum(l) == 1
       overlaps <- overlap(biclusterRows, biclusterCols)
       nonOverlap <- sapply(overlaps, function(l) sum(l == 1))
       if(any(!nonOverlap)) {
         showNotification(id = "overlapNotif", paste(
-          do.call(paste, c(as.list(names(bcs)[!nonOverlap]), sep = ", ")),
+          do.call(paste, c(as.list(bcNames(bcs)[!nonOverlap]), sep = ", ")),
           "overlap. Please interpret the heatmap annotations with care."), 
           duration = NULL)
       }
@@ -501,24 +511,82 @@ output$downloadBceCurrent <- downloadHandler(
   }
 )
 
-#### Scores ####
-output$scorePanel <- renderUI({
-  fluidRow(
-    column(9,
-           plotOutput("scoreHeatmap", width = "100%"), 
-           plotOutput("scorePlot", width = "100%")),
-    column(3,
-           uiOutput("scoreBicluster"),
-           checkboxInput("scoreReorder", "Reorder"),
-           checkboxInput("sampNames", "Feature names"))
-  )
+#### Samples #### 
+
+#would be nice to Invalidate these panels when user changes kSlider, but hasn't
+#clicked "Run" yet
+output$sampleBicluster <- renderUI({
+  choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
+    bcNames(values$strategy)
+  } else { list() }
+  selectInput("sampleBicluster", "Select bicluster:",
+              choices = choices)
 })
 
-output$scoreBicluster <- renderUI({
+# Heatmap of loadings for all samples
+output$sampleHeatmap <- renderPlot({
+  gt <- reactivesampleHeatmap()
+  print(gt)
+})
+reactivesampleHeatmap <- reactive({
+  validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please bicluster first."))
+  withProgress(
+    message = "Plotting...",
+    value = 0, {
+      set.seed(1234567)
+      factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
+                    ordering = if(input$sampleReorder) { "cluster" } else {
+                      "input"
+                    },
+                    colNames = input$biclusterFeatNames)
+    }
+  )})
+
+# Plot of sample loadings for one bicluster
+output$samplePlot <- renderPlot({
+  validate(need(inherits(values$strategy, "BiclusterStrategy") &&
+                  !is.null(input$sampleBicluster), ""))
+  reactiveMarkers()
+})
+reactiveMarkers <- reactive({
+  withProgress(message = "Plotting...", value = 0, {
+    set.seed(1234567)
+    plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
+                  bicluster = input$sampleBicluster,
+                  ordering = if(input$sampleReorder) { "cluster" } else {
+                    "input" },
+                  xlabs = input$biclusterFeatNames)
+  })
+})
+
+# Get gene list for selected bicluster
+output$biclusterGeneList <- renderText({
+  bce <- values$bce
+  bcs <-  values$strategy
+  bicluster <- input$sampleBicluster
+  validate(need(inherits(bce, "BiclusterExperiment") && 
+                  !is.null(input$sampleBicluster) &&
+                  inherits(bcs, "BiclusterStrategy"), ""))
+  
+  geneI <- which(clusteredFeatures(bcs)[, bicluster])
+  genes <- featureNames(bce)[geneI]
+  paste(unlist(genes), collapse = "\n")
+})
+
+output$biclusterGeneListLabel <- renderUI({
+  bicluster <- input$sampleBicluster
+  desc <- if(is.null(bicluster)) { "Markers:" } else {
+    paste(bicluster, "markers:")
+  }
+  tags$h4(desc)
+})
+
+#### Features ####
+output$featureBicluster <- renderUI({
   choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
-    names(values$strategy)
+    bcNames(values$strategy)
   } else { list() }
-  selectInput("scoreBicluster", "Select bicluster:",
+  selectInput("featureBicluster", "Select bicluster:",
               choices = choices)
 })
 
@@ -531,18 +599,18 @@ reactiveHeatmapHeight300 <- reactive({
           )[, annot]))
         }))) * 22 - 106)})
 
-# heatmap of scores for all samples
+# heatmap of scores for all features
 # using renderUI prevents overlapping plots
-output$scoreHeatmap <- renderUI({
+output$featureHeatmap <- renderUI({
   height = reactiveHeatmapHeight300()
-  plotOutput("scoreHeatmap", height = height)
+  plotOutput("featureHeatmap", height = height)
 })
-output$scoreHeatmap <- renderPlot({
-  gt <- reactiveScoreHeatmap()
+output$featureHeatmap <- renderPlot({
+  gt <- reactivefeatureHeatmap()
   print(gt)
 },
 height = function() { reactiveHeatmapHeight300() })
-reactiveScoreHeatmap <- reactive({
+reactivefeatureHeatmap <- reactive({
   validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please run biclustering first."))
   bce <- values$bce
   withProgress(
@@ -553,28 +621,28 @@ reactiveScoreHeatmap <- reactive({
       phenoLabels <- intersect(input$annots,
                                colnames(Biobase::phenoData(bce)))
       biclustLabels <- intersect(input$annots,
-                                 names(values$strategy))
+                                 bcNames(values$strategy))
       factorHeatmap(bce = bce, bcs = values$strategy, type = "score",
                     phenoLabels = phenoLabels,
                     biclustLabels = biclustLabels,
-                    ordering = if(input$scoreReorder) { "cluster" } else {
+                    ordering = if(input$featureReorder) { "cluster" } else {
                       "input" },
                     colNames = input$biclusterSampNames)
     })
 })
 
 # Plot of feature scores for one bicluster
-output$scorePlot <- renderPlot({
-  scorePlotHelper()
+output$featurePlot <- renderPlot({
+  featurePlotHelper()
 })
-scorePlotHelper <- reactive({
+featurePlotHelper <- reactive({
   validate(need(inherits(values$strategy, "BiclusterStrategy") &&
-                  !is.null(input$scoreBicluster), ""))
+                  !is.null(input$featureBicluster), ""))
   withProgress(message = "Plotting...", value = 0, {
     set.seed(1234567)
     plotThreshold(bce = values$bce, bcs = values$strategy, type = "score",
-                  bicluster = input$scoreBicluster,
-                  ordering = if(input$scoreReorder) { "cluster" } else {
+                  bicluster = input$featureBicluster,
+                  ordering = if(input$featureReorder) { "cluster" } else {
                     "input" },
                   xlabs = input$biclusterSampNames)
   })
@@ -587,80 +655,6 @@ output$top_tabs <- renderUI({
     uiOutput("uiabundance", width = "100%"),
     plotOutput("pca", width = "100%"))
   )
-})
-
-#### Loading #### 
-
-#FIXME Invalidate these panels when user changes kSlider, but hasn't clicked
-#"Run" yet
-# output$loadingPanel <- renderUI({
-#   
-# })
-# 
-output$loadingBicluster <- renderUI({
-  choices <- if(inherits(values$strategy, "BiclusterStrategy")) {
-    names(values$strategy)
-  } else { list() }
-  selectInput("loadingBicluster", "Select bicluster:",
-              choices = choices)
-})
-
-# Heatmap of loadings for all samples
-output$loadingHeatmap <- renderPlot({
-  gt <- reactiveLoadingHeatmap()
-  print(gt)
-})
-reactiveLoadingHeatmap <- reactive({
-  validate(need(inherits(values$strategy, "BiclusterStrategy"), "Please bicluster first."))
-  withProgress(
-    message = "Plotting...",
-    value = 0, {
-      set.seed(1234567) # FIXME: use duplicable()
-      factorHeatmap(bce = values$bce, bcs = values$strategy, type = "loading",
-                    ordering = if(input$loadingReorder) { "cluster" } else {
-                      "input"
-                    },
-                    colNames = input$biclusterFeatNames)
-    }
-  )})
-
-# Plot of feature loadings for one bicluster
-output$samplePlot <- renderPlot({
-  validate(need(inherits(values$strategy, "BiclusterStrategy") &&
-                  !is.null(input$loadingBicluster), ""))
-  reactiveMarkers()
-})
-reactiveMarkers <- reactive({
-  withProgress(message = "Plotting...", value = 0, {
-    set.seed(1234567)
-    plotThreshold(bce = values$bce, bcs = values$strategy, type = "loading",
-                  bicluster = input$loadingBicluster,
-                  ordering = if(input$loadingReorder) { "cluster" } else {
-                    "input" },
-                  xlabs = input$biclusterFeatNames)
-  })
-})
-
-# Get gene list for selected bicluster
-output$biclusterGeneList <- renderText({
-  bce <- values$bce
-  bcs <-  values$strategy
-  bicluster <- input$loadingBicluster
-  validate(need(inherits(bce, "BiclusterExperiment") && 
-                  !is.null(input$loadingBicluster) &&
-                  inherits(bcs, "BiclusterStrategy"), ""))
-  
-  geneI <- which(loading(bcs)[bicluster, ] > loadingThresh(bcs)[bicluster])
-  genes <- featureNames(bce)[geneI]
-  paste(unlist(genes), collapse = "\n")
-})
-
-output$biclusterGeneListLabel <- renderUI({
-  bicluster <- input$loadingBicluster
-  desc <- if(is.null(bicluster)) { "Markers:" } else {
-    paste(bicluster, "markers:")
-  }
-  tags$h6(desc)
 })
 
 #### BI-CROSS-VALIDATION ####
@@ -704,6 +698,7 @@ observeEvent(
   input$bcvButton,
   {
     runBcv()
+    updateSliderInput(session, "k", val = values$bcvBest)
   }
 )
 runBcv <- function() {
@@ -1099,92 +1094,10 @@ output$goUniverseGenes <- renderText({
   paste(unlist(genes), collapse = "\n")
 })
 
-# PANEL DESCRIPTIONS
-# output$explanation <- renderUI({
-#   res <- ""
-#   if (length(input$main_panel) > 0) {
-#     if ("Abundance" == input$main_panel) {
-#       res <- HTML(
-#         "Abundance shows a Z-score heatmap of the original matrix
-#         of metabolite peaks. Default ordering is distance-based by
-#         cluster membership. Sidebar options allow reordering
-#         of rows to highlight samples that are members of the
-#         currently selected cluster.
-#         Currently the annotations 'species' and 'tissue' are fictitious."
-#       )
-#     }
-# if ("Stability" == input$main_panel) {
-#   res <- HTML(
-#     "Stability index shows how stable each cluster
-#     is accross the selected range of <i>k</i>s.
-#     The stability index varies between 0 and 1, where
-#     1 means that the same cluster appears in every
-#     solution for different <i>k</i>."
-#   )
-# }
-# if ("Biomarkers" == input$main_panel) {
-#   res <- HTML(
-#     paste0(
-#       "This is a plot of loading, a statistic that
-#       quantifies the importance of each feature in distinguishing
-#       samples that are members of this bicluster."
-#     )
-#     )
-# }
-# if ("Bicluster members" == input$main_panel) {
-#   res <- HTML(
-#     "This is a score thresholding plot, showing which
-#     samples are above the threshold. The user should be
-#     told which thresholding method was used."
-#   )
-# }
-# return(res)
-# }
-# })
-
-# plotHeightMark <- function() {
-#   return(150 + 10.8 * nrow(values$mark.res))
-# }
-
-# REACTIVE BUTTONS
-# is_biology <- reactive({
-#   return(biology)
-# })
-#
-
-#### REACTIVE DATA #######################################################
-
-# observer for marker genes
-# observe({
-#   if (FALSE) {
-#     # biology) {
-#     # get all marker genes
-#     markers <- organise_marker_genes(object, input$strategy, 
-#                                      as.numeric(input$pValMark), 
-#                                      as.numeric(input$auroc.threshold))
-#     user$n.markers <- nrow(markers)
-#     # get top 10 marker genes of each cluster
-#     markers <- markers_for_heatmap(markers)
-#     clusts <- unique(markers[, 1])
-#     if (is.null(clusts)) {
-#       clusts <- "None"
-#     }
-#     user$mark.res <- markers
-#     updateSelectInput(session, "cluster", choices = clusts)
-#   } else {
-#     user$n.markers <- 0
-#   }
-# })
-# 
-# 
-# output$has_biomarkers <- reactive({
-#   return(TRUE)
-# })
-
+#### SESSION ####
 # stop App on closing the browser
 session$onSessionEnded(function() {
   stopApp()
 })
-# 
-# outputOptions(output, "has_biomarkers", suspendWhenHidden = FALSE)
+
 }

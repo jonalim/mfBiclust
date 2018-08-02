@@ -22,6 +22,9 @@ als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-07,
 
 \item{verbose}{Print the mean squared error every 10 iterations}
 }
+\value{
+a \code{\link{genericFit}} object
+}
 \description{
 Approximates a non-negative matrix as the product of two non-negative matrix
 factors using the alternating-least-squares algorithm by Paatero and Tapper

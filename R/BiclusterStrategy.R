@@ -6,18 +6,24 @@ NULL
 #' Class "BiclusterStrategy" for biclusters
 #'
 #' This class encapsulates bicluster results for one biclustering algorithm, one
-#' thresholding algorithm, and one bicluster quantity \eqn{k}.
+#' thresholding algorithm, and one bicluster quantity \eqn{k}. If the
+#' biclustering algorithm returns more than biclusters than the value of
+#' \code{k} provided to \code{\link{addStrat}()}, the extra biclusters will
+#' be stored with a warning. See note on slot \code{k} below.
 #' 
 #' @slot factors a \code{\link[NMF]{NMFfit-class}} or \code{\link{genericFit}}
 #'   containing a pair of matrices \eqn{L_{m,k}} and \eqn{R_{k,n}}.
 #' @slot scoreThresh a vector of thresholds of length \eqn{k}
 #' @slot loadingThresh a vector of thresholds of length \eqn{k}
 #' @slot threshAlgo the name of the thresholding algorithm, or "user"
-#' @slot clusteredSamples a logical matrix \eqn{A_{m,k}} giving the bicluster
-#' membership of each sample
-#' @slot clusteredFeatures a logical matrix \eqn{B_{k, n}} giving the bicluster
-#' membership of each feature
+#' @slot biclust a \code{\link[biclust]{biclust-class}} object containing
+#'   logical bicluster membership matrices and other information
+#' @slot k the value of parameter \code{k} in \code{\link{addStrat}()}.
+#'   \code{k} causes accessor methods to hide any extra biclusters stored
+#'   in this object, unless said accessor methods are called with 
+#'   \code{allBc = TRUE}
 #' @slot name a display friendly character string describing the object
+#' @importClassesFrom biclust Biclust
 setClass(
   "BiclusterStrategy",
   slots = list(
@@ -25,8 +31,8 @@ setClass(
     scoreThresh = "numeric",
     loadingThresh = "numeric",
     threshAlgo = "character",
-    clusteredFeatures = "matrix", # m x k
-    clusteredSamples = "matrix", # n x k
+    biclust = "Biclust",
+    k = "integer",
     name = "character"
   )
 )
@@ -43,9 +49,8 @@ setGeneric("BiclusterStrategy", signature = c("obj", "k"),
            function(obj, k, method = c("als-nmf", "svd-pca", "snmf",
                                        "nipals-pca", "plaid", "spectral"),
                     threshAlgo = "otsu", scoreThresh = threshAlgo,
-                    loadingThresh = threshAlgo, duplicable = TRUE, ...) {
-             standardGeneric("BiclusterStrategy")
-           })
+                    loadingThresh = threshAlgo, duplicable = TRUE, ...) 
+             standardGeneric("BiclusterStrategy"))
 setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
   obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) {
   method <- match.arg(method)
@@ -82,50 +87,103 @@ setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
              return(NULL)
            }
   )
-  
-  k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
-  # k biclusters
-  biclustNames <- unlist(sapply(seq_len(k), function(x) {
-    paste0("Bicluster.", x)
-  }))
-  colnames(bc@fit@W) <- biclustNames
-  rownames(bc@fit@H) <- biclustNames
-  
-  thRes <- thresholdHelper(bc = bc, k = k, scoreThresh = scoreThresh,
-                           loadingThresh, threshAlgo = threshAlgo)
-  list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples)
-  
-  bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = thRes[[2]],
-             loadingThresh = thRes[[3]], threshAlgo = thRes[[1]],
-             clusteredSamples = thRes[[5]], clusteredFeatures = thRes[[4]])
-  bcs@name <- name(bcs)
-  bcs
+  # bc may be NMFfit, biclust::Biclust, or genericFit
+  # dispatch to appropriate BiclusterStrategy()
+  BiclusterStrategy(obj = bc, k, method, threshAlgo, scoreThresh, loadingThresh, 
+                    duplicable, ...)
 })
-setMethod("BiclusterStrategy", c(obj = "genericFit", k = "numeric"), function(
-  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) { 
-  method <- match.arg(method)
-  bc <- obj
+setMethod("BiclusterStrategy", c(obj = "Biclust", k = "numeric"), function(
+  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) {
   
-  k <- ncol(bc@fit@W) # sometimes the biclustering method returns less than
-  # k biclusters
-  biclustNames <- unlist(sapply(seq_len(k), function(x) {
+  if(obj@Number < k) {
+    k <- obj@Number # sometimes the biclustering method returns less than
+  }
+  if(ncol(obj@RowxNumber) > k) {
+    warning(paste("The biclustering method returned more than k biclusters.",
+                  "Use accessor functions with allBc = TRUE to reveal all data."))
+  }
+  
+  biclustNames <- unlist(sapply(seq_len(obj@Number), function(x) {
     paste0("Bicluster.", x)
   }))
-  colnames(bc@fit@W) <- biclustNames
-  rownames(bc@fit@H) <- biclustNames
+  colnames(obj@RowxNumber) <- biclustNames
+  rownames(obj@NumberxCol) <- biclustNames
   
-  thRes <- thresholdHelper(bc = bc, k = k, scoreThresh = scoreThresh,
+  # transfer the unthresholded matrices to a genericFit
+  factorz <- new("genericFactorization", W = obj@RowxNumber, H = obj@NumberxCol)
+  fit <- new("genericFit", fit = factorz, method = method)
+  
+  #then threshold the Biclust object
+  thRes <- thresholdHelper(bc = obj, k = obj@Number, scoreThresh = scoreThresh,
                            loadingThresh, threshAlgo = threshAlgo)
-  list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples)
   
-  bcs <- new("BiclusterStrategy", factors = bc, scoreThresh = thRes[[2]],
+  bcs <- new("BiclusterStrategy", factors = fit, scoreThresh = thRes[[2]],
              loadingThresh = thRes[[3]], threshAlgo = thRes[[1]],
-             clusteredSamples = thRes[[5]], clusteredFeatures = thRes[[4]])
+             k = as.integer(k),
+             biclust = thRes[[4]])
   bcs@name <- name(bcs)
   bcs
 })
 
-#### validity method ####
+setMethod("BiclusterStrategy", c(obj = "genericFit", k = "numeric"), function(
+  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) { 
+  fit <- obj
+  
+  # sometimes the biclustering method returns less than k biclusters
+  if(ncol(fit@fit@W) < k) { k <- ncol(fit@fit@W) }
+  if(ncol(fit@fit@W) > k) {
+    warning(paste("The biclustering method returned more than k biclusters.",
+                  "Use accessor functions with allBc = TRUE to reveal all data."))
+  }
+  
+  biclustNames <- unlist(sapply(seq_len(ncol(fit@fit@W)), function(x) {
+    paste0("Bicluster.", x)
+  }))
+  colnames(fit@fit@W) <- biclustNames
+  rownames(fit@fit@H) <- biclustNames
+  bc <- biclust::BiclustResult(list(Call = fit@method), fit@fit@W, fit@fit@H,
+                               ncol(fit@fit@W), list())
+  
+  thRes <- thresholdHelper(bc = bc, k = ncol(fit@fit@W),
+                           scoreThresh = scoreThresh,
+                           loadingThresh, threshAlgo = threshAlgo)
+  
+  bcs <- new("BiclusterStrategy", factors = fit, scoreThresh = thRes[[2]],
+             loadingThresh = thRes[[3]], threshAlgo = thRes[[1]], 
+             k = as.integer(k),
+             biclust = thRes[[4]])
+  bcs@name <- name(bcs)
+  bcs
+})
+
+setMethod("BiclusterStrategy", c(obj = "NMFfit", k = "numeric"), function(
+  obj, k, method, threshAlgo, scoreThresh, loadingThresh, duplicable, ...) { 
+  
+  # assume that NMF methods always return k biclusters
+  fit <- obj
+  k <- ncol(fit@fit@W)
+  
+  biclustNames <- unlist(sapply(seq_len(k), function(x) {
+    paste0("Bicluster.", x)
+  }))
+  colnames(fit@fit@W) <- biclustNames
+  rownames(fit@fit@H) <- biclustNames
+  
+  bc <- biclust::BiclustResult(list(Call = fit@method), fit@fit@W, fit@fit@H,
+                               k, list())
+  
+  thRes <- thresholdHelper(bc = bc, k = k, scoreThresh = scoreThresh,
+                           loadingThresh, threshAlgo = threshAlgo)
+  
+  bcs <- new("BiclusterStrategy", factors = fit, scoreThresh = thRes[[2]],
+             loadingThresh = thRes[[3]], threshAlgo = thRes[[1]], 
+             k = as.integer(k),
+             biclust = thRes[[4]])
+  bcs@name <- name(bcs)
+  bcs
+})
+
+#### VALIDITY METHOD ####
 validBiclusterStrategy <- function(object) {
   msg <- NULL
   factors <- object@factors
@@ -157,7 +215,7 @@ validBiclusterStrategy <- function(object) {
           )
         )
     }
-    if (!setequal(names(sThresh), colnames(score(object)))) {
+    if (!setequal(names(sThresh), colnames(fuzzyFeatures(object)))) {
       msg <-
         c(
           msg,
@@ -182,7 +240,7 @@ validBiclusterStrategy <- function(object) {
           )
         )
     }
-    if (!setequal(names(lThresh), rownames(loading(object)))) {
+    if (!setequal(names(lThresh), rownames(fuzzySamples(object)))) {
       msg <-
         c(
           msg,
@@ -201,17 +259,17 @@ validBiclusterStrategy <- function(object) {
   if (!(inherits(predS, "matrix") && mode(predS) == "logical")) {
     msg <- c(msg, "clusteredSamples must be a logical matrix")
   } else {
-    if (!identical(dim(predS), dim(loading(object)))) {
+    if (!identical(dim(predS), dim(fuzzySamples(object)))) {
       msg <-
         c(
           msg,
           paste(
             "clusteredSamples must have dimensions identical to",
-            "loading(object)."
+            "fuzzySamples(object)."
           )
         )
     }
-    if (!identical(dimnames(predS), dimnames(loading(object)))) {
+    if (!identical(dimnames(predS), dimnames(fuzzySamples(object)))) {
       msg <-
         c(
           msg,
@@ -228,17 +286,17 @@ validBiclusterStrategy <- function(object) {
   if (!(inherits(predF, "matrix") && mode(predF) == "logical")) {
     msg <- c(msg, "clusteredFeatures must be a logical matrix")
   } else {
-    if (!identical(dim(predF), dim(score(object)))) {
+    if (!identical(dim(predF), dim(fuzzyFeatures(object)))) {
       msg <-
         c(
           msg,
           paste(
             "clusteredFeatures must have dimensions identical to",
-            "t(loading(object))."
+            "t(fuzzySamples(object))."
           )
         )
     }
-    if (!identical(dimnames(predF), dimnames(score(object)))) {
+    if (!identical(dimnames(predF), dimnames(fuzzyFeatures(object)))) {
       msg <-
         c(
           msg,
@@ -251,6 +309,8 @@ validBiclusterStrategy <- function(object) {
     }
   }
   
+  res <- validObject(biclust(object), test = TRUE)
+  if(inherits(res, "character")) { msg <<- c(msg, res) }
   if (is.null(msg))
     TRUE
   else
@@ -259,6 +319,10 @@ validBiclusterStrategy <- function(object) {
 setValidity("BiclusterStrategy", validBiclusterStrategy)
 
 #### Accessors ####
+
+setMethod("biclust", "BiclusterStrategy", function(bcs) {
+  bcs@biclust
+})
 setMethod("method", "BiclusterStrategy", function(bcs) {
   bcs@factors@method
 })
@@ -289,46 +353,53 @@ setMethod("name", c(bcs = "list"), function(bcs) {
 
 #' Names of biclusters in this BiclusterStrategy
 #' @export
-setMethod("names", "BiclusterStrategy", function(x) {
-  colnames(x@factors@fit@W)
+setMethod("bcNames", "BiclusterStrategy", function(bcs, allBc) {
+  if(allBc) {return(colnames(bcs@factors@fit@W)) }
+  return(colnames(bcs@factors@fit@W)[seq_len(nclust(bcs))])
 })
 
 #' @describeIn BiclusterStrategy Number of clusters in a BiclusterStrategy
-setMethod("nclust", c(bcs = "BiclusterStrategy"), function(bcs) {
-  ncol(bcs@factors@fit@W)
-})
-setMethod("nclust", c(bcs = "list"), function(bcs) {
-  ncol(bcs[[1]]@factors@fit@W)
+setMethod("nclust", c(bcs = "BiclusterStrategy"), function(bcs, allBc) {
+  if(allBc) { return(ncol(bcs@factors@fit@W)) }
+  return(bcs@k)
 })
 
-setMethod("loading", "BiclusterStrategy", function(bcs) {
-  bcs@factors@fit@H
+setMethod("fuzzySamples", "BiclusterStrategy", function(bcs, allBc) {
+  if(allBc) { return(bcs@factors@fit@H) }
+  return(bcs@factors@fit@H[seq_len(nclust(bcs)), ])
 })
 
-setMethod("loadingThresh", "BiclusterStrategy", function(bcs) {
-  bcs@loadingThresh
+setMethod("loadingThresh", "BiclusterStrategy", function(bcs, allBc) {
+  if(allBc) { return(bcs@loadingThresh) }
+  return(bcs@loadingThresh[seq_len(nclust(bcs))])
 })
 
 #' @describeIn BiclusterStrategy A binary matrix showing sample-bicluster
 #' membership
 #' @export
-setMethod("clusteredSamples", c(bcs = "BiclusterStrategy"), function(bcs) {
-  bcs@clusteredSamples
+setMethod("clusteredSamples", c(bcs = "BiclusterStrategy"), function(
+  bcs, allBc) {
+  if(allBc) { return(bcs@biclust@NumberxCol) }
+  return(bcs@biclust@NumberxCol[seq_len(nclust(bcs)), ])
 })
 
-setMethod("score", "BiclusterStrategy", function(bcs) {
-  bcs@factors@fit@W
+setMethod("fuzzyFeatures", "BiclusterStrategy", function(bcs, allBc) {
+  if(allBc) {return(bcs@factors@fit@W) }
+  return(bcs@factors@fit@W[, seq_len(nclust(bcs))])
 })
 
-setMethod("scoreThresh", "BiclusterStrategy", function(bcs) {
-  bcs@scoreThresh
+setMethod("scoreThresh", "BiclusterStrategy", function(bcs, allBc) {
+  if(allBc) {return(bcs@scoreThresh)}
+  return(bcs@scoreThresh[seq_len(nclust(bcs))])
 })
 
 #' @describeIn BiclusterStrategy A binary matrix showing feature-bicluster
 #' membership
 #' @export
-setMethod("clusteredFeatures", c(bcs = "BiclusterStrategy"), function(bcs) {
-  bcs@clusteredFeatures
+setMethod("clusteredFeatures", c(bcs = "BiclusterStrategy"), function(
+  bcs, allBc) {
+  if(allBc) { return(bcs@biclust@RowxNumber) }
+  return(bcs@biclust@RowxNumber[, seq_len(nclust(bcs))])
 })
 
 
@@ -341,24 +412,9 @@ setMethod("threshAlgo", c(bcs = "BiclusterStrategy"), function(bcs) {
 
 #### HELPER FUNCTIONS ##########################################################
 
-#' Combine threshold values and names into a matrix
-#'
-#' Thresholds may contain a vector of the names of desired threshold algorithms.
-#' Alternatively, a numeric-mode object may be supplied. A single numeric
-#' will be applied to all clusters. A vector of numerics, if the same size as
-#' k, will be assumed to have a 1:1 relation with k. A matrix of numerics,
-#' if k x Y, will be assumed to be a matrix where each row k contains Y
-#' thresholds to plot for bicluster k. This argument's dimensions will be
-#' checked for compatibility with the target matrix.
-#'
-#' A matrix where each column is a series of thresholds. Each column is
-#' named by the threshold algorithm, if specified. Each row is named by the
-#' provided biclustNames.
-#'
-#' @param thresholds either a numeric matrix, a numeric vector, or a character
-#'   vector
+#' Calculate Otsu thresholds on each column of a matrix
+#' 
 #' @param matrix the target matrix, whose columns will be thresholded
-#' @param biclustNames names of the threshold matrix rows
 otsuHelper <- function(matrix) {
   # Calculate thresholds using available algorithms
   thresholds <- apply(matrix, 2, function(x) {
@@ -368,12 +424,28 @@ otsuHelper <- function(matrix) {
       thresholds <- EBImage::otsu(m)
       thresholds * (max(x) - min(x)) + min(x)
     } else  {
+      # If all values of x are the same, then the threshold is that value itself
       x[1]
     }
-    # If all values of x are the same, then the threshold is that value
-    # itself
   })
   thresholds
+}
+
+biclust2genericFit <- function(biclust) {
+  if(!inherits(biclust, "Biclust")) {
+    stop(paste("biclust2genericFit must be called on a \"Biclust\" class",
+               "object"))
+    }
+  biclusters <- biclust::biclusternumber(biclust)
+  scoreLoading <- if(biclusters > 0) { 
+    biclusterNumber2scorefuzzySamples(biclusters, A, k) 
+  } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
+                matrix(rep(NA, ncol(A)), nrow = 1)) 
+    }
+  
+  new("genericFit", fit = new("genericFactorization", W = scoreLoading[[1]], 
+                              H = scoreLoading[[2]]),
+      method = object@Parameters$Call)
 }
 
 thresholdHelper <- function(bc, k, scoreThresh, loadingThresh, threshAlgo) {
@@ -386,23 +458,23 @@ thresholdHelper <- function(bc, k, scoreThresh, loadingThresh, threshAlgo) {
       threshAlgo <- "user"
     } else if(threshAlgo == "otsu") {
       # Use automatic thresholding (default)
-      scoreThresh <- otsuHelper(bc@fit@W)
-      loadingThresh <- otsuHelper(t(bc@fit@H))
+      scoreThresh <- otsuHelper(bc@RowxNumber)
+      loadingThresh <- otsuHelper(t(bc@NumberxCol))
     } else {
       stop(paste("Currently \"otsu\" is the only implemented thresholding",
                  "algorithm"))
     }
     #### Results #############################################################
-    clusteredFeatures <- threshold(m = bc@fit@W, th = scoreThresh, MARGIN = 2)
-    clusteredSamples <- threshold(m = bc@fit@H, th = loadingThresh,
+    bc@RowxNumber <- threshold(m = bc@RowxNumber, th = scoreThresh, MARGIN = 2)
+    bc@NumberxCol <- threshold(m = bc@NumberxCol, th = loadingThresh,
                                   MARGIN = 1)
   } else { 
-    clusteredSamples <- matrix(dimnames = dimnames(bc@fit@W))
-    clusteredFeatures <- matrix(dimnames = dimnames(bc@fit@W))
+    bc@NumberxCol <- matrix(dimnames = dimnames(bc@NumberxCol))
+    bc@RowxNumber <- matrix(dimnames = dimnames(bc@RowxNumber))
     warning(paste("Biclustering did not find valid results. No samples or",
                   "features are biclustered."))
   }
-  return(list(threshAlgo, scoreThresh, loadingThresh, clusteredFeatures, clusteredSamples))
+  return(list(threshAlgo, scoreThresh, loadingThresh, bc))
 }
 
 

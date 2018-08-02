@@ -57,26 +57,25 @@ tabPanel(
         ),
         tabPanel("Samples",
                  column(9,
-                        plotOutput("loadingHeatmap", width = "100%"), 
+                        plotOutput("sampleHeatmap", width = "100%"), 
                         plotOutput("samplePlot", width = "100%")),
                  column(3,
-                        uiOutput("loadingBicluster"),
-                        checkboxInput("loadingReorder", "Reorder"),
-                        checkboxInput("biclusterFeatNames", "Sample names"),
-                        uiOutput("biclusterGeneListLabel"),
-                        fluidRow(verbatimTextOutput("biclusterGeneList"), 
-                                 style = "height:500px; overflow-y: scroll"))
+                        uiOutput("sampleBicluster"),
+                        checkboxInput("sampleReorder", "Reorder"),
+                        checkboxInput("biclusterFeatNames", "Sample names"))
         ),
         tabPanel("Features",
                  column(9,
-                        plotOutput("scoreHeatmap", width = "100%"), 
-                        plotOutput("scorePlot", width = "100%")),
+                        plotOutput("featureHeatmap", width = "100%"), 
+                        plotOutput("featurePlot", width = "100%")),
                  column(3,
-                        uiOutput("scoreBicluster"),
-                        checkboxInput("scoreReorder", "Reorder"),
+                        uiOutput("featureBicluster"),
+                        checkboxInput("featureReorder", "Reorder"),
                         # uiOutput("annotPicker"),
-                        checkboxInput("biclusterSampNames", "Feature names"))
-                 # Score-thresholded heatmap (try empty heatmap with annotations?)
+                        checkboxInput("biclusterSampNames", "Feature names"),
+                 uiOutput("biclusterGeneListLabel"),
+                 fluidRow(verbatimTextOutput("biclusterGeneList"), 
+                          style = "height:500px; overflow-y: scroll"))
         )
       ),
       width = 9, 

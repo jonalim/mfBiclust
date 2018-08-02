@@ -10,8 +10,9 @@ BiclusterExperiment(m, bcs = list(),
   maxNa = 0.5)
 }
 \arguments{
-\item{m}{the data matrix defining this BiclusterExperiment. Should have
-samples as columns and features as rows.}
+\item{m}{The data on which derived BiclusterStrategy objects will be
+calculated. Should be a matrix or a class coercible to matrix, with samples
+as columns and features as rows}
 }
 \description{
 Constructs a \code{\link{BiclusterExperiment-class}} object holding data,
