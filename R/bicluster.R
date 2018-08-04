@@ -69,7 +69,7 @@ NULL
 #' @export
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
-                    eps_conv = 1e-7, duplicable = TRUE, verbose=TRUE, ...){
+                     eps_conv = 1e-4, duplicable = TRUE, verbose=TRUE, ...){
   ###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe.
   ###% (2018)
   ###% https://cran.r-project.org/web/packages/NMF/
@@ -90,7 +90,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
   # eps_conv
   if( eps_conv <= 0 )
     stop("SNMF/", version, "::Invalid argument 'eps_conv' - value should be positive")
-
+  
   solutions <- lapply(seq_len(reps), function(i) {
     W <- NULL # these are the results of each replicate
     H <- NULL
@@ -168,9 +168,22 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
       ###% M.W. Berry et al. (2007), "Algorithms and Applications for Approximate
       ###% Nonnegative Matrix Factorization," Computational Statistics and Data
       ###% Analysis, vol. 52, no. 1, pp. 155-173.
-      residNorm <- sum((A - W %*% H) ^ 2) / length(A)
-      if(abs(residNormOld - residNorm) <= eps_conv && verbose) {
-        if(verbose) message("Converged!")
+      # According to the Matlab nnmf, uses RMS instead of Frobenius Norm. Also
+      # stops if W and H have converged
+      residNorm <- sqrt(mean((A - W %*% H) ^ 2))
+      dW <- W - Wold
+      dW <- sqrt(mean(dW ^ 2))
+      dH <- H - Hold
+      dH <- sqrt(mean(dH ^ 2))
+      
+      if(abs(residNormOld - residNorm) <= eps_conv ||
+         (dW <= eps_conv && dH <= eps_conv)) {
+        if(verbose) {
+          cat("Track:\tIter\tNorm\t\trms(dW)\t\trms(dH)\n")
+          cat(sprintf("\t%d\t%f\t%f\t%f\n",
+                      i,residNorm, dW, dH))
+          message("Converged!")
+        }
         break
       }
       residNormOld <- residNorm
@@ -182,9 +195,9 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
       # every 10 iterations
       if (i %% 10==0){
         if ( verbose ){ # prints number of changing elements
-          cat("Track:\tIter\tNorm\tdelta\n")
-          cat(sprintf("\t%d\t%f\t%f\n",
-                      i,residNorm, residNormOld - residNorm))
+          cat("Track:\tIter\tNorm\t\trms(dW)\t\trms(dH)\n")
+          cat(sprintf("\t%d\t%f\t%f\t%f\n",
+                      i,residNorm, dW, dH))
         }
       }
     }
@@ -200,7 +213,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
   res <- new("genericFit", fit = res, method = "als-nmf")
   
   return(res)
-  }
+}
 
 nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
   if(duplicable) {
