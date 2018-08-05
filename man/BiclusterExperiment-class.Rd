@@ -4,6 +4,7 @@
 \name{BiclusterExperiment-class}
 \alias{BiclusterExperiment-class}
 \alias{as.matrix,BiclusterExperiment-method}
+\alias{clean,BiclusterExperiment-method}
 \alias{getStrat,BiclusterExperiment-method}
 \alias{names,BiclusterExperiment-method}
 \alias{wipe,BiclusterExperiment-method}
@@ -12,6 +13,8 @@
 \title{Class "BiclusterExperiment" for data and biclusters}
 \usage{
 \S4method{as.matrix}{BiclusterExperiment}(x)
+
+\S4method{clean}{BiclusterExperiment}(object, cleanParam)
 
 \S4method{getStrat}{BiclusterExperiment}(bce, id)
 
@@ -32,6 +35,8 @@ the same abundance data. Objects can be created using the
 \section{Methods (by generic)}{
 \itemize{
 \item \code{as.matrix}: Get abundance values in a BiclusterExperiment
+
+\item \code{clean}: Remove rows and columns with less than \code{cleanParam} entries present
 
 \item \code{getStrat}: Get a BiclusterStrategy contained by a
 BiclusterExperiment, by providing either name or integer index
