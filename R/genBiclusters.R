@@ -79,14 +79,10 @@ genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols,
   }
   
   res <- matrix(bgConst, nrow = sizeX, ncol = sizeY)
+
   # Background is row-stripes
   invisible(lapply(seq_len(nrow(res)), function(row) {
     res[row, ] <<- rnorm(1, 0, rowBase)
-  }))
-  
-  # Background is row-stripes
-  invisible(lapply(seq_len(nrow(res)), function(row) {
-    res[row, ] <- rnorm(1, 0, rowBase)
   }))
   
   # add Gaussian noise
