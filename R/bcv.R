@@ -71,7 +71,7 @@ auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
     if(verbose) {
       cat(paste("Iteration", i + 1L, "\n"))
       cat(paste("Current best:",
-                names(distr[min(which(cumsum(distr - 1) > (sum(distr - 1) / 2)))]),
+                names(which.max(distr)),
                 "\n"))
       cat("BCV result distribution:\n")
       message(paste0(
@@ -90,7 +90,7 @@ auto_bcv <- function(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
   
   distr <- distr - 1 # remove the pseudocount that was added
   
-  med <- as.numeric(names(distr[min(which(cumsum(distr) > (sum(distr) / 2)))]))
+  med <- as.numeric(names(which.max(distr)))
   if(bestOnly) { med }
   else { list(best = med, counts = distr) }
 }
