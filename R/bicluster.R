@@ -304,37 +304,30 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
   }
   
   args <- list(...)
-  shuffleMax <- args$shuffle
-  args <- c(cluster = args$cluster, fit.model = args$fit.model, 
+  args <- c(cluster = args$cluster, shuffle = args$shuffle, fit.model = args$fit.model, 
             background = args$background, 
             background.layer = args$background.layer,
             background.df = args$background.df,
             backfit = args$backfit, iter.startup = args$iter.startup, 
             iter.layer = args$iter.layer, verbose = args$verbose)
-  if(is.null(shuffleMax)) shuffleMax <- 10
   number <- 0
   release <- 0.7
-  shuff <- 3
   best <- NULL
-  while(shuff <= shuffleMax && number < k) {
-    while(number < k && release > 0) {
-      dummy <- capture.output({
-        bc <- do.call(biclust::biclust, 
-                      c(list(x = A, method = biclust::BCPlaid(),
-                             row.release = release, col.release = release,
-                             max.layers = k, shuffle = shuff), args))
-      })
-      if(bc@Number > number) {
-        number <- bc@Number
-        best <- bc
-      }
-      release <- max(0.1, release - 0.1)
-      # first release decrements from 0.7 to 0.1
+  while(number < k && release > 0) {
+    dummy <- capture.output({
+      bc <- do.call(biclust::biclust, 
+                    c(list(x = A, method = biclust::BCPlaid(),
+                           row.release = release, col.release = release,
+                           max.layers = k), args))
+    })
+    if(bc@Number > number) {
+      number <- bc@Number
+      best <- bc
     }
-    # then if necessary, shuffle increments from 3 to 10
-    shuff <- shuff + 1
+    release <- max(0.1, release - 0.1)
+  # release decrements from 0.7 to 0.1
   }
-  
+
   if(k > number) {
     k <- number
     warning(paste("Plaid could only find", k, "biclusters"))
@@ -344,7 +337,6 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
     cat(paste("row.release =", best@Parameters$Call$row.release, "\n"))
     cat(paste("col.release =", best@Parameters$Call$col.release, "\n"))
     cat(paste("max.layers =", best@Parameters$Call$max.layers, "\n"))
-    cat(paste("shuffle =", best@Parameters$Call$shuffle, "\n"))
   }
   
   return(best)

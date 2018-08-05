@@ -7,9 +7,9 @@ genSimData <- function(n = 1, clusterHeight = 20, clusterWidth = 20,
                        dimx = 80, dimy = 80, 
                        overlapRows = 0, overlapCols = 0,
                        biclusterConstant = NULL, biclusterShift = 0, 
-                       rowShift = 0, rowScale = NULL,
+                       rowBase = 0, rowShift = 0, rowScale = NULL,
                        colShift = 0, colScale = NULL,
-                       bgConst = 0, bgNorm = 0, bgUnif = 0, 
+                       bgConst = 0, bgNorm = 0, bgUnif = 0,
                        shuffle = TRUE, file = "") {
   if(!(
     (length(clusterHeight) == 1 || length(clusterHeight) == n) &&
@@ -43,7 +43,7 @@ genSimData <- function(n = 1, clusterHeight = 20, clusterWidth = 20,
                           biclusterShift = biclusterShift,
                           biclusterRows = xCoords,
                           biclusterCols = yCoords, 
-                          rowShift = rowShift, rowScale = rowScale,
+                          rowBase = rowBase, rowShift = rowShift, rowScale = rowScale,
                           colShift = colShift,
                           colScale = colScale,
                           bgConst = bgConst, bgNorm = bgNorm, bgUnif = bgUnif)
@@ -72,7 +72,7 @@ genSimData <- function(n = 1, clusterHeight = 20, clusterWidth = 20,
 genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols, 
                              biclusterConstant,
                              biclusterShift,
-                             rowShift, rowScale, colScale, colShift,
+                             rowBase, rowShift, rowScale, colScale, colShift,
                              bgConst, bgNorm, bgUnif) {
   if (length(biclusterRows) != length(biclusterCols)) {
     stop("biclusterRows and biclusterCols must be the same length")
@@ -80,11 +80,16 @@ genSimDataHelper <- function(sizeX, sizeY, biclusterRows, biclusterCols,
   
   res <- matrix(bgConst, nrow = sizeX, ncol = sizeY)
   
+  # Background is row-stripes
+  invisible(lapply(seq_len(nrow(res)), function(row) {
+    res[row, ] <- rnorm(1, 0, rowBase)
+  }))
+  
   # add Gaussian noise
   res <- res + bgNorm * matrix(rnorm(n = sizeX * sizeY), nrow = sizeX)
   
   # add uniform background
-  res <- res + matrix(runif(n = sizeX * sizeY, 0, bgUnif), nrow = sizeX)
+  # res <- res + matrix(runif(n = sizeX * sizeY, 0, bgUnif), nrow = sizeX)
   
   # Every bicluster set to the same value
   if(!is.null(biclusterConstant)) {

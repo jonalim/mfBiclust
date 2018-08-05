@@ -4,7 +4,7 @@
 \alias{als_nmf}
 \title{Alternating-least-squares non-negative matrix approximation}
 \usage{
-als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-07,
+als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
   duplicable = TRUE, verbose = TRUE, ...)
 }
 \arguments{
