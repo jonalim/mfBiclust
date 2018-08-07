@@ -1,7 +1,7 @@
 function(input, output, session) {
   params <- list(
     biclusterargs = if(dbg) {
-      list(maxIter = 100L, shuffle = 1, withinVar = 10)
+      list(maxIter = 10L, withinVar = 10, row.release = 0.1, col.release = 0.1)
     } else list(), # currently otsu is hardcoded even in debug mode
     bcvArgs = if(dbg) list(holdouts = 2L) else list(),
     annotateBiclusters = if(dbg) 3L else NA # how many biclusters to annotate
@@ -31,15 +31,44 @@ function(input, output, session) {
     goLastParams = list()
   )
   
+  kSliderProxy <- reactiveValues(value = NULL)
+  observe({ kSliderProxy$value <- input$k }, priority = 10)
+  updateK <- function(value) {
+    # updates the value of kSliderProxy immediately, without checking for
+    # validity
+    try({
+      value <- as.integer(value)
+      updateSliderInput(session, "k", value = value)
+      kSliderProxy$value <- value
+    })
+  }
+  
   output$status <- renderText({
     
     if(input$navbarpage == "Functional Annotation") {
       enrichedBc <- length(goSummary()$significance < 0.05)
       totalBc <- length(goSummary()$significance)
+      if(inherits(goSummary()$universeSize, "integer")) {
+        numMatched <- goSummary()$universeSize
+      } else numMatched <- "--"
       desc <- paste(enrichedBc, "/", totalBc, "biclusters enriched (p < 0.05)",
-                    "|", goSummary()$universeSize, "/", nrow(values$bce),
+                    "|", numMatched, "/", nrow(values$bce),
                     "genes matched to GO terms")
-    } else { desc <- "" }
+    } else if (input$navbarpage == "Data") {
+      if(inherits(values$bce, "BiclusterExperiment")) {
+        samples <- ncol(values$bce)
+        feat <- nrow(values$bce)
+      } else {
+        samples <- "--"
+        feat <- "--"
+      }
+      desc <- paste(samples, "samples X", feat, "features")
+    }else if(input$navbarpage == "Bicluster") {
+      if(inherits(values$strategy, "BiclusterStrategy")) {
+        k <- nclust(values$strategy)
+      } else { k <- "--" }
+        desc <- paste(k, "Biclusters in the selected BiclusterStrategy")
+      } else { desc <- "" }
     return(desc)
     })
   
@@ -84,7 +113,6 @@ function(input, output, session) {
         # careful; is all data preserved here?
         bce <- BiclusterExperiment(t(as.matrix(userBce)))
       }
-      browser()
       setProgress(3/8)
       if(nchar(input$customRowNames) > 0) {
         ns <- unlist(strsplit(x = input$customRowNames, split = "\\s+"))
@@ -233,16 +261,14 @@ function(input, output, session) {
   })
   
   #### BICLUSTER TAB ####
-  # FIXME need to initialize the sliderInput before even navigating to this tab.
-  # That way, BCV and Bicluster can modify the sliderInput.
-  # TODO initialize the slidreInput in the UI, then use an observer on values$bce
-  # to modify the max and value ASAP
+  # FIXME BCV and Bicluster still cannot modify the sliderInput.
   observeEvent({
     values$bce
   },
   {
+    
     bce <- values$bce
-    val <- input$k
+    val <- kSliderProxy$value
     if(is.null(bce)) { 
       maxk <- 1
       val <- 1
@@ -251,19 +277,18 @@ function(input, output, session) {
       maxk <- min(nrow(m), ncol(m))
       val <- min(2, maxk) # if possible, suggest 2 to the user
     }
-    if(inherits(userBce, "BiclusterExperiment") &&
-       inherits(values$strategy, "BiclusterStrategy")) {
+    if(inherits(values$strategy, "BiclusterStrategy")) {
       updateSelectInput(session, "algo", selected = method(values$strategy))
       val <- nclust(values$strategy) # if there's already a biclusterstrategy..
     }
     updateSliderInput(session, "k", max = maxk, step = 1)
-    updateSliderInput(session, "k", value = val)
+    updateK(value = val)
   }
   )
   
   observeEvent({
     values$bce
-    input$k
+    kSliderProxy$value
     input$algo
   },
   {
@@ -274,11 +299,11 @@ function(input, output, session) {
   biclusteringAllowed <- function() {
     # core data must be available
     if(inherits(values$bce, "BiclusterExperiment") && 
-       inherits(input$k, "integer")) {
+       inherits(kSliderProxy$value, "integer")) {
       # The parameters must not match an existing BiclusterStrategy
       if(all(names(values$bce) !=
              name(list(bca = capitalize(input$algo),
-                       threshAlgo = capitalize("otsu"), k = input$k)))) {
+                       threshAlgo = capitalize("otsu"), k = kSliderProxy$value)))) {
         return(TRUE)
       }
     }
@@ -286,8 +311,9 @@ function(input, output, session) {
   }
   
   observeEvent(input$bicluster, {
+    
     validate(need(inherits(values$bce, "BiclusterExperiment"), "You may import your dataset."))
-    validate(need(inherits(input$k, "integer"), ""))
+    validate(need(inherits(kSliderProxy$value, "integer"), ""))
     # temporarily override the button's own renderUI
     shinyjs::disable("bicluster")
     try(removeNotification("overlapNotif"))
@@ -295,19 +321,23 @@ function(input, output, session) {
     bce <- values$bce
     # Look for an existing BiclusterStrategy with the same parameters
     stratName <- name(list(bca = capitalize(input$algo), 
-                           sta = capitalize("otsu"), lta = capitalize("otsu"), k = input$k))
+                           sta = capitalize("otsu"), lta = capitalize("otsu"), k = kSliderProxy$value))
     matchStrats <- which(names(bce) == stratName)
     if(length(matchStrats) == 0) {
+      # if the requested BiclusterStrategy doesn't exist yet, run addStrat()
       withProgress({
+        # Hack to set withinVar dynamically
         if("withinVar" %in% names(params$biclusterargs)) {
           params$biclusterargs$withinVar <- params$biclusterargs$withinVar * 
             nrow(bce)
         }
         # append any optional debug-mode arguments
         withCallingHandlers(
-          bce <- do.call(addStrat,
-                         c(bce = bce, k = input$k, method = input$algo,
-                           duplicable = TRUE, params$biclusterargs)),
+          bce <- do.call(
+            addStrat,
+            c(bce = bce, k = kSliderProxy$value, method = input$algo, 
+              verbose = FALSE,
+              duplicable = TRUE, params$biclusterargs)),
           warning = function(w) {
             # In case less than the requested number of biclusters was found
             showNotification(w$message, duration = NULL)
@@ -333,16 +363,19 @@ function(input, output, session) {
   # yet
   observeEvent({values$bce
     input$algo
-    input$k
+    kSliderProxy$value
   }, {
-    if(inherits(values$bce, "BiclusterExperiment") && inherits(input$k, "integer")) {
+    if(inherits(values$bce, "BiclusterExperiment") && inherits(kSliderProxy$value, "integer")) {
       bce <- values$bce
       stratName <- name(list(bca = capitalize(input$algo), 
-                             threshAlgo = capitalize("otsu"), k = input$k))
+                             threshAlgo = capitalize("otsu"), k = kSliderProxy$value))
       matchStrats <- which(names(bce) == stratName)
       if(length(matchStrats) > 0) {
         # If the BiclusterStrategy has been run already, activate it
         values$strategy <- strategies(bce)[[stratName]]
+      } else {
+        # If not, then erase the active strategy
+        values$strategy <- NULL
       }
     }
   }
@@ -354,7 +387,7 @@ function(input, output, session) {
     values$bce
     input$bcHighlights_dblclick
   }, {
-    validate(need(values$inherits(bce, "BiclusterExperiment")))
+    validate(need(inherits(values$bce, "BiclusterExperiment"), ""))
     mat <- as.matrix(values$bce)
     
     if(inherits(mat, "matrix") && mode(mat) == "numeric") {
@@ -406,7 +439,7 @@ function(input, output, session) {
     validate(need(inherits(arr, "array") && 
                     mode(arr) == "numeric" &&
                     !is.null(dim(arr)),
-                  "Data for heatmap has not been parsed yet. Try switching revisiting the 'Data' tab momentarily."))
+                  "Data for heatmap has not been parsed yet or contains non-numbers"))
     temp <- tempfile(fileext = ".png")
     # if(inherits(arr, "array") && mode(arr) == "numeric") {
     
@@ -421,11 +454,13 @@ function(input, output, session) {
     #   
     # }
     try(png::writePNG(arr, target = temp))
+    
+    height <- input$dimension[2]
     # Return a list containing information about the zoomed image
     list(
       src = temp,
       contentType = "image/png",
-      title = "Click and drag to zoom in; double-click to reset", height = 723,
+      title = "Click and drag to zoom in; double-click to reset", height = (height - 130) * 0.9,
       width = "100%"
     )
   })
@@ -545,7 +580,7 @@ reactivesampleHeatmap <- reactive({
 # Plot of sample loadings for one bicluster
 output$samplePlot <- renderPlot({
   validate(need(inherits(values$strategy, "BiclusterStrategy") &&
-                  !is.null(input$sampleBicluster), ""))
+                  nchar(input$sampleBicluster) > 0, ""))
   reactiveMarkers()
 })
 reactiveMarkers <- reactive({
@@ -698,7 +733,7 @@ observeEvent(
   input$bcvButton,
   {
     runBcv()
-    updateSliderInput(session, "k", val = values$bcvBest)
+    updateK(val = values$bcvBest)
   }
 )
 runBcv <- function() {
@@ -712,7 +747,8 @@ runBcv <- function() {
         shinyjs::html("bcvtext", "")
         suppressWarnings(
           do.call(auto_bcv,
-                  c(list(Y = as.matrix(values$bce), ks = seq_len(nrow(as.matrix(values$bce))), 
+                  c(list(Y = as.matrix(values$bce), ks = seq_len(nrow(as.matrix(values$bce))),
+                         holdouts = 3,
                          bestOnly = FALSE, verbose = TRUE,
                          interactive = FALSE),
                     params$bcvArgs)))
@@ -742,8 +778,12 @@ observeEvent(
 )
 observeEvent(input$bcvAndBicluster, {
   runBcv()
-  updateSliderInput(session, "k", val = values$bcvBest)
-  if(biclusteringAllowed()) shinyjs::click("bicluster")
+  
+  updateK(value = values$bcvBest)
+  if(biclusteringAllowed()) {
+    shinyjs::enable("bicluster")
+    shinyjs::click("bicluster")
+  }
   updateTabsetPanel(session, "navbarpage", selected = "Bicluster")
 })
 

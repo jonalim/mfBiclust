@@ -304,6 +304,8 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
   }
   
   args <- list(...)
+  row.release <- list(...)$row.release
+  col.release <- list(...)$col.release
   args <- c(cluster = args$cluster, shuffle = args$shuffle, fit.model = args$fit.model, 
             background = args$background, 
             background.layer = args$background.layer,
@@ -311,20 +313,22 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
             backfit = args$backfit, iter.startup = args$iter.startup, 
             iter.layer = args$iter.layer, verbose = args$verbose)
   number <- 0
-  release <- 0.7
+  if(is.null(row.release)) { row.release <- 0.7 }
+  if(is.null(col.release)) { col.release <- 0.7 }
   best <- NULL
-  while(number < k && release > 0) {
+  while(number < k && (row.release > 0 || col.release > 0)) {
     dummy <- capture.output({
       bc <- do.call(biclust::biclust, 
                     c(list(x = A, method = biclust::BCPlaid(),
-                           row.release = release, col.release = release,
+                           row.release = row.release, col.release = col.release,
                            max.layers = k), args))
     })
     if(bc@Number > number) {
       number <- bc@Number
       best <- bc
     }
-    release <- max(0.1, release - 0.1)
+    row.release <- max(0, row.release - 0.1)
+    col.release <- max(0, col.release - 0.1)
   # release decrements from 0.7 to 0.1
   }
 
@@ -414,6 +418,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     stop("For Spectral the minimum size of m is 6x6")
   }
   
+  # sometimes withinVar is explicitly named by the caller
   withinVar <- list(...)$withinVar
   # JNL try to find the lowest value of withinVar that yields enough biclusters.
   # 10 * nrow(m) is an arbitrary cutoff designed for when rows

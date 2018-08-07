@@ -30,13 +30,14 @@ tabPanel(
           "Summary",
           tags$style(
             type = "text/css",
-            paste0("#bcHighlights {image-rendering: pixelated !important;")),
-          # possible fixes for other browsers:
-          # image-rendering: optimizeSpeed;
-          # image-rendering: -moz-crisp-edges;
-          # image-rendering: -o-crisp-edges;
-          # image-rendering: -webkit-optimize-contrast;
-          # image-rendering: optimize-contrast;
+            paste0("#bcHighlights {image-rendering: pixelated !important;
+                   image-rendering: optimizeSpeed;
+          image-rendering: -moz-crisp-edges;
+          image-rendering: -o-crisp-edges;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: optimize-contrast;")),
+          # Try removing optimize contrast or optimizeSpeed if the heatmap
+          # doesn't look right
           
           # filled interactive heatmap
           # In a imageOutput, passing values for click, dblclick, hover, or brush

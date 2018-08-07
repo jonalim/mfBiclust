@@ -21,7 +21,8 @@ tabPanel(
       tabsetPanel(id = "goTab",
                   tabPanel("Biclusters",  plotOutput("goSigPlot")),
                   tabPanel("Terms",
-                           tags$style(type = "text/css", "#goTermTable {height: calc(90vh - 80px) !important;}"),
+                           tags$style(type = "text/css", "#goTermTable {height:
+                                      calc(90vh - 167px) !important;}"),
                            DT::DTOutput("goTermTable"),
                            actionButton("goTabGenes",
                                         label = "Inspect genes")),
