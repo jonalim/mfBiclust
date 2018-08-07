@@ -240,7 +240,7 @@ validateBiclustNames <- function(biclustNames, bcs) {
         paste0(
           "Requested bicluster labels ",
           paste(setdiff(biclustNames, validNames), sep = ", "),
-          " do not match any of names(bcs)")
+          " do not match any of bcNames(bcs)")
       )
       biclustNames <- intersect(biclustNames, validNames)
     }

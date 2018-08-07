@@ -133,7 +133,7 @@ setMethod(
 #' @param phenoLabels an optional character vector of labels to annotate. If \code{type = "score"},
 #' \code{phenoLabels} should be column names of \code{Biobase::phenoData(bce)}
 #' @param biclustLabels an optional character vector of labels to annotate.
-#'   Should be elements of \code{names(bcs)}. Both \code{phenoLabels} and
+#'   Should be elements of \code{bcNames(bcs)}. Both \code{phenoLabels} and
 #'   \code{biclustLabels} may be specified.
 #' @param ordering \code{ordering = "distance"} to reorder by Euclidean distance
 #'   on \code{as.matrix(BiclusterExperiment)}. \code{ordering = "cluster"} to

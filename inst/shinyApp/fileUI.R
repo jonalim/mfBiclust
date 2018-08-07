@@ -1,20 +1,26 @@
 tabPanel(
   "Data",
   tags$head(tags$style(type="text/css", # Enables auto width for rendered abundance
-                       "#abundance{max-width: 100%; width: 100%; height: 100vh !important;}")),
+                       "#abundance{max-width: 100%; width: 100%; height: 100vh !important;}")
+            ),
   #### sidebar ####
   sidebarLayout(
     sidebarPanel(
       h3("Upload options"),
-      fileInput("input_df", "File:",
+      fileInput("input_df",label = NULL,
                 accept=c('text/csv','text/comma-separated-values,text/plain',
                          '.csv')),
+
       checkboxInput("row_names", "Row names?", FALSE),
       checkboxInput("header", "Header?", FALSE),
-      numericInput("skiplines", "Skip additional lines", 0, min = 0),
-      textInput("sepchar", "Sep. (empty = whitespace)", ""),
-      textInput("quotechar", "Quote", ""),
-      textInput("decchar", "Decimal", "."),
+      div(numericInput("skiplines", "Skip additional lines", 0, min = 0),
+          style = "font-size:80%;"),
+      div(textInput("sepchar", "Sep. (empty = whitespace)", ""),
+          style = "font-size:80%;"),
+      div(textInput("quotechar", "Quote", ""),
+          style = "font-size:80%;"),
+      div(textInput("decchar", "Decimal", "."),
+          style = "font-size:80%;"),
       width = 3
     ),
     #### main panel and description column ####
@@ -27,10 +33,12 @@ tabPanel(
                    sidebarPanel(
                      h3("Formatting"),
                      checkboxInput("transpose", "Transpose (samples must be in columns)"),
-                     textAreaInput("customRowNames", "Custom feature names",
-                                   placeholder = "Line-separated names;\nENSEMBL IDs required for GO analysis",
-                                   resize = "vertical"),
-                     textAreaInput("customColNames", "Custom sample names", resize = "vertical"),
+                     div(textAreaInput("customRowNames", "Custom feature names",
+                                       placeholder = "Line-separated names;\nENSEMBL IDs required for GO analysis",
+                                       resize = "vertical"),
+                         style = "font-size:80%;"),
+                     div(textAreaInput("customColNames", "Custom sample names", resize = "vertical"),
+                         style = "font-size:80%;"),
                      actionButton(inputId = "postUploadUpdate", label = "Update"),
                      width = 3
                    ),
@@ -54,11 +62,11 @@ tabPanel(
                 uiOutput("annotPicker"),
                 checkboxInput("sampNames", "Sample names"),
                 checkboxInput("featNames", "Feature names"),
-                width = 2
+                width = 3
               ),
               mainPanel(
                 fluidRow(uiOutput("uiabundance", width = "100%")),
-                width = 10),
+                width = 9),
               position = "right"
             )
           )),
