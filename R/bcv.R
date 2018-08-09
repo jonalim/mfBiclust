@@ -224,18 +224,8 @@ bcvGivenKs <- function(Y, ks, holdouts = 10L) {
   names(rcvs) <- as.character(ks)
   
   # In all, we took the sum of residuals of A - estA, for holdouts covering A
-  # exactly once. Therefore, we normalize to the size of the matrix here,
-  # without NA's because NAs are evaluated as 0 when taking the Frobenius norm.
-  rcvVals <- rcvs / (p * n - sum(is.na(Y)))
-  
-  # subtract <- c(0, cumsum(var_k[1:(length(var_k) - 1)]))
-  # frob_square_x <- sum(Y ^ 2)
-  # rcvVals <- mapply(function(rcv, subtract, var_k) {
-  #   rcv <- 100 * (1 - rcv / frob_square_x)
-  #   rcv <- rcv - subtract
-  #   min(rcv, var_k)
-  # }, rcv = rcvs, subtract = subtract, var_k = var_k, SIMPLIFY = TRUE)
-  rcvVals
+  # exactly once.
+  return(rcvs)
 }
 
 kLimiter <- function(holdouts, dim, ks) {
