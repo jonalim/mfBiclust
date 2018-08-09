@@ -428,6 +428,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     withinVar <- minDim
   }
   
+<<<<<<< HEAD
   # the number of eigenvalues to consider. This can limit number of biclusters
   # found, so increase from the default if necessary.
   e <- 3
@@ -437,6 +438,26 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     # internally, every row cluster i in e is combined with every col cluster >=
     # i so the number of possible biclusters is the summation of numbers up to e
     e <- e + 1 # just increment until condition satisfied
+||||||| merged common ancestors
+  # the number of eigenvalues to consider. This can limit number of biclusters
+  # found, so increase from the default if necessary.
+  e <- 3
+  if(!nrow(A) / minx * ncol(A) / minx * e >= k) {
+    e <- ceiling(k / (nrow(A) / minx * ncol(A) / minx))
+=======
+  numberOfEigenvalues <- list(...)$numberOfEigenvalues
+  if(is.null(numberOfEigenvalues)) {
+    # the number of eigenvalues to consider. This can limit number of biclusters
+    # found, so increase from the default if necessary.
+    numberOfEigenvalues <- 3
+    while(!(floor(min(100, nrow(A) / minx) - 1) * # the max number of row clusters
+          floor(ncol(A) / minx - 1)) * # the max number of col clusters
+       sum(seq_len(numberOfEigenvalues)) >= k) {
+      # internally, every row cluster i in e is combined with every col cluster >=
+      # i so the number of possible biclusters is the summation of numbers up to e
+      numberOfEigenvalues <- numberOfEigenvalues + 1 # just increment until condition satisfied
+    }
+>>>>>>> Correct Spectral wrapper so number of biclusters found is not limited by numberOfEigenvalues
   }
   
   number <- 0 # save the biclustering solution with the most clusters
@@ -445,25 +466,26 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     bc <- do.call(biclust::biclust,
                   list(x = A, method = biclust::BCSpectral(),
                        normalization = "log", withinVar= withinVar, minr = minx,
-                       minc = minx, numberOfEigenvalues = e))
+                       minc = minx, numberOfEigenvalues = numberOfEigenvalues))
     if(bc@Number > number) {
       number <- bc@Number
       best <- bc
     }
     withinVar <- withinVar + minDim
+    
+    if(verbose) {
+      cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
+      cat(paste("normalization =", bc@Parameters$Call$normalization, "\n"))
+      cat(paste("withinVar =", bc@Parameters$Call$withinVar, "\n"))
+      cat(paste("minr =", bc@Parameters$Call$minr, "\n"))
+      cat(paste("minc =", bc@Parameters$Call$minc, "\n"))
+      cat(paste("numberOfEigenvalues =", bc@Parameters$Call$numberOfEigenvalues, "\n"))
+      cat(paste("biclusters:", bc@Number, "\n"))
+    }
   }
   if(k > number) {
     k <- number
     warning(paste("Spectral could only find", k, "biclusters"))
-  }
-  
-  if(verbose) {
-    cat(paste("method =", class(best@Parameters$Call$method), "\n"))
-    cat(paste("normalization =", best@Parameters$Call$normalization, "\n"))
-    cat(paste("withinVar =", best@Parameters$Call$withinVar, "\n"))
-    cat(paste("minr =", best@Parameters$Call$minr, "\n"))
-    cat(paste("minc =", best@Parameters$Call$minc, "\n"))
-    cat(paste("numberOfEigenvalues =", best@Parameters$Call$numberOfEigenvalues, "\n"))
   }
   
   return(best)
