@@ -431,13 +431,17 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
   # the number of eigenvalues to consider. This can limit number of biclusters
   # found, so increase from the default if necessary.
   e <- 3
-  if(!nrow(A) / minx * ncol(A) / minx * e >= k) {
-    e <- ceiling(k / (nrow(A) / minx * ncol(A) / minx))
+  while(!(floor(min(100, nrow(A) / minx) - 1) * # the max number of row clusters
+        floor(ncol(A) / minx - 1)) * # the max number of col clusters
+     sum(seq_len(e)) >= k) {
+    # internally, every row cluster i in e is combined with every col cluster >=
+    # i so the number of possible biclusters is the summation of numbers up to e
+    e <- e + 1 # just increment until condition satisfied
   }
   
   number <- 0 # save the biclustering solution with the most clusters
   best <- NULL
-  while(number < k && withinVar <= 10L * minDim) {
+  while(number < k) {
     bc <- do.call(biclust::biclust,
                   list(x = A, method = biclust::BCSpectral(),
                        normalization = "log", withinVar= withinVar, minr = minx,
