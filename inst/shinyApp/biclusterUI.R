@@ -82,5 +82,5 @@ tabPanel(
       width = 9, 
       
       position = "left")
-  )
+  ), class = "outerTabPanel"
 )
