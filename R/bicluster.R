@@ -313,8 +313,8 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
             backfit = args$backfit, iter.startup = args$iter.startup, 
             iter.layer = args$iter.layer, verbose = args$verbose)
   number <- 0
-  if(is.null(row.release)) { row.release <- 0.7 }
-  if(is.null(col.release)) { col.release <- 0.7 }
+  if(is.null(row.release)) { row.release <- 1 }
+  if(is.null(col.release)) { col.release <- 1 }
   best <- NULL
   while(number < k && (row.release > 0 || col.release > 0)) {
     dummy <- capture.output({
@@ -327,6 +327,14 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
       number <- bc@Number
       best <- bc
     }
+    if(verbose) {
+      cat(paste("method =", class(bc@Parameters$Call$method), "\n"))
+      cat(paste("max.layers =", bc@Parameters$Call$max.layers, "\n"))
+      cat(paste("row.release =", bc@Parameters$Call$row.release, "\n"))
+      cat(paste("col.release =", bc@Parameters$Call$col.release, "\n"))
+      cat(paste("Biclusters:", bc@Number, "\n"))
+    }
+  
     row.release <- max(0, row.release - 0.1)
     col.release <- max(0, col.release - 0.1)
   # release decrements from 0.7 to 0.1
@@ -336,13 +344,7 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
     k <- number
     warning(paste("Plaid could only find", k, "biclusters"))
   }
-  if(verbose) {
-    cat(paste("method =", class(best@Parameters$Call$method), "\n"))
-    cat(paste("row.release =", best@Parameters$Call$row.release, "\n"))
-    cat(paste("col.release =", best@Parameters$Call$col.release, "\n"))
-    cat(paste("max.layers =", best@Parameters$Call$max.layers, "\n"))
-  }
-  
+
   return(best)
 }
 
@@ -428,23 +430,6 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
     withinVar <- minDim
   }
   
-<<<<<<< HEAD
-  # the number of eigenvalues to consider. This can limit number of biclusters
-  # found, so increase from the default if necessary.
-  e <- 3
-  while(!(floor(min(100, nrow(A) / minx) - 1) * # the max number of row clusters
-        floor(ncol(A) / minx - 1)) * # the max number of col clusters
-     sum(seq_len(e)) >= k) {
-    # internally, every row cluster i in e is combined with every col cluster >=
-    # i so the number of possible biclusters is the summation of numbers up to e
-    e <- e + 1 # just increment until condition satisfied
-||||||| merged common ancestors
-  # the number of eigenvalues to consider. This can limit number of biclusters
-  # found, so increase from the default if necessary.
-  e <- 3
-  if(!nrow(A) / minx * ncol(A) / minx * e >= k) {
-    e <- ceiling(k / (nrow(A) / minx * ncol(A) / minx))
-=======
   numberOfEigenvalues <- list(...)$numberOfEigenvalues
   if(is.null(numberOfEigenvalues)) {
     # the number of eigenvalues to consider. This can limit number of biclusters
@@ -457,7 +442,6 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
       # i so the number of possible biclusters is the summation of numbers up to e
       numberOfEigenvalues <- numberOfEigenvalues + 1 # just increment until condition satisfied
     }
->>>>>>> Correct Spectral wrapper so number of biclusters found is not limited by numberOfEigenvalues
   }
   
   number <- 0 # save the biclustering solution with the most clusters
@@ -480,7 +464,7 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
       cat(paste("minr =", bc@Parameters$Call$minr, "\n"))
       cat(paste("minc =", bc@Parameters$Call$minc, "\n"))
       cat(paste("numberOfEigenvalues =", bc@Parameters$Call$numberOfEigenvalues, "\n"))
-      cat(paste("biclusters:", bc@Number, "\n"))
+      cat(paste("Biclusters:", bc@Number, "\n"))
     }
   }
   if(k > number) {
