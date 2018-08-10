@@ -1,7 +1,6 @@
 tagList(
   shinyjs::useShinyjs(),
-  tags$head(tags$style(type="text/css", ".tab-content { height: 82vh;
-                       !important; }" ),
+  tags$head(tags$style(type="text/css", ".footer {height: 39px; }" ),
             tags$script('
                               var dimension = [0, 0];
                               $(document).on("shiny:connected", function(e) {
@@ -16,7 +15,7 @@ tagList(
                               });
                               ')),
   #### UI ##################################################################
-  navbarPage(
+  div(navbarPage(
     theme = shinythemes::shinytheme("yeti"), inverse = TRUE, "mfBiclust UI",
     #### Data tabpanel ####
     source(system.file('shinyApp', "fileUI.R", package='mfBiclust'), local = TRUE)$value,
@@ -24,7 +23,7 @@ tagList(
     source(system.file('shinyApp', "biclusterUI.R", package='mfBiclust'), local = TRUE)$value,
     source(system.file('shinyApp', "bcvUI.R", package='mfBiclust'), local = TRUE)$value, 
     source(system.file('shinyApp', "goUI.R", package='mfBiclust'), local = TRUE)$value,
-    id = "navbarpage", fluid = TRUE,
-    footer = tags$footer(verbatimTextOutput("status"))
-  )
+    id = "navbarpage", fluid = TRUE
+  ), style = "height: calc(100vh - 39px);"),
+  tags$footer(verbatimTextOutput("status"))
 )
