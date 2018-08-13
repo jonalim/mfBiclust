@@ -32,6 +32,12 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"),
   if(all(is.na(as.matrix(obj)))) { obj <- NULL }
   userBce <- obj # server.R has access to this variable
   
+  # Display infinity as "Inf" in json (without this, Inf values completely
+  # missing in datatables)
+  tojson_args.old <- getOption("DT.TOJSON_ARGS")
+  options("DT.TOJSON_ARGS" = list(na = 'string'))
+  on.exit(expr = options("DT.TOJSON_ARGS" = tojson_args.old), add = TRUE)
+  
   shinyApp(
     ui = source(system.file("shinyApp", "ui.R", package = "mfBiclust"),
                 local = TRUE)$value,
