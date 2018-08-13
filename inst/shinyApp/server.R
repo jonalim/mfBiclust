@@ -836,9 +836,7 @@ tableHelper <- function(str, nrow) {
 }
 
 #### GO ENRICHMENT ####
-# FIXME don't crash upon choosing an absent species database
-# Potential installation of GOstats and BiocInstaller...although BiocInstaller
-# was required to install dependency biclust
+# FIXME Don't crash if gene IDs aren't ENSEMBL
 output$go <- renderUI({
   if(!dep$gostats) {
     return(actionButton("gostats", "Install dependency \"GOstats\""))
@@ -1021,8 +1019,11 @@ goDF <- reactive({
         matched.bicluster.genes <- unlist(lapply(matched.bicluster.ids,
                                                  length))
         matched.dataset.genes <- unlist(lapply(matched.dataset.ids, length))
+        names <- suppressMessages(select(GO.db, keys=names(p.value), columns=c("TERM"),
+                        keytype="GOID"))
         
-        df <- data.frame(matched.bicluster.genes, matched.dataset.genes, 
+        df <- data.frame(Name = names[, 2], matched.bicluster.genes, 
+                         matched.dataset.genes, 
                          expected.genes, odds.ratio, p.value, adj.p.value)
         df$matched.bicluster.ids <- matched.bicluster.ids
         df$matched.dataset.ids <- matched.dataset.ids
@@ -1042,7 +1043,6 @@ goSummary <- reactive({
                                            Category::geneIdUniverse))
     # how many in the dataset were actually GO-annotated
     matchedDatasetSize <- length(unique(unlist(matchedDatasetIds)))
-    
     # get the lowest adj. p-value for each bicluster
     significance <- sapply(goDF(), function(df) min(df$adj.p.value))
     if(any(significance < .Machine$double.eps)) {
@@ -1062,9 +1062,9 @@ output$goSigPlot <- renderPlot({
                 "Please test for functional enrichment"))
   
   bp <- barplot(height = goSummary()$significance, xaxs = "i", yaxs = "i", xaxt = "n",
-                ylab = "-log10[p-value]")
+                ylab = "-log10[Adj. p-value]")
   las <- if(any(nchar(names(goRes)) > 5)) 2 else 1 # labels rotated?
-  axis(side = 1, at = bp, pos = 0, labels = names(goRes), las = las)
+  axis(side = 1, at = bp, pos = 0, labels = names(goSummary()$significance), las = las)
   abline(h = -log10(c(0.05)), col = "#2ca25f", lty = "dashed")
 })
 
@@ -1080,9 +1080,13 @@ output$goBicluster <- renderUI({
 output$goTermTable <- DT::renderDT({
   validate(need(length(values$goRes) > 0 && !is.null(names(values$goRes)) &&
                   !is.null(input$goBicluster), "Please test GO enrichment"))
-  df <- goDF()[[input$goBicluster]][, 1:6] # don't include gene lists
+  df <- goDF()[[input$goBicluster]][, 1:7] # don't include gene lists
   return(
-    DT::datatable(df, options = list(paging = FALSE, info = FALSE), fillContainer = TRUE,
+    DT::datatable(df, options = list(paging = FALSE, info = FALSE), 
+                  colnames = c("GO ID", "Name", "Matched bicluster genes",
+                            "Matched dataset genes", "Expected genes", "Odds ratio", "p-value", 
+                            "Adj. p-value"),
+                  fillContainer = TRUE,
                   autoHideNavigation = TRUE, selection = 'single')
   )
 })
@@ -1114,6 +1118,7 @@ observeEvent({
   }
 })
 
+# FIXME these get too large; can we put them in a scrolling div?
 output$goBiclusterGenes <- renderText({
   validate(need(length(goDF()) > 0, "Please test GO enrichment"))
   validate(need(!is.null(input$goTerm), "Please select a goTerm"))
