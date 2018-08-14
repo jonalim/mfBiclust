@@ -366,7 +366,7 @@ setMethod("nclust", c(bcs = "BiclusterStrategy"), function(bcs, allBc) {
 
 setMethod("fuzzySamples", "BiclusterStrategy", function(bcs, allBc) {
   if(allBc) { return(bcs@factors@fit@H) }
-  return(bcs@factors@fit@H[seq_len(nclust(bcs)), ])
+  return(bcs@factors@fit@H[seq_len(nclust(bcs)), , drop = FALSE])
 })
 
 setMethod("loadingThresh", "BiclusterStrategy", function(bcs, allBc) {
@@ -380,12 +380,12 @@ setMethod("loadingThresh", "BiclusterStrategy", function(bcs, allBc) {
 setMethod("clusteredSamples", c(bcs = "BiclusterStrategy"), function(
   bcs, allBc) {
   if(allBc) { return(bcs@biclust@NumberxCol) }
-  return(bcs@biclust@NumberxCol[seq_len(nclust(bcs)), ])
+  return(bcs@biclust@NumberxCol[seq_len(nclust(bcs)), , drop = FALSE])
 })
 
 setMethod("fuzzyFeatures", "BiclusterStrategy", function(bcs, allBc) {
   if(allBc) {return(bcs@factors@fit@W) }
-  return(bcs@factors@fit@W[, seq_len(nclust(bcs))])
+  return(bcs@factors@fit@W[, seq_len(nclust(bcs)), drop = FALSE])
 })
 
 setMethod("scoreThresh", "BiclusterStrategy", function(bcs, allBc) {
@@ -399,7 +399,7 @@ setMethod("scoreThresh", "BiclusterStrategy", function(bcs, allBc) {
 setMethod("clusteredFeatures", c(bcs = "BiclusterStrategy"), function(
   bcs, allBc) {
   if(allBc) { return(bcs@biclust@RowxNumber) }
-  return(bcs@biclust@RowxNumber[, seq_len(nclust(bcs))])
+  return(bcs@biclust@RowxNumber[, seq_len(nclust(bcs)), drop = FALSE])
 })
 
 
@@ -435,13 +435,13 @@ biclust2genericFit <- function(biclust) {
   if(!inherits(biclust, "Biclust")) {
     stop(paste("biclust2genericFit must be called on a \"Biclust\" class",
                "object"))
-    }
+  }
   biclusters <- biclust::biclusternumber(biclust)
   scoreLoading <- if(biclusters > 0) { 
     biclusterNumber2scorefuzzySamples(biclusters, A, k) 
   } else { list(matrix(rep(NA, nrow(A)), ncol = 1), 
                 matrix(rep(NA, ncol(A)), nrow = 1)) 
-    }
+  }
   
   new("genericFit", fit = new("genericFactorization", W = scoreLoading[[1]], 
                               H = scoreLoading[[2]]),
@@ -467,7 +467,7 @@ thresholdHelper <- function(bc, k, scoreThresh, loadingThresh, threshAlgo) {
     #### Results #############################################################
     bc@RowxNumber <- threshold(m = bc@RowxNumber, th = scoreThresh, MARGIN = 2)
     bc@NumberxCol <- threshold(m = bc@NumberxCol, th = loadingThresh,
-                                  MARGIN = 1)
+                               MARGIN = 1)
   } else { 
     bc@NumberxCol <- matrix(dimnames = dimnames(bc@NumberxCol))
     bc@RowxNumber <- matrix(dimnames = dimnames(bc@RowxNumber))
