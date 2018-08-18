@@ -1,4 +1,12 @@
 setGeneric("as.matrix")
+
+#' Bicluster names
+#' 
+#' Get the names of all biclusters in a BiclusterStrategy. This function is
+#' mostly useful for graphical functions.
+setGeneric("bcNames", signature = "bcs", function(bcs, allBc = FALSE)
+  standardGeneric("bcNames"))
+
 setGeneric("biclust", function(bcs) standardGeneric("biclust"))
 #' Clean a matrix or BiclusterExperiment
 #'
@@ -16,13 +24,32 @@ setGeneric("biclust", function(bcs) standardGeneric("biclust"))
 setGeneric("clean", function(object, cleanParam = 0, dimsRemain = FALSE)
   standardGeneric("clean"))
 
-
+#' Bicluster-feature matrix
+#' 
+#' Gets the logical matrix where rows represent features and columns represent
+#' biclusters.
 setGeneric("clusteredFeatures", signature = "bcs",
            function(bcs, allBc = FALSE) standardGeneric("clusteredFeatures")) 
 
+#' Sample-bicluster matrix
+#' 
+#' Gets the logical matrix where rows represent biclusters and columns represent
+#' samples.
 setGeneric("clusteredSamples", signature = "bcs",
            function(bcs, allBc = FALSE) standardGeneric("clusteredSamples"))
 
+#' Get a BiclusterStrategy
+#' 
+#' Returns one BiclusterStrategy in \code{bce} identified by \code{id}.
+#' 
+#' @param bce A \code{\linkS4class{BiclusterExperiment}} that contains one or
+#'   more \code{\linkS4class{BiclusterStrategy}} objects
+#' @param id A character string or numeric index identifying the desired
+#'   \code{\linkS4class{BiclusterStrategy}}
+#' @examples
+#' bce <- BiclusterExperiment(yeast_benchmark[[1]])
+#' addStrat(bce, k = 2)
+#' getStrat(bce, "ALS-NMF | Otsu | 2")
 setGeneric("getStrat", signature = "bce",
            function(bce, id) standardGeneric("getStrat"))
 
@@ -38,8 +65,8 @@ setGeneric("method", signature = "bcs",
 #' For a data matrix M x N factorized to produce k biclusters, the score matrix is k x N.
 #'
 #' @export
-setGeneric("fuzzySamples", signature = "bcs",
-           function(bcs, allBc = FALSE)  standardGeneric("fuzzySamples"))
+setGeneric("sampleFactor", signature = "bcs",
+           function(bcs, allBc = FALSE)  standardGeneric("sampleFactor"))
 
 #' Loading thresholds
 #'
@@ -47,11 +74,16 @@ setGeneric("fuzzySamples", signature = "bcs",
 setGeneric("loadingThresh", signature = "bcs",
            function(bcs, allBc = FALSE) standardGeneric("loadingThresh"))
 
+#' Name a BiclusterStrategy
+#' 
+#' Gets a display-friendly name of a BiclusterStrategy that includes its
+#' biclustering algorithm, its thresholding algorithm, and the number of
+#' biclusters.
+#' 
+#' @param bcs a \code{\linkS4class{BiclusterStrategy}} object
 setGeneric("name", signature = "bcs", function(bcs) standardGeneric("name"))
 
 setGeneric("names")
-setGeneric("bcNames", signature = "bcs", function(bcs, allBc = FALSE)
-  standardGeneric("bcNames"))
 
 #' @export
 setGeneric("nclust", signature = "bcs", function(bcs, allBc = FALSE) 
@@ -64,8 +96,8 @@ setGeneric("plot")
 #' For a data matrix M x N factorized to produce k biclusters, the score matrix is M x k.
 #''
 #' @export
-setGeneric("fuzzyFeatures", signature = "bcs", 
-           function(bcs, allBc = FALSE) standardGeneric("fuzzyFeatures"))
+setGeneric("featureFactor", signature = "bcs", 
+           function(bcs, allBc = FALSE) standardGeneric("featureFactor"))
 
 #' Score thresholds
 #'
@@ -85,6 +117,9 @@ setGeneric("threshAlgo", signature = "bcs",
 setGeneric("threshold", signature = c("m", "th"), 
            function(m, th, MARGIN = 2) standardGeneric("threshold"))
 
+#' Wipe biclustering results
+#'
+#' Returns a BiclusterExperiment with all BiclusterStrategies removed
 setGeneric("wipe", signature = "bce", function(bce) standardGeneric("wipe"))
 
 setGeneric("wipeExcept", signature = c("bce"),

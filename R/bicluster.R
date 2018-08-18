@@ -1,8 +1,8 @@
 #' Biclustering algorithms
 #'
 #' The \code{method} argument of \code{\link{addStrat}()} provides access to
-#' functions from packages \code{\link{[NMF]}} and \code{\link{[biclust]}}.
-#' Initially \code{addStrat()} uses the default parameters provided by the
+#' functions from packages \code{NMF} and \code{biclust}. Initially
+#' \code{addStrat()} uses the default parameters provided by the
 #' respective developers, then progressively relaxes parameters as
 #' needed to return the desired number of biclusters. Method-specific parameters
 #' besides those automatically manipulated can be provided by name to
@@ -65,7 +65,7 @@ NULL
 #' @param duplicable fix the random seed internally
 #' @param verbose Print the mean squared error every 10 iterations
 #' 
-#' @return a \code{\link{genericFit}} object
+#' @return a \code{\link{genericFit-class}} object
 #' @export
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
@@ -285,13 +285,13 @@ nipals_pca <- function(A, k, cleanParam = 0,
          indexRemaining = indexRem))
   }, error = function(e) {
     if(grepl(pattern = paste0("replacement has length zero"), x = e)) {
-      cleanParam <- cleanParam + log10(2 - i)
+      cleanParam <- cleanParam + min(1, log10(2.5 - cleanParam))
       if(verbose) {
         message(paste("Too many NA in the data. Cleaning with cleanParam at",
                       cleanParam))
       }
       # pass the original m so indexRemaining is valid for the user's matrix
-      return(nipals_pca_helper(A, k, cleanParam, duplicable))
+      return(nipals_pca_nocatch(A, k, cleanParam, duplicable))
     } else { stop(e) }
   })
 }

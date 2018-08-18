@@ -8,5 +8,10 @@
 \S4method{bcNames}{BiclusterStrategy}(bcs, allBc = FALSE)
 }
 \description{
-Names of biclusters in this BiclusterStrategy
+Returns a character vector of bicluster names, which can be used to reference
+columns of \code{featureFactor(bcs)} and \code{clusteredFeatures(bcs)}, and
+rows of \code{sampleFactor(bcs)} and code{clusteredSamples(bcs)}.
+}
+\details{
+A character vector.
 }

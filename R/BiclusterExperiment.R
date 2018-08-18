@@ -139,12 +139,12 @@ setMethod("as.matrix", "BiclusterExperiment", function(x) {
 })
 
 #' @describeIn BiclusterExperiment Remove rows and columns with less than \code{cleanParam} entries present
-setMethod("clean", c(object = "BiclusterExperiment"), function(object,
-                                                               cleanParam) {
+setMethod("clean", c(object = "BiclusterExperiment"), 
+          function(object, cleanParam, dimsRemain = FALSE) {
   if(!(cleanParam <= 1 && cleanParam >= 0)) {
     stop("Arg \"cleanParam\" must be in the range of 0 to 1.")
   }
-  results <- clean(as.matrix(object), maxNa, TRUE)
+  results <- clean(as.matrix(object), cleanParam, TRUE)
   # [[2]] contains a vector of indexes of the remaining columns
   # [[1]] contains the cleaned matrix itself
   bce <- object[results[[2]][[2]], results[[2]][[1]]]
@@ -167,6 +167,22 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
 #' @describeIn BiclusterExperiment Character names of BiclusterStrategies in this BiclusterExperiment
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
+
+#' @describeIn BiclusterExperiment Get/set a list of the BiclusterStrategy objects
+#'   contained by this BiclusterExperiment.
+#' @export
+setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
+  bce@strategies
+})
+
+setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
+                                         value = "list"),
+                 function(object, value) { 
+                   object@strategies <- value 
+                   if(validObject(object, test = FALSE)) {
+                     object }
+                 }
+)
 
 #' @describeIn BiclusterExperiment Return this BiclusterExperiment with all BiclusterStrategy objects removed
 #' @export
@@ -193,20 +209,4 @@ setMethod("wipeExcept", c(bce = "BiclusterExperiment"), function(bce, bcs) {
                "first."))
   }
 }
-)
-
-#' @describeIn BiclusterExperiment Get/set a list of the BiclusterStrategy objects
-#'   contained by this BiclusterExperiment.
-#' @export
-setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
-  bce@strategies
-})
-
-setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
-                                         value = "list"),
-                 function(object, value) { 
-                   object@strategies <- value 
-                   if(validObject(object, test = FALSE)) {
-                     object }
-                 }
 )

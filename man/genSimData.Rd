@@ -2,14 +2,79 @@
 % Please edit documentation in R/genBiclusters.R
 \name{genSimData}
 \alias{genSimData}
-\title{Simulate a matrix with n biclusters}
+\title{Simulate an omics dataset with biclusters}
 \usage{
 genSimData(n = 1, clusterHeight = 20, clusterWidth = 20, dimx = 80,
   dimy = 80, overlapRows = 0, overlapCols = 0, biclusterConstant = NULL,
   biclusterShift = 0, rowBase = 0, rowShift = 0, rowScale = NULL,
-  colShift = 0, colScale = NULL, bgConst = 0, bgNorm = 0, bgUnif = 0,
+  colShift = 0, colScale = NULL, bgConst = 0, bgNorm = 0,
   shuffle = TRUE, file = "")
 }
+\arguments{
+\item{n}{the number of biclusters}
+
+\item{clusterHeight}{the number of rows in each bicluster}
+
+\item{clusterWidth}{the number of columns in each bicluster}
+
+\item{dimx}{the number of rows in the dataset}
+
+\item{dimy}{the number of columns in the dataset}
+
+\item{overlapRows}{the number of rows that biclusters should share}
+
+\item{overlapCols}{the number of columns that biclusters should share}
+
+\item{biclusterConstant}{if not NULL, \code{biclusterConstant} provides the
+value of every element in every bicluster, after creating the background}
+
+\item{biclusterShift}{standard deviation of bicluster-specific additive
+values}
+
+\item{rowBase}{standard deviation of bicluster-and-row-specific background
+values}
+
+\item{rowShift}{standard deviation of bicluster-and-row-specific shifts}
+
+\item{rowScale}{standard deviation of bicluster-and-row-specific scaling
+coefficients}
+
+\item{colShift}{standard deviation of bicluster-and-column-specific shifts}
+
+\item{colScale}{standard deviation of bicluster-and-column-specific scaling
+coefficients}
+
+\item{bgConst}{initial value of the entire matrix}
+
+\item{bgNorm}{standard deviation of Gaussian noise}
+
+\item{shuffle}{if FALSE, biclusters will be deterministically arranged
+along the diagonal of the matrix}
+
+\item{file}{an optional string giving a prefix for .png and .csv files
+where the generated matrix should be written}
+
+\item{rowBase}{standard deviaton of base row values}
+}
 \description{
-Optional noise parameter
+Most models of omics datasets use various combinations of effects in this
+function. Effects are applied in this order:
+\enumerate{
+\item Constant background value
+\item base row values (overrides constant background value)
+\item Gaussian noise
+\item Constant value across all biclusters (overrides all previous effects)
+\item Additive bicluster-specific values
+\item Additive bicluster-and-column-specific values
+\item Multiplicative bicluster-and-column-specific values
+\item Additive bicluster-and-row-specific values
+\item Multiplicative bicluster-and-row-specific values
+}
+}
+\details{
+Besides constant values across all biclusters (\code{biclusterConstant}),
+all effects are sampled from a normal distribution centered on 0 and with
+standard deviation given by the respective parameter.
+
+A matrix containing \code{n} biclusters created by the given parameters.
 }

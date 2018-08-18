@@ -10,15 +10,15 @@ Biclustering using PCA and non-negative matrix factorization
 }
 \details{
 This package contains functions and classes for creating and analyzing
-biclustering pipelines. Currently snmf with OTSU thresholding is supported.
-Support for biclustering algorithms PCA, plaid, and bimax, and thresholding
-algorithms ITA and FCM is planned.
+biclustering pipelines. Currently ALS, SVD, NIPALS, SNMF, Spectral, and
+Plaid are supported.
 }
 \section{Functions}{
 
   \code{\link{biclusterGUI}}
-  \code{\link{BiclusterExperiment}}
-  \code{\link{BiclusterStrategy}}
+  \code{\link{BiclusterExperiment-class}}
+  \code{\link{addStrat}}
+  \code{\link{BiclusterStrategy-class}}
 }
 
 \references{

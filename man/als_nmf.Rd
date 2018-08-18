@@ -23,7 +23,7 @@ als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
 \item{verbose}{Print the mean squared error every 10 iterations}
 }
 \value{
-a \code{\link{genericFit}} object
+a \code{\link{genericFit-class}} object
 }
 \description{
 Approximates a non-negative matrix as the product of two non-negative matrix

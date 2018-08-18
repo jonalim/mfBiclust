@@ -7,24 +7,25 @@
 \alias{clean,BiclusterExperiment-method}
 \alias{getStrat,BiclusterExperiment-method}
 \alias{names,BiclusterExperiment-method}
+\alias{strategies,BiclusterExperiment-method}
 \alias{wipe,BiclusterExperiment-method}
 \alias{wipeExcept,BiclusterExperiment-method}
-\alias{strategies,BiclusterExperiment-method}
 \title{Class "BiclusterExperiment" for data and biclusters}
 \usage{
 \S4method{as.matrix}{BiclusterExperiment}(x)
 
-\S4method{clean}{BiclusterExperiment}(object, cleanParam)
+\S4method{clean}{BiclusterExperiment}(object, cleanParam = 0,
+  dimsRemain = FALSE)
 
 \S4method{getStrat}{BiclusterExperiment}(bce, id)
 
 \S4method{names}{BiclusterExperiment}(x)
 
+\S4method{strategies}{BiclusterExperiment}(bce)
+
 \S4method{wipe}{BiclusterExperiment}(bce)
 
 \S4method{wipeExcept}{BiclusterExperiment}(bce, bcs)
-
-\S4method{strategies}{BiclusterExperiment}(bce)
 }
 \description{
 This class encapsulates data for one or more biclustering runs derived from
@@ -43,14 +44,14 @@ BiclusterExperiment, by providing either name or integer index
 
 \item \code{names}: Character names of BiclusterStrategies in this BiclusterExperiment
 
+\item \code{strategies}: Get/set a list of the BiclusterStrategy objects
+contained by this BiclusterExperiment.
+
 \item \code{wipe}: Return this BiclusterExperiment with all BiclusterStrategy objects removed
 
 \item \code{wipeExcept}: Return this BiclusterExperiment with all
 BiclusterStrategy objects removed except \code{bcs}. Argument \code{bcs}
 can be passed as a name, integer index, or the BiclusterStrategy itself.
-
-\item \code{strategies}: Get/set a list of the BiclusterStrategy objects
-contained by this BiclusterExperiment.
 }}
 
 \section{Slots}{
@@ -81,7 +82,7 @@ functions in \code{\link{mfBiclust}}.}
 \examples{
 bce <- BiclusterExperiment(yeast_benchmark[[1]])
 addStrat(bce, k = 3)
-biclusterGUI(bce)
+\donttest{biclusterGUI(bce)}
 }
 \seealso{
 \code{\link[Biobase]{eSet}}
