@@ -24,7 +24,7 @@ matrix in \code{bcs}.}
 \code{phenoLabels} should be column names of \code{Biobase::phenoData(bce)}}
 
 \item{biclustLabels}{an optional character vector of labels to annotate.
-Should be elements of \code{names(bcs)}. Both \code{phenoLabels} and
+Should be elements of \code{bcNames(bcs)}. Both \code{phenoLabels} and
 \code{biclustLabels} may be specified.}
 
 \item{colnames}{if \code{TRUE}, labels the samples/features}

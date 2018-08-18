@@ -4,3 +4,4 @@
 ^\.Rprofile$
 ^data/
 ^data-raw$
+^\.travis\.yml$

@@ -109,7 +109,7 @@ setMethod(
       } else {
         clusteredFeatures
       }
-      clus <- hclus(dist(clusFunction(getStrat(bce, strategy)),
+      clus <- hclust(dist(clusFunction(getStrat(bce, strategy)),
                          method = "euclidean"))
       ph <- pheatmap::pheatmap(data, cluster_rows = clus,
                                cluster_cols = clus, 
@@ -161,11 +161,11 @@ setMethod(
     type <- match.arg(type)
     
     if(type == "score") {
-      data <- t(logicalMatrix2Numeric(fuzzyFeatures(bcs)))
+      data <- t(logicalMatrix2Numeric(featureFactor(bcs)))
       # Validate requested annotations and parse into a dataframe
       annots <- createAnnots(bce, colnames(data), bcs, phenoLabels, biclustLabels)
     } else {
-      data <- logicalMatrix2Numeric(fuzzySamples(bcs))
+      data <- logicalMatrix2Numeric(sampleFactor(bcs))
       annots <- NA
     }
     
@@ -276,9 +276,9 @@ setMethod(
       "Dark2"
     )
     data <- if(type == "score") {
-      logicalMatrix2Numeric(fuzzyFeatures(bcs, allBc = TRUE))
+      logicalMatrix2Numeric(featureFactor(bcs, allBc = TRUE))
       } else {
-      t(logicalMatrix2Numeric(fuzzySamples(bcs, allBc = TRUE)))
+      t(logicalMatrix2Numeric(sampleFactor(bcs, allBc = TRUE)))
     }
     data <- data[, bicluster, drop = TRUE]
     
@@ -385,7 +385,7 @@ createAnnots <-
       validateStratName(strategy, x) # if no strategy, stop
       bcs <- getStrat(x, strategy) # get BiclusterStrategy
       biclustLabels <- validateBiclustNames(biclustLabels, bcs)
-      predData <- as.data.frame(pred(bcs)[, biclustLabels])
+      predData <- as.data.frame(clusteredSamples(bcs)[, biclustLabels])
       
       # bicluster annotations should be discrete
       predData[] <- as.data.frame(lapply(predData, as.factor))

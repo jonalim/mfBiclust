@@ -1,17 +1,15 @@
 Package: mfBiclust
 Type: Package
-Title: Toolbox for Matrix-Factorization-Based Biclustering
-Version: 0.0.0.9005
-Date: 2018-05-14
-Maintainer: Jonathan Lim <2329118L@student.gla.ac.uk>
-Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", role = "cre"),
-	person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk", role = c("aut", "cph")))
-Description: Matrix factorization algorithms can be used to approximate a 2D dataset
-		as a product of two matrices, designated score and loading matrices. This 
-		toolbox provides objects and functions for performing matrix factorization
-		and thresholding the score and loading matrices in order to
-		determine bicluster membership of each entity on the two dimensions.
-		Results can be displayed in an interactive Shiny webpage.
+Title: Pipelines for Bi-Clustering Using Matrix Factorization
+Version: 0.1.1
+Date: 2018-08-16
+Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", 
+  role = c("aut", "cre")), person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk",
+  role = "ctb"))
+Description: A collection of pipelines for finding corresponding subsets
+    of features and samples in a two-dimensional 'omics' dataset without
+    prior knowledge of sample classes. All analysis can be executed in an
+    interactive Shiny webpage.
 License: GPL-3
 URL: https://github.com/jonalim/mfBiclust
 BugReports: https://github.com/jonalim/mfBiclust/issues
@@ -51,7 +49,6 @@ Suggests:
     GOstats,
     BiocInstaller,
     BiocParallel,
-    nipals,
     mclust,
     reticulate
 LazyData: true

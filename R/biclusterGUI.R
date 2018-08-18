@@ -49,7 +49,7 @@ setMethod("biclusterGUI", c(obj = "BiclusterExperiment"),
 
 setMethod("biclusterGUI", c(obj = "ExpressionSet"), 
           definition = function(obj, ...) {
-            biclusterGUI(as.BiclusterExperiment(obj), ...)
+            biclusterGUI(as(obj, "BiclusterExperiment"), ...)
           })
 setMethod("biclusterGUI", c(obj = "missing"), function(...) {
   biclusterGUI(obj = BiclusterExperiment(m = matrix()), ...)

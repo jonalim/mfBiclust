@@ -14,8 +14,8 @@
 }
 \description{
 The \code{method} argument of \code{\link{addStrat}()} provides access to
-functions from packages \code{\link{[NMF]}} and \code{\link{[biclust]}}.
-Initially \code{addStrat()} uses the default parameters provided by the
+functions from packages \code{NMF} and \code{biclust}. Initially
+\code{addStrat()} uses the default parameters provided by the
 respective developers, then progressively relaxes parameters as
 needed to return the desired number of biclusters. Method-specific parameters
 besides those automatically manipulated can be provided by name to
