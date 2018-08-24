@@ -32,6 +32,7 @@ setClass("BiclusterExperiment", slots = list(
   strategies = "list"
 ), contains = "eSet")
 
+# Coercing ExpressionSet (gene expression) to BiclusterExperiment
 setAs("ExpressionSet", "BiclusterExperiment", function(from) {
   ad <- Biobase::exprs(from)
   
@@ -46,6 +47,27 @@ setAs("ExpressionSet", "BiclusterExperiment", function(from) {
   bce <- new("BiclusterExperiment", assayData = Biobase::assayData(from), 
              phenoData = Biobase::phenoData(from), 
              featureData = Biobase::featureData(from), strategies = list())
+  if(validObject(bce, test = FALSE)) bce
+})
+
+# Only possible after running groupChromPeaks...which should be run after
+# adjusting retention times.
+setAs("XCMSnExp", "BiclusterExperiment", function(from) {
+  if(!requireNamespace("xcms", quietly = TRUE)) {
+    stop("Please install XCMS")
+  }
+  ad <- xcms::featureValues(from)
+  pd <- xcms::phenoData(from)
+  # phenodata sample names are set to column names of featureValues(from)
+  if(any(rownames(pd@data) != colnames(ad))) {
+    rownames(pd@data) <- colnames(ad)
+  }
+  bce <- BiclusterExperiment(m = ad,
+             phenoData = pd,
+             featureData = as.data.frame(xcms::featureDefinitions(from)))
+  bce@experimentData <- experimentData(from)
+  # missing from@protocolData, but I don't know how to make that object 
+  # compatible with other objects in an eSet
   if(validObject(bce, test = FALSE)) bce
 })
 
