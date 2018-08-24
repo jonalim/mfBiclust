@@ -50,5 +50,6 @@ Suggests:
     BiocInstaller,
     BiocParallel,
     mclust,
-    reticulate
+    reticulate,
+    xcms
 LazyData: true
