@@ -25,7 +25,7 @@ NULL
 #' @slot protocolData \code{\link[Biobase]{eSet-class}}. Not accessed by any 
 #'   functions in \code{\link{mfBiclust}}.
 #'
-#' @seealso \code{\link[Biobase]{eSet}}
+#' @seealso \code{\link[Biobase]{eSet-class}}
 #' @example R/examples/addStrat-biclusterGUI.R
 #' @importClassesFrom Biobase eSet
 setClass("BiclusterExperiment", slots = list(

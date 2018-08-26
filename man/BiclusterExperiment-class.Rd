@@ -85,5 +85,5 @@ addStrat(bce, k = 3)
 \donttest{biclusterGUI(bce)}
 }
 \seealso{
-\code{\link[Biobase]{eSet}}
+\code{\link[Biobase]{eSet-class}}
 }

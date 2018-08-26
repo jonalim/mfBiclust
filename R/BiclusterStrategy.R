@@ -11,13 +11,13 @@ NULL
 #' \code{k} provided to \code{\link{addStrat}()}, the extra biclusters will
 #' be stored with a warning. See note on slot \code{k} below.
 #' 
-#' @slot factors a \code{\linkS4class{[NMF]{NMFfit}}} or
+#' @slot factors a \code{\link[NMF]{NMFfit-class}} or
 #'   \code{\link{genericFit-class}} containing a pair of matrices \eqn{L_{m,k}}
 #'   and \eqn{R_{k,n}}.
 #' @slot scoreThresh a vector of thresholds of length \eqn{k}
 #' @slot loadingThresh a vector of thresholds of length \eqn{k}
 #' @slot threshAlgo the name of the thresholding algorithm, or "user"
-#' @slot biclust a \code{\linkS4class{[biclust]{Biclust}}} object containing
+#' @slot biclust a \code{\link[biclust]{Biclust-class}} object containing
 #'   logical bicluster membership matrices and other information
 #' @slot k the value of parameter \code{k} in \code{\link{addStrat}()}.
 #'   \code{k} causes accessor methods to hide any extra biclusters stored
