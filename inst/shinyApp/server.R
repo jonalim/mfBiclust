@@ -594,25 +594,30 @@ reactiveMarkers <- reactive({
   })
 })
 
-# Get gene list for selected bicluster
-output$biclusterGeneList <- renderText({
+# Get sample list for selected bicluster
+output$biclusterSampleList <- renderText({
   bce <- values$bce
   bcs <-  values$strategy
   bicluster <- input$sampleBicluster
   validate(need(inherits(bce, "BiclusterExperiment") && 
-                  !is.null(input$sampleBicluster) &&
+                  !is.null(bicluster) &&
                   inherits(bcs, "BiclusterStrategy"), ""))
+  validate(need(nchar(bicluster) > 0, ""))
   
-  geneI <- which(clusteredFeatures(bcs)[, bicluster])
-  genes <- featureNames(bce)[geneI]
-  paste(unlist(genes), collapse = "\n")
+  sampleI <- which(clusteredSamples(bcs)[bicluster, ])
+  samples <- sampleNames(bce)[sampleI]
+  paste(unlist(samples), collapse = "\n")
 })
 
-output$biclusterGeneListLabel <- renderUI({
+output$biclusterSampleListLabel <- renderUI({
   bicluster <- input$sampleBicluster
-  desc <- if(is.null(bicluster)) { "Markers:" } else {
-    paste(bicluster, "markers:")
-  }
+  desc <- if(is.null(bicluster)) { 
+    "Biclustered samples:"
+    } else if(nchar(bicluster) == 0) {
+      "Biclustered samples:"
+    } else {
+      paste(bicluster, "samples:")
+    }
   tags$h4(desc)
 })
 
@@ -683,13 +688,30 @@ featurePlotHelper <- reactive({
   })
 })
 
+# Get marker list for selected bicluster
+output$biclusterFeatureList <- renderText({
+  bce <- values$bce
+  bcs <-  values$strategy
+  bicluster <- input$featureBicluster
+  validate(need(inherits(bce, "BiclusterExperiment") && 
+                  !is.null(bicluster) &&
+                  inherits(bcs, "BiclusterStrategy"), ""))
+  validate(need(nchar(bicluster) > 0, ""))
+  geneI <- which(clusteredFeatures(bcs)[, bicluster])
+  genes <- featureNames(bce)[geneI]
+  paste(unlist(genes), collapse = "\n")
+})
 
-# render the top tab panel
-output$top_tabs <- renderUI({
-  tabPanel("Summary", sideBarLayout(
-    uiOutput("uiabundance", width = "100%"),
-    plotOutput("pca", width = "100%"))
-  )
+output$biclusterFeatureListLabel <- renderUI({
+  bicluster <- input$featureBicluster
+  desc <- if(is.null(bicluster)) {
+    "Biclustered features:"
+  } else if(nchar(bicluster) == 0) {
+    "Biclustered features:"
+  } else {
+    paste(bicluster, "markers:")
+  }
+  tags$h4(desc)
 })
 
 #### BI-CROSS-VALIDATION ####

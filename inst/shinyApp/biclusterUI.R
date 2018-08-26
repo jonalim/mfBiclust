@@ -63,7 +63,10 @@ tabPanel(
                  column(3,
                         uiOutput("sampleBicluster"),
                         checkboxInput("sampleReorder", "Reorder"),
-                        checkboxInput("biclusterFeatNames", "Sample names"))
+                        checkboxInput("biclusterFeatNames", "Sample names"),
+                        uiOutput("biclusterSampleListLabel"),
+                        fluidRow(verbatimTextOutput("biclusterSampleList"), 
+                                 style = "height:500px; overflow-y: scroll"))
         ),
         tabPanel("Features",
                  column(9,
@@ -74,8 +77,8 @@ tabPanel(
                         checkboxInput("featureReorder", "Reorder"),
                         # uiOutput("annotPicker"),
                         checkboxInput("biclusterSampNames", "Feature names"),
-                 uiOutput("biclusterGeneListLabel"),
-                 fluidRow(verbatimTextOutput("biclusterGeneList"), 
+                 uiOutput("biclusterFeatureListLabel"),
+                 fluidRow(verbatimTextOutput("biclusterFeatureList"), 
                           style = "height:500px; overflow-y: scroll"))
         )
       ),
