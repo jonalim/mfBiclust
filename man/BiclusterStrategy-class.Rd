@@ -41,7 +41,7 @@ thresholds
 \section{Slots}{
 
 \describe{
-\item{\code{factors}}{a \code{\linkS4class{[NMF]{NMFfit}}} or
+\item{\code{factors}}{a \code{\link[NMF]{NMFfit-class}} or
 \code{\link{genericFit-class}} containing a pair of matrices \eqn{L_{m,k}}
 and \eqn{R_{k,n}}.}
 
@@ -51,7 +51,7 @@ and \eqn{R_{k,n}}.}
 
 \item{\code{threshAlgo}}{the name of the thresholding algorithm, or "user"}
 
-\item{\code{biclust}}{a \code{\linkS4class{[biclust]{Biclust}}} object containing
+\item{\code{biclust}}{a \code{\link[biclust]{Biclust-class}} object containing
 logical bicluster membership matrices and other information}
 
 \item{\code{k}}{the value of parameter \code{k} in \code{\link{addStrat}()}.
