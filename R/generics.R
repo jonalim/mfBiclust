@@ -280,7 +280,7 @@ setGeneric("featureThresh", signature = "bcs",
 #'
 #' @param bce A \code{BiclusterExperiment-class} object
 #'
-#' @value A list containing zero or more \code{\link{BiclusterStrategy-class}}
+#' @return A list containing zero or more \code{\link{BiclusterStrategy-class}}
 #'   objects
 #'
 #' @examples
