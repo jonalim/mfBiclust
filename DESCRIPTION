@@ -1,8 +1,8 @@
 Package: mfBiclust
 Type: Package
 Title: Pipelines for Bi-Clustering Using Matrix Factorization
-Version: 0.99.1
-Date: 2019-01-16
+Version: 0.99.2
+Date: 2019-01-17
 Authors@R: c(person("Jonathan", "Lim", email = "jlim7@comcast.net", 
   role = c("aut", "cre")), person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk",
   role = "ctb"))
@@ -56,6 +56,6 @@ Suggests:
     xcms,
     knitr,
     rmarkdown
-Depends: R (>= 3.5)
+Depends: R (>= 3.6)
 LazyData: true
 VignetteBuilder: knitr

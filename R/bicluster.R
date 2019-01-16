@@ -436,20 +436,19 @@ snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
                 }
             } else if(any(suppressWarnings(grepl("system is exactly singular",
                                                  e[[1]], fixed = TRUE)))) {
-                # When this error thrown, just abort. eta <- -1 exits the while
-                # loop
-                eta <<- -1
+                # When this error thrown, just abort.
                 if(verbose) {
                     cat(paste("NMF::nmf:", e[[1]], "\n"))
-                    cat("mfBiclust::snmf: Aborting snmf\n")
                 }
+                stop(message = "Aborting snmf because dataset is singular\n",
+                     call. = TRUE)
                 # FIXME causes error in biclusterGUI
-                res <- try({
-                    w <- cbind(A[ , 1], matrix(0, nrow = nrow(A), ncol = (k - 1)))
-                    h <- MASS::ginv(w) %*% A
-                    res <- new("genericFactorization", W = w, H = h)
-                    new("genericFit", fit = res, method = "snmf")
-                }, silent = TRUE)
+                # res <- try({
+                #     w <- cbind(A[ , 1], matrix(0, nrow = nrow(A), ncol = (k - 1)))
+                #     h <- MASS::ginv(w) %*% A
+                #     res <- new("genericFactorization", W = w, H = h)
+                #     new("genericFit", fit = res, method = "snmf")
+                # }, silent = TRUE)
             }
             if(inherits(res, "genericFit"))
                 return(res)

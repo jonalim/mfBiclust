@@ -33,10 +33,10 @@ biclusterMatrix2List <- function(rowxBicluster, biclusterxCol) {
 #' Convert row and column numbers to a matrix representation
 #'
 #' This function converts the output from
-#' \code{\link[biclust]{biclusternumber}()} into the membership matrix format.
-#' The first returned membership matrix shows which rows are in which bicluster.
-#' The second returned membership matrix shows which columns are in which
-#' bicluster.
+#' \code{\link[biclust:bicluster]{biclusternumber}} into the membership matrix
+#' format. The first returned membership matrix shows which rows are in which
+#' bicluster. The second returned membership matrix shows which columns are in
+#' which bicluster.
 #'
 #' @param biclusterNumber A list describing the rows and columns in each
 #'   bicluster

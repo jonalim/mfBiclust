@@ -76,7 +76,8 @@ setMethod(
         } else {
             #### DEFUALT CALL ####
             bcs <- BiclusterStrategy(obj = m, k = k, method = method,
-                                     duplicable = duplicable, ...)
+                                     duplicable = duplicable, verbose = !silent,
+                                     ...)
         }
 
         name <- name(bcs)

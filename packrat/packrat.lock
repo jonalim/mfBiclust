@@ -1,11 +1,7 @@
 PackratFormat: 1.4
 PackratVersion: 0.5.0
-RVersion: 3.5.2
-Repos: BioCsoft=https://bioconductor.org/packages/3.8/bioc,
-    BioCann=https://bioconductor.org/packages/3.8/data/annotation,
-    BioCexp=https://bioconductor.org/packages/3.8/data/experiment,
-    BioCworkflows=https://bioconductor.org/packages/3.8/workflows,
-    CRAN=https://cran.rstudio.com/
+RVersion: 3.6.0
+Repos: CRAN=https://cran.rstudio.com/
 
 Package: AnnotationDbi
 Source: Bioconductor
@@ -31,6 +27,13 @@ Version: 2.42.0
 Hash: f1adc715c4e2091169ac98f2998a1d79
 Requires: BiocGenerics
 
+Package: BiocCheck
+Source: Bioconductor
+Version: 1.19.22
+Hash: 007a4c8e091909200f56cde1c9593488
+Requires: BiocManager, biocViews, graph, httr, knitr, optparse,
+    stringdist
+
 Package: BiocGenerics
 Source: Bioconductor
 Version: 0.28.0
@@ -46,6 +49,11 @@ Source: Bioconductor
 Version: 1.16.5
 Hash: aded9752c2e33dd903f98b544a74983e
 Requires: BH, futile.logger, snow
+
+Package: BiocVersion
+Source: Bioconductor
+Version: 3.9.0
+Hash: e8e059656f5207f1293caee7312e0166
 
 Package: Category
 Source: Bioconductor
@@ -99,7 +107,7 @@ Requires: AnnotationDbi, Biobase, BiocGenerics, XML, annotate, graph
 Package: IRanges
 Source: Bioconductor
 Version: 2.16.0
-Hash: 492e2296be390ecfcf6cda02d41112b7
+Hash: 0f9c13256eaa9e13e4455c4924e035d0
 Requires: BiocGenerics, S4Vectors
 
 Package: MALDIquant
@@ -145,8 +153,8 @@ Hash: 8eccabbf292b5aba632985cde6406fc3
 
 Package: RANN
 Source: CRAN
-Version: 2.6
-Hash: 9825abdee0c5f0eecd367f2b7878d1a5
+Version: 2.6.1
+Hash: ad5075c9373b36b558ba84f5d5fa9e03
 
 Package: RBGL
 Source: Bioconductor
@@ -170,6 +178,11 @@ Source: CRAN
 Version: 2.1.1
 Hash: c69f2201e2d57a935eac8491787c5162
 Requires: BH, DBI, Rcpp, bit64, blob, memoise, pkgconfig, plogr
+
+Package: RUnit
+Source: CRAN
+Version: 0.4.32
+Hash: 7dd10abc3e32399b6398fc956ce43ad4
 
 Package: Rcpp
 Source: CRAN
@@ -211,7 +224,7 @@ Hash: 8c3cc38035235348ce761c8530281a64
 Package: affy
 Source: Bioconductor
 Version: 1.60.0
-Hash: 7a038d8d13cefc7dda51bef1f97d5d96
+Hash: 67e10adf85dfbd0a07d3dfa6ef6df8f6
 Requires: Biobase, BiocGenerics, BiocManager, affyio, preprocessCore,
     zlibbioc
 
@@ -231,6 +244,11 @@ Package: assertthat
 Source: CRAN
 Version: 0.2.0
 Hash: e8805df54c65ac96d50235c44a82615c
+
+Package: backports
+Source: CRAN
+Version: 1.1.3
+Hash: a0b8191e6bd2fe71aadd4678bb8f3c98
 
 Package: base64enc
 Source: CRAN
@@ -260,6 +278,12 @@ Version: 0.2.2
 Hash: 8ce499301f0dc5c7ff69f0b42e33f5c1
 Requires: Rcpp, bindr, plogr
 
+Package: biocViews
+Source: Bioconductor
+Version: 1.51.14
+Hash: a0d35da604913582b2cbbd7c5820d50d
+Requires: Biobase, RBGL, RCurl, RUnit, XML, graph
+
 Package: bit
 Source: CRAN
 Version: 1.1-14
@@ -282,6 +306,17 @@ Version: 1.1.1
 Hash: 532700d8073e660dce40a984900bc647
 Requires: prettyunits
 
+Package: brew
+Source: CRAN
+Version: 1.0-6
+Hash: 931f9972deae0f205e1c78a51f33149b
+
+Package: callr
+Source: CRAN
+Version: 3.1.1
+Hash: 461cdebafe2c1cfc23ddc37527633185
+Requires: R6, processx
+
 Package: class
 Source: CRAN
 Version: 7.3-15
@@ -296,8 +331,13 @@ Requires: assertthat, crayon
 
 Package: colorspace
 Source: CRAN
-Version: 1.3-2
-Hash: 0bf8618b585fa98eb23414cd3ab95118
+Version: 1.4-0
+Hash: 5eef58a5bcfd315a326eeaf43720cd26
+
+Package: commonmark
+Source: CRAN
+Version: 1.7
+Hash: 77f4ba718e2bad1877ef26e48cf8fa43
 
 Package: crayon
 Source: CRAN
@@ -309,6 +349,17 @@ Source: CRAN
 Version: 1.0.0
 Hash: c13adea5906fbe2becfcb5f843b26749
 Requires: R6, ggplot2, htmltools, jsonlite, lazyeval, shiny
+
+Package: curl
+Source: CRAN
+Version: 3.3
+Hash: b201f64e6e1469e8a3571c746ffa9059
+
+Package: desc
+Source: CRAN
+Version: 1.2.0
+Hash: a0a3ca939997679a52816bae4ed6aaae
+Requires: R6, assertthat, crayon, rprojroot
 
 Package: digest
 Source: CRAN
@@ -377,6 +428,11 @@ Version: 1.64.0
 Hash: 72afd6a189331fbb8595be2a318b844a
 Requires: AnnotationDbi, Biobase, S4Vectors, annotate
 
+Package: getopt
+Source: CRAN
+Version: 1.20.2
+Hash: 38b0f8029cbb2339f800ffa5bdd19b59
+
 Package: ggplot2
 Source: CRAN
 Version: 3.1.0
@@ -427,6 +483,12 @@ Source: CRAN
 Version: 1.4.5.1
 Hash: c1952824aa156a78fb421ea09b67473d
 Requires: BH, Rcpp, later, promises
+
+Package: httr
+Source: CRAN
+Version: 1.4.0
+Hash: 62d62d3ffcc9a34411b6e35a813f72dd
+Requires: R6, curl, jsonlite, mime, openssl
 
 Package: impute
 Source: Bioconductor
@@ -539,7 +601,7 @@ Requires: ProtGenerics, XML, doParallel, foreach, iterators, plyr
 Package: mzR
 Source: Bioconductor
 Version: 2.16.1
-Hash: c3de47b42b508a0884c87fbffaf29829
+Hash: 44dca38ffbfc76da2aaf8fac39727f16
 Requires: Biobase, BiocGenerics, ProtGenerics, Rcpp, Rhdf5lib, ncdf4,
     zlibbioc
 
@@ -552,6 +614,17 @@ Package: nipals
 Source: CRAN
 Version: 0.5
 Hash: 7f752088f70692d131d81595a7b0c133
+
+Package: openssl
+Source: CRAN
+Version: 1.1
+Hash: 82c893294829c4badc3d4133b66d1428
+
+Package: optparse
+Source: CRAN
+Version: 1.6.0
+Hash: 0d203890dad6a3f6e204f22a9b5fc021
+Requires: getopt
 
 Package: packrat
 Source: CRAN
@@ -576,10 +649,22 @@ Version: 1.3.1
 Hash: 9ed4c2a5d3047bfba3e852ad5e806d91
 Requires: cli, crayon, fansi, rlang, utf8
 
+Package: pkgbuild
+Source: CRAN
+Version: 1.0.2
+Hash: 770e918f4c389e4fef9a891d043bf84f
+Requires: R6, callr, cli, crayon, desc, prettyunits, rprojroot, withr
+
 Package: pkgconfig
 Source: CRAN
 Version: 2.0.2
 Hash: b0fd6ed908e150b77e5f00c6478bd58c
+
+Package: pkgload
+Source: CRAN
+Version: 1.0.2
+Hash: 41eb2db35be61f6f9e8864cf87a1ecb0
+Requires: desc, pkgbuild, rlang, rprojroot, rstudioapi, withr
 
 Package: pkgmaker
 Source: CRAN
@@ -620,11 +705,22 @@ Version: 1.0.2
 Hash: 49286102a855640daaa38eafe8b1ec30
 Requires: assertthat, magrittr
 
+Package: processx
+Source: CRAN
+Version: 3.2.1
+Hash: fdc6a66626b75f96ee28ffc770d9ebd7
+Requires: R6, ps
+
 Package: promises
 Source: CRAN
 Version: 1.0.1
 Hash: 9ecc9727826384f2b4e0c8cf11adfc58
 Requires: R6, Rcpp, later, magrittr, rlang
+
+Package: ps
+Source: CRAN
+Version: 1.3.0
+Hash: 1d4cae95887ffe5b1a22bea5994476cd
 
 Package: purrr
 Source: CRAN
@@ -673,6 +769,24 @@ Version: 0.93-3
 Hash: b5e58297f611d55bca17c7fce64d9675
 Requires: DEoptimR
 
+Package: roxygen2
+Source: CRAN
+Version: 6.1.1
+Hash: 8d50e18cdfe6805761db35b027b254eb
+Requires: R6, Rcpp, brew, commonmark, desc, digest, pkgload, purrr,
+    stringi, stringr, xml2
+
+Package: rprojroot
+Source: CRAN
+Version: 1.3-2
+Hash: a25c3f70c166fb3fbabc410eb32b6366
+Requires: backports
+
+Package: rstudioapi
+Source: CRAN
+Version: 0.9.0
+Hash: e5e648a0944df6ea634d8173d09e236f
+
 Package: scales
 Source: CRAN
 Version: 1.0.0
@@ -708,6 +822,11 @@ Source: CRAN
 Version: 0.1.7
 Hash: d093478ac90064e670cd4bf1a99b47b6
 
+Package: stringdist
+Source: CRAN
+Version: 0.9.5.1
+Hash: dbcc044753e1745d707f20b4b6fa1634
+
 Package: stringi
 Source: CRAN
 Version: 1.2.4
@@ -727,9 +846,9 @@ Requires: R6, cli, crayon, digest, magrittr, praise, rlang, withr
 
 Package: tibble
 Source: CRAN
-Version: 1.4.2
-Hash: 83895360ce4f8d2ce92eee00526b5b0b
-Requires: cli, crayon, pillar, rlang
+Version: 2.0.1
+Hash: d2a00b9a314cfad8f6b51e2c97aaff5c
+Requires: cli, crayon, fansi, pillar, pkgconfig, rlang
 
 Package: tidyr
 Source: CRAN
@@ -751,8 +870,8 @@ Hash: a19dbb6d42db52cd7fda30a68e4654e2
 
 Package: tinytex
 Source: CRAN
-Version: 0.9
-Hash: a4ffe98c58eace5a95644d8fd6ca5a50
+Version: 0.10
+Hash: 2a5a6acd93f9936d957880cb9aab7979
 Requires: xfun
 
 Package: utf8
@@ -793,6 +912,12 @@ Package: xfun
 Source: CRAN
 Version: 0.4
 Hash: 76004125b45195c0330ec71904849995
+
+Package: xml2
+Source: CRAN
+Version: 1.2.0
+Hash: 3f00e5347a6d7ccad2237fe1bc1df6d0
+Requires: Rcpp
 
 Package: xtable
 Source: CRAN

@@ -45,8 +45,9 @@ test_that("SNMF works", {
                       clusteredSamples(getStrat(bce.snmf, 1)))
     expect_equivalent(clusteredFeatures(getStrat(test.snmf, 1)),
                       clusteredFeatures(getStrat(bce.snmf, 1)))
-    expect_s4_class(addStrat(bce.singular, k = 2, method = "snmf",
-                             silent = TRUE), class = "BiclusterExperiment")
+    expect_warning(addStrat(bce.singular, k = 2, method = "snmf",
+                            silent = TRUE),
+                   regexp = "snmf failed, switching to PCA")
 })
 
 test_that("NIPALS-PCA works", {
