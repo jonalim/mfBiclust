@@ -1,4 +1,3 @@
-#### -- Packrat Autoloader (version 0.4.9-2) -- ####
-suppressWarnings(source("packrat/init.R"))
-#### -- End Packrat Autoloader -- ####
 options("warn" = 1)
+#### -- Replicate the Bioconductor R CMD check environment
+Sys.setenv(R_CHECK_ENVIRON = "C:/Users/Jonathan/Documents/R/BioconductorCheck.Renviron")

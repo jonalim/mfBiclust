@@ -1,7 +1,7 @@
 Package: mfBiclust
 Type: Package
 Title: Pipelines for Bi-Clustering Using Matrix Factorization
-Version: 0.1.1
+Version: 0.99.0
 Date: 2018-08-16
 Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", 
   role = c("aut", "cre")), person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk",
@@ -13,8 +13,9 @@ Description: A collection of pipelines for finding corresponding subsets
 License: GPL-3
 URL: https://github.com/jonalim/mfBiclust
 BugReports: https://github.com/jonalim/mfBiclust/issues
-biocViews:
-Imports: 
+biocViews: Clustering, DimensionReduction, DifferentialExpression, Metabolomics,
+  Transcriptomics
+Imports:
     shiny (>= 1.0.5),
     NMF,
     EBImage,
@@ -27,9 +28,10 @@ Imports:
     shinyjs,
     MASS,
     biclust,
-    shinythemes
-RoxygenNote: 6.0.1
-Collate: 
+    shinythemes,
+    grDevices
+RoxygenNote: 6.1.1
+Collate:
     'generics.R'
     'helperClasses.R'
     'BiclusterStrategy.R'
@@ -44,12 +46,16 @@ Collate:
     'helperFunctions.R'
     'graphical.R'
     'mfBiclust.R'
-Suggests: 
+Suggests:
     testthat,
     GOstats,
-    BiocInstaller,
+    BiocManager,
     BiocParallel,
     mclust,
     reticulate,
-    xcms
+    xcms,
+    knitr,
+    rmarkdown
+Depends: R (>= 3.5)
 LazyData: true
+VignetteBuilder: knitr

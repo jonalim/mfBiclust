@@ -5,7 +5,7 @@
 \title{Alternating-least-squares non-negative matrix approximation}
 \usage{
 als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
-  duplicable = TRUE, verbose = TRUE, ...)
+  duplicable = TRUE, verbose = FALSE, ...)
 }
 \arguments{
 \item{A}{the matrix to factorize}
@@ -21,6 +21,9 @@ als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
 \item{duplicable}{fix the random seed internally}
 
 \item{verbose}{Print the mean squared error every 10 iterations}
+
+\item{...}{Present for compatibility. \code{als_nmf} has no other
+parameters}
 }
 \value{
 a \code{\link{genericFit-class}} object

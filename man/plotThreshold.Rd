@@ -3,20 +3,70 @@
 \docType{methods}
 \name{plotThreshold}
 \alias{plotThreshold}
+\alias{plotThreshold,BiclusterExperiment,character-method}
+\alias{plotThreshold,BiclusterExperiment,numeric-method}
 \alias{plotThreshold,BiclusterExperiment,BiclusterStrategy-method}
 \title{Threshold plot}
 \usage{
 plotThreshold(bce, bcs, type, bicluster, ...)
 
+\S4method{plotThreshold}{BiclusterExperiment,character}(bce, bcs, type,
+  bicluster, ...)
+
+\S4method{plotThreshold}{BiclusterExperiment,numeric}(bce, bcs, type,
+  bicluster, ...)
+
 \S4method{plotThreshold}{BiclusterExperiment,BiclusterStrategy}(bce, bcs,
-  type = c("score", "loading"), bicluster = "Bicluster.1",
+  type = c("feature", "sample"), bicluster = "Bicluster.1",
   thresholds = NULL, ordering = c("input", "distance", "cluster"),
   xlabs = FALSE)
 }
 \arguments{
-\item{thresholds}{A single numeric, vector, or matrix of thresholds. See 
-documentation}
+\item{bce}{A BiclusterExperiment}
+
+\item{bcs}{A BiclusterStrategy object, or the name or index of one of the
+BiclusterStrategy objects in \code{bce@strategies}}
+
+\item{type}{Specifies whether to show thresholding for features or samples}
+
+\item{bicluster}{The character name of a bicluster in \code{bcs}. See
+\code{\link{bcNames}}.}
+
+\item{...}{Additional arguments:\describe{
+ \item{thresholds}{If not NULL, must be a numeric vector of theshold(s) to
+replace the algorithmically chosen thresholds contained in \code{bcs}.}
+\item{ordering}{Specifies the ordering of features or samples along the
+x-axis. If "input", the input ordering is used. If "distance", ordering is
+based on Euclidean distance calculated from \code{bce@assayData}. If
+"cluster", ordering is based on the bicluster membership of the samples or
+features.}
+\item{xlabs}{Should sample or feature labels be displayed?}
+}}
+}
+\value{
+Invisibly returns NULL
 }
 \description{
 Plot cluster membership values and thresholding
+}
+\section{Methods (by class)}{
+\itemize{
+\item \code{bce = BiclusterExperiment,bcs = character}: Plots thresholding performed in the
+\code{\link{BiclusterStrategy-class}} object named \code{bcs} in
+\code{bce@strategies}.
+
+\item \code{bce = BiclusterExperiment,bcs = numeric}: Plots thresholding performed in the
+\code{\link{BiclusterStrategy-class}} object at the index specified by
+\code{bcs}
+
+\item \code{bce = BiclusterExperiment,bcs = BiclusterStrategy}: Plots thresholding performed in \code{bcs}.
+}}
+
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 2, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+bcNames(bcs)
+plotThreshold(bce, bcs, type = "sample", bicluster = "Bicluster.1")
+
 }

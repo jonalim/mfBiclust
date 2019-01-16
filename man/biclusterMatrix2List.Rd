@@ -11,9 +11,21 @@ biclusterMatrix2List(rowxBicluster, biclusterxCol)
 
 \item{biclusterxCol}{a k x n logical matrix}
 }
+\value{
+A \code{\link{list}} containing two \code{list}s
+}
 \description{
 Given two logical matrices \eqn{A_{m,k}} and \eqn{B_{k,n}} showing which rows
 and columns are in bicluster k, returns two \code{\link{list}s}. The first
 lists the rows in each bicluster. The second lists the columns in each
 bicluster.
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 2, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+biclusterLists <- biclusterMatrix2List(clusteredFeatures(bcs),
+ clusteredSamples(bcs))
+biclusterLists[[1]] # Rows in each bicluster
+biclusterLists[[2]] # Cols in each bicluster
 }

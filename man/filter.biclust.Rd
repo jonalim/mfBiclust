@@ -4,21 +4,50 @@
 \alias{filter.biclust}
 \title{Filter biclusters by overlap and quantity}
 \usage{
-filter.biclust(rowxBicluster, biclusterxCol, max = NULL, overlap = 0.25)
+filter.biclust(rowxBicluster, biclusterxCol, max = NULL,
+  overlap = 0.25)
 }
 \arguments{
-\item{rowxBicluster}{a binary matrix with samples as rows, biclusters as 
-columns}
+\item{rowxBicluster}{a row-bicluster membership matrix}
 
-\item{biclusterxCol}{a binary matrix with samples as rows, biclusters as 
-columns}
+\item{biclusterxCol}{a bicluster-column membership matrix}
 
-\item{max}{the maximum number of bicluster to keep}
+\item{max}{the maximum number of biclusters to keep}
 
 \item{overlap}{the maximum portion of a bicluster that may overlap with
-another bicluster}
+another bicluster. Passed directly to \code{\link{overlap}()}}
+}
+\value{
+A list of the format:
+ \describe{
+   \item{RowxBicluster}{A row-bicluster membership matrix
+   \eqn{A_{m,k^\prime}}, where \eqn{k^\prime} is the number of retained
+   biclusters}
+   \item{BiclusterxCol}{A bicluster-column membership matrix
+   \eqn{B_{k^\prime,n}}}
+   \item{biclustered}{A binary numeric matrix giving the union of all
+   retained biclusters}
+   \item{chosen}{A logical vector of length \eqn{k}}
+ }
 }
 \description{
-Returns a pair of bicluster membership matrices and a list of the qualifying
-biclusters.
+First all biclusters encompassing the whole matrix are removed. Next,
+biclusters are selected in descending order of size, skipping any biclusters
+that overlap excessively with already- selected biclusters. The remaining
+\eqn{k^\prime} biclusters are returned in membership-matrix format, along
+with a matrix giving the union of the retained biclusters and a logical
+vector telling which biclusters were retained. See
+\code{\link{clusteredSamples}()} for a description of the membership matrix
+format.
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 4, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+filtered <- filter.biclust(clusteredFeatures(bcs), clusteredSamples(bcs),
+  overlap = 0.25)
+filtered$chosen
+# The second bicluster was excluded because .31 of its matrix elements
+# overlapped with the first bicluster.
+
 }

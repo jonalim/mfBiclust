@@ -7,16 +7,20 @@
 clean(object, cleanParam = 0, dimsRemain = FALSE)
 }
 \arguments{
-\item{object}{a matrix or BiclusterExperiment object}
+\item{object}{a numeric \code{matrix} or
+\code{\link{BiclusterExperiment-class}} object}
 
 \item{cleanParam}{a numeric within 0 to 1}
 
 \item{dimsRemain}{if \code{TRUE}, returns a list of rows and columns
-remaining after cleaning. If \code{FALSE}, returns the cleaned object 
+remaining after cleaning. If \code{FALSE}, returns the cleaned object
 itself.}
 }
+\value{
+A \code{BiclusterExperiment-class} or a \code{matrix}
+}
 \description{
-Returns an object of the same type as \code{object}, containing all columns 
+Returns an object of the same type as \code{object}, containing all columns
 in \code{object} for which the fraction of present values is greater than
 than \code{cleanParam}
 }

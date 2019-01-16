@@ -20,11 +20,12 @@ respective developers, then progressively relaxes parameters as
 needed to return the desired number of biclusters. Method-specific parameters
 besides those automatically manipulated can be provided by name to
 \code{addStrat()}. Method-specific parameters for "als-nmf", "svd-pca" and
-"nipals-pca" are described in their respective sections. For parameters specific to other methods,
-please see respective documentation in other packages.
+"nipals-pca" are described in their respective sections. For parameters
+specific to other methods, please see respective documentation in other
+packages.
 }
 \details{
-\describe{ 
+\describe{
 \item{\link{als_nmf}}{Alternating-least-squares non-negative matrix
 approximation. Fast at low values of \code{k}, but rapidly slows as \code{k}
 increases.}
@@ -42,11 +43,10 @@ least-squares with the sparsity-inducing regularization factors introduced by
 Kim and Park (2007). \code{eta} and \code{beta} are initialized at
 mean(\code{A}) and are halved progressively as needed.}
 \item{spectral}{The Spectral algorithm. For smaller matrices, the parameter
-  \code{numberOfEigenvalues} is automatically set to enable finding the
-  number of biclusters requested. The parameter \code{withinVar} is initialized
-  equal to the smaller matrix dimension and allowed to increase up to 10
-  times the smaller matrix dimension.}
-}
+\code{numberOfEigenvalues} is automatically set to enable finding the number
+of biclusters requested. The parameter \code{withinVar} is initialized equal
+to the smaller matrix dimension and allowed to increase up to 10 times the
+smaller matrix dimension.} }
 }
 \seealso{
 \code{\link{als_nmf}}

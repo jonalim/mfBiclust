@@ -7,12 +7,29 @@
 BiclusterExperiment(m, bcs = list(),
   phenoData = Biobase::annotatedDataFrameFrom(m, byrow = FALSE),
   featureData = annotatedDataFrameFrom(m, byrow = TRUE), pp = FALSE,
-  maxNa = 0.5)
+  maxNa = 0)
 }
 \arguments{
 \item{m}{The data on which derived BiclusterStrategy objects will be
 calculated. Should be a matrix or a class coercible to matrix, with samples
 as columns and features as rows}
+
+\item{bcs}{May be a \code{list} of BiclusterStrategy objects that have been
+computed from \code{m} previously}
+
+\item{phenoData}{Metadata about the rows of \code{m}}
+
+\item{featureData}{Metadata about the columns of \code{m}}
+
+\item{pp}{Whether to preprocess \code{m} by removing rows and columns with
+excessive missing data}
+
+\item{maxNa}{If \code{pp}, rows and columns with over \code{maxNa} elements
+missing are discarded}
+}
+\value{
+A \code{\link{BiclusterExperiment-class}} object containing the data
+ passed to the constructor
 }
 \description{
 Constructs a \code{\link{BiclusterExperiment-class}} object holding data,
@@ -21,6 +38,5 @@ biclustering, use \code{\link{addStrat}()}.
 }
 \examples{
 bce <- BiclusterExperiment(yeast_benchmark[[1]])
-addStrat(bce, k = 3)
-\donttest{biclusterGUI(bce)}
+
 }

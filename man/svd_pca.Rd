@@ -12,6 +12,9 @@ svd_pca(A, k, duplicable = NULL, ...)
 \item{k}{the number of factors to compute}
 
 \item{duplicable}{fix the random seed internally}
+
+\item{...}{Present for compatibility. \code{als_nmf} has no other
+parameters}
 }
 \value{
 a \code{\link{genericFit-class}} object

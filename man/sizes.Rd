@@ -2,11 +2,32 @@
 % Please edit documentation in R/helperFunctions.R
 \name{sizes}
 \alias{sizes}
-\title{Calculate the size of all biclusters}
+\title{Calculate bicluster sizes}
 \usage{
 sizes(biclusterRows, biclusterCols)
 }
+\arguments{
+\item{biclusterRows}{a list of numeric vectors giving the row indices of each
+bicluster}
+
+\item{biclusterCols}{a list of numeric vectors giving the column indices of
+each bicluster}
+}
+\value{
+numeric vector
+}
 \description{
-Provide biclusters as a list of rows in each bicluster, and a list of columns
-in each bicluster.
+Calculates the number of matrix elements in each bicluster. Biclusters must
+be described in the same format as the output from
+\code{\link{biclusterMatrix2List}}.
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 2, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+biclustersAsLists <- biclusterMatrix2List(
+ rowxBicluster = clusteredFeatures(bcs),
+ biclusterxCol = clusteredSamples(bcs))
+sizes(biclusterRows = biclustersAsLists[[1]],
+      biclusterCols = biclustersAsLists[[2]])
 }

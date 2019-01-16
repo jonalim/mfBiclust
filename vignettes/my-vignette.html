@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="Jonathan Lim" />
+
+<meta name="date" content="2019-01-16" />
+
+<title>Introduction to mfBiclust</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Introduction to mfBiclust</h1>
+<h4 class="author"><em>Jonathan Lim</em></h4>
+<h4 class="date"><em>2019-01-16</em></h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>mfBiclust is a package that furnishes <em>m</em>atrix-<em>f</em>actorization tools for biological <em>biclust</em>ering. Biclustering is the problem of clustering both dimensions of a matrix simultaneously, typically for transcriptomic or proteomic datasets. Every resulting cluster of samples corresponds one-to-one with a cluster of variables that differentiate those samples from all other samples in the dataset. Thus, multiple phenotypes, defined by upregulation or downregulation of several biomolecules, can be identified simultaneously using the same dataset.</p>
+<p>(Approximate) matrix factorization is the approximation of the original data matrix <span class="math inline">\(A_{m x n}\)</span> as the product of two matrices <span class="math inline">\(W_{m x k}\)</span> and <span class="math inline">\(H_{k x n}\)</span>. The parameter <span class="math inline">\(k\)</span> gives the number of biclusters. Row <span class="math inline">\(i\)</span> of <span class="math inline">\(W\)</span> gives the unitless degree to which features are biomarkers of bicluster <span class="math inline">\(i\)</span>. Similarly, column <span class="math inline">\(i\)</span> of <span class="math inline">\(H\)</span> gives the unitless degree to which each sample expresses the phenotype of bicluster <span class="math inline">\(i\)</span>. Thus by definition, matrix factorization allows the discovery of an arbitrary number of potentially overlapping biclusters, up to the same number as the smaller dimension of the dataset. Furthermore, <code>mfBiclust</code> provides an implementation of <a href="https://arxiv.org/abs/0908.2062">Owen and Perry’s bi-cross-validation</a>, a linear-algebra-based method of optimizing the number of biclusters found.</p>
+</div>
+<div id="sample-data" class="section level1">
+<h1>Sample data</h1>
+<p>For convenience we provide some of the gene expression datasets published in <a href="https://github.com/padilha/biclustlib">biclustlib</a>. These are available as <code>yeast_benchmark</code> and <code>cancer_benchmark</code>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(<span class="st">&quot;mfBiclust&quot;</span>)
+<span class="kw">class</span>(yeast_benchmark[[<span class="dv">1</span>]])
+<span class="co">#&gt; [1] &quot;matrix&quot;</span>
+<span class="kw">dim</span>(yeast_benchmark[[<span class="dv">1</span>]])
+<span class="co">#&gt; [1] 1099   18</span>
+
+<span class="kw">dim</span>(cancer_benchmark[[<span class="dv">1</span>]]<span class="op">$</span>data)
+<span class="co">#&gt; [1]  85 179</span>
+cancer_benchmark[[<span class="dv">1</span>]]<span class="op">$</span>labels
+<span class="co">#&gt;     phenotype</span>
+<span class="co">#&gt; V2        HCC</span>
+<span class="co">#&gt; V3        HCC</span>
+<span class="co">#&gt; V4      Liver</span>
+<span class="co">#&gt; V5      Liver</span>
+<span class="co">#&gt; V6        HCC</span>
+<span class="co">#&gt; V7        HCC</span>
+<span class="co">#&gt; V8      Liver</span>
+<span class="co">#&gt; V9      Liver</span>
+<span class="co">#&gt; V10       HCC</span>
+<span class="co">#&gt; V11     Liver</span>
+<span class="co">#&gt; V12       HCC</span>
+<span class="co">#&gt; V13     Liver</span>
+<span class="co">#&gt; V14     Liver</span>
+<span class="co">#&gt; V15       HCC</span>
+<span class="co">#&gt; V16     Liver</span>
+<span class="co">#&gt; V17       HCC</span>
+<span class="co">#&gt; V18       HCC</span>
+<span class="co">#&gt; V19     Liver</span>
+<span class="co">#&gt; V20       HCC</span>
+<span class="co">#&gt; V21       HCC</span>
+<span class="co">#&gt; V22       HCC</span>
+<span class="co">#&gt; V23     Liver</span>
+<span class="co">#&gt; V24     Liver</span>
+<span class="co">#&gt; V25     Liver</span>
+<span class="co">#&gt; V26       HCC</span>
+<span class="co">#&gt; V27     Liver</span>
+<span class="co">#&gt; V28       HCC</span>
+<span class="co">#&gt; V29     Liver</span>
+<span class="co">#&gt; V30       HCC</span>
+<span class="co">#&gt; V31       HCC</span>
+<span class="co">#&gt; V32     Liver</span>
+<span class="co">#&gt; V33     Liver</span>
+<span class="co">#&gt; V34       HCC</span>
+<span class="co">#&gt; V35       HCC</span>
+<span class="co">#&gt; V36       HCC</span>
+<span class="co">#&gt; V37       HCC</span>
+<span class="co">#&gt; V38     Liver</span>
+<span class="co">#&gt; V39       HCC</span>
+<span class="co">#&gt; V40       HCC</span>
+<span class="co">#&gt; V41     Liver</span>
+<span class="co">#&gt; V42     Liver</span>
+<span class="co">#&gt; V43     Liver</span>
+<span class="co">#&gt; V44       HCC</span>
+<span class="co">#&gt; V45       HCC</span>
+<span class="co">#&gt; V46       HCC</span>
+<span class="co">#&gt; V47     Liver</span>
+<span class="co">#&gt; V48     Liver</span>
+<span class="co">#&gt; V49     Liver</span>
+<span class="co">#&gt; V50       HCC</span>
+<span class="co">#&gt; V51       HCC</span>
+<span class="co">#&gt; V52     Liver</span>
+<span class="co">#&gt; V53       HCC</span>
+<span class="co">#&gt; V54       HCC</span>
+<span class="co">#&gt; V55       HCC</span>
+<span class="co">#&gt; V56       HCC</span>
+<span class="co">#&gt; V57     Liver</span>
+<span class="co">#&gt; V58       HCC</span>
+<span class="co">#&gt; V59       HCC</span>
+<span class="co">#&gt; V60       HCC</span>
+<span class="co">#&gt; V61       HCC</span>
+<span class="co">#&gt; V62     Liver</span>
+<span class="co">#&gt; V63       HCC</span>
+<span class="co">#&gt; V64       HCC</span>
+<span class="co">#&gt; V65       HCC</span>
+<span class="co">#&gt; V66       HCC</span>
+<span class="co">#&gt; V67       HCC</span>
+<span class="co">#&gt; V68     Liver</span>
+<span class="co">#&gt; V69     Liver</span>
+<span class="co">#&gt; V70       HCC</span>
+<span class="co">#&gt; V71     Liver</span>
+<span class="co">#&gt; V72     Liver</span>
+<span class="co">#&gt; V73     Liver</span>
+<span class="co">#&gt; V74     Liver</span>
+<span class="co">#&gt; V75     Liver</span>
+<span class="co">#&gt; V76     Liver</span>
+<span class="co">#&gt; V77       HCC</span>
+<span class="co">#&gt; V78     Liver</span>
+<span class="co">#&gt; V79       HCC</span>
+<span class="co">#&gt; V80     Liver</span>
+<span class="co">#&gt; V81     Liver</span>
+<span class="co">#&gt;  [ reached 'max' / getOption(&quot;max.print&quot;) -- omitted 99 rows ]</span></code></pre></div>
+</div>
+<div id="graphical-interface" class="section level1">
+<h1>Graphical Interface</h1>
+<p>The fastest way to analyze data with <code>mfBiclust</code> is to import a dataset into the <code>mfBiclust</code> graphical interface. Data can be imported graphically from a TXT or CSV file or passed in as an argument.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">biclusterGUI</span>()
+<span class="kw">biclusterGUI</span>(yeast_benchmark[[<span class="dv">1</span>]])</code></pre></div>
+</div>
+<div id="performing-biclustering-using-mfbiclust-classes-and-functions" class="section level1">
+<h1>Performing biclustering using <code>mfBiclust</code> classes and functions</h1>
+<p>Before biclustering, a dataset must be encapsulated by a <code>BiclusterExperiment</code> instance. Creating a <code>BiclusterExperiment</code> is simple.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bce &lt;-<span class="st"> </span><span class="kw">BiclusterExperiment</span>(yeast_benchmark[[<span class="dv">1</span>]])
+bce
+<span class="co">#&gt; BiclusterExperiment (storageMode: list)</span>
+<span class="co">#&gt; assayData: 1099 features, 18 samples </span>
+<span class="co">#&gt;   element names: abund </span>
+<span class="co">#&gt; protocolData: none</span>
+<span class="co">#&gt; phenoData: none</span>
+<span class="co">#&gt; featureData: none</span>
+<span class="co">#&gt; experimentData: use 'experimentData(object)'</span>
+<span class="co">#&gt; Annotation:</span></code></pre></div>
+<p>The class <code>BiclusterExperiment</code>, which subclasses the Biobase <code>eSet</code>, encapsulates the data along with its metadata (including sample and feature names) and all biclustering results computed from the dataset. A data matrix can be added as a numeric matrix or coerced from the <a href="https://bioconductor.org/packages/release/bioc/html/Biobase.html"><code>eSet</code></a> or <a href="https://bioconductor.org/packages/release/bioc/html/xcms.html"><code>XCMSSet</code></a> classes.</p>
+<p>Biclustering is performed by calling <code>addStrat</code>, which requires a <code>BiclusterExperiment</code> as input and returns the same <code>BiclusterExperiment</code> with the additional biclustering results. The two required parameters are the desired number of biclusters and the algorithm.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bce &lt;-<span class="st"> </span><span class="kw">addStrat</span>(bce, <span class="dt">k =</span> <span class="dv">3</span>, <span class="dt">method =</span> <span class="st">&quot;als-nmf&quot;</span>)
+<span class="co">#&gt; Converting to pseudovalues (x + abs(min(x))) just for this BiclusterStrategy because negative values are not allowed.</span>
+<span class="co">#&gt; Added BiclusterStrategy named ALS-NMF | Otsu | 3</span></code></pre></div>
+<p>In the above example, we explicitly specified the number of biclusters and the biclustering algorithm to use. addStrat automatically handled the pre-processing required to run the selected algorithm.</p>
+<p>The matrix factors created by <code>addStrat</code> are contained in the recently-created <code>BiclusterStrategy</code>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bcs &lt;-<span class="st"> </span><span class="kw">getStrat</span>(bce, <span class="dv">1</span>)
+<span class="co"># Equivalent to getStrat(bce, &quot;ALS-NMF | Otsu | 3&quot;)</span>
+
+<span class="kw">sampleFactor</span>(bcs)
+<span class="co">#&gt;                   V3       V4        V5       V6       V7       V8</span>
+<span class="co">#&gt; Bicluster.1  2.59427 16.01515 47.117638 56.19641 46.38946 38.50112</span>
+<span class="co">#&gt; Bicluster.2 13.81401  0.00000  6.460058 14.55985 29.56292 33.60877</span>
+<span class="co">#&gt; Bicluster.3 73.95457 77.52755 46.020480 27.24381 19.48955 19.42560</span>
+<span class="co">#&gt;                   V9      V10      V11      V12      V13      V14      V15</span>
+<span class="co">#&gt; Bicluster.1 27.61137 21.55975 18.98076 21.74442 36.57412 42.46595 40.93615</span>
+<span class="co">#&gt; Bicluster.2 41.81326 41.41586 42.76465 35.92554 32.62281 30.18564 33.35283</span>
+<span class="co">#&gt; Bicluster.3 21.24732 24.31167 26.80175 31.37536 26.70017 22.12509 20.49363</span>
+<span class="co">#&gt;                  V16      V17      V18      V19      V20</span>
+<span class="co">#&gt; Bicluster.1 34.62665 35.21118 29.32154 22.24452 18.73135</span>
+<span class="co">#&gt; Bicluster.2 35.48466 39.08813 40.77638 41.38071 38.85606</span>
+<span class="co">#&gt; Bicluster.3 16.54275 16.61475 19.91048 22.92724 30.02185</span>
+<span class="kw">featureFactor</span>(bcs)
+<span class="co">#&gt;           Bicluster.1  Bicluster.2  Bicluster.3</span>
+<span class="co">#&gt; YAL003W   0.018474912 0.0442965872 0.0258557572</span>
+<span class="co">#&gt; YAL004W   0.023094002 0.0389264844 0.0265434578</span>
+<span class="co">#&gt; YAL005C   0.017729772 0.0448715888 0.0260355827</span>
+<span class="co">#&gt; YAL008W   0.026761512 0.0356091840 0.0261155552</span>
+<span class="co">#&gt; YAL010C   0.018294015 0.0385139492 0.0318896007</span>
+<span class="co">#&gt; YAL011W   0.022924909 0.0420993268 0.0235231427</span>
+<span class="co">#&gt; YAL016W   0.025647608 0.0330979837 0.0299589229</span>
+<span class="co">#&gt; YAL018C   0.009282692 0.0441524482 0.0355530655</span>
+<span class="co">#&gt; YAL019W   0.026231381 0.0408718978 0.0214275895</span>
+<span class="co">#&gt; YAL020C   0.019343670 0.0412814801 0.0280548021</span>
+<span class="co">#&gt; YAL023C   0.033094069 0.0395051766 0.0156753801</span>
+<span class="co">#&gt; YAL025C   0.014241829 0.0536831623 0.0206845939</span>
+<span class="co">#&gt; YAL028W   0.033779984 0.0319828101 0.0227173204</span>
+<span class="co">#&gt; YAL031C   0.014478262 0.0406615523 0.0336463874</span>
+<span class="co">#&gt; YAL032C   0.024690616 0.0358061023 0.0281020395</span>
+<span class="co">#&gt; YAL034C   0.022718755 0.0322719553 0.0337972624</span>
+<span class="co">#&gt; YAL035W   0.021099055 0.0474026436 0.0200706178</span>
+<span class="co">#&gt; YAL036C   0.015210392 0.0488045028 0.0246809726</span>
+<span class="co">#&gt; YAL040C   0.004015621 0.0423960041 0.0427976855</span>
+<span class="co">#&gt; YAL045C   0.028147435 0.0330785707 0.0273848908</span>
+<span class="co">#&gt; YAL048C   0.018329096 0.0375305255 0.0327955595</span>
+<span class="co">#&gt; YAL058W   0.028914605 0.0343925789 0.0252842996</span>
+<span class="co">#&gt; YAL059W   0.013229460 0.0506143677 0.0248307185</span>
+<span class="co">#&gt; YAL060W   0.031347266 0.0314533822 0.0257785603</span>
+<span class="co">#&gt; YAL061W   0.023574421 0.0301529374 0.0350091393</span>
+<span class="co">#&gt; YAL064W   0.024712135 0.0387078649 0.0250639438</span>
+<span class="co">#&gt;  [ reached getOption(&quot;max.print&quot;) -- omitted 1073 rows ]</span></code></pre></div>
+<p>We can visualize bicluster-likeness by creating heatmaps.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(<span class="st">&quot;pheatmap&quot;</span>)
+<span class="co"># Which samples associate with which bicluster?</span>
+<span class="kw">factorHeatmap</span>(bce, bcs, <span class="dt">type =</span> <span class="st">&quot;sample&quot;</span>, <span class="dt">colNames =</span> <span class="ot">TRUE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Which features are strongly present in which bicluster?</span>
+<span class="kw">factorHeatmap</span>(bce, bcs, <span class="dt">type =</span> <span class="st">&quot;feature&quot;</span>, <span class="dt">colNames =</span> <span class="ot">FALSE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>To determine the bicluster membership of the samples and features, the Otsu algorithm is used to segment each row of <span class="math inline">\(W\)</span> and each column of <span class="math inline">\(H\)</span>. The thresholding performed for a specific bicluster can be visualized.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">bcNames</span>(bcs)
+<span class="co">#&gt; [1] &quot;Bicluster.1&quot; &quot;Bicluster.2&quot; &quot;Bicluster.3&quot;</span>
+<span class="kw">plotThreshold</span>(<span class="dt">bce =</span> bce, <span class="dt">bcs =</span> bcs, <span class="dt">type =</span> <span class="st">&quot;sample&quot;</span>, <span class="dt">bicluster =</span> <span class="st">&quot;Bicluster.1&quot;</span>,
+                  <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>, <span class="dt">xlabs =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ordering = &quot;input&quot; plots samples in the same order as their respective columns</span>
+<span class="co"># in the BiclusterExperiment</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plotThreshold</span>(<span class="dt">bce =</span> bce, <span class="dt">bcs =</span> bcs, <span class="dt">type =</span> <span class="st">&quot;feature&quot;</span>, <span class="dt">bicluster =</span> <span class="st">&quot;Bicluster.1&quot;</span>,
+                  <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>, <span class="dt">xlabs =</span> <span class="ot">FALSE</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>A boolean matrix describing cluster membership is accessible:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">clusteredSamples</span>(bcs)
+<span class="co">#&gt;                V3    V4    V5    V6    V7    V8    V9   V10   V11   V12</span>
+<span class="co">#&gt; Bicluster.1 FALSE FALSE  TRUE  TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE</span>
+<span class="co">#&gt; Bicluster.2 FALSE FALSE FALSE FALSE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE</span>
+<span class="co">#&gt; Bicluster.3  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE</span>
+<span class="co">#&gt;               V13   V14   V15   V16   V17   V18   V19   V20</span>
+<span class="co">#&gt; Bicluster.1  TRUE  TRUE  TRUE  TRUE  TRUE FALSE FALSE FALSE</span>
+<span class="co">#&gt; Bicluster.2  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE</span>
+<span class="co">#&gt; Bicluster.3 FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE</span>
+<span class="kw">clusteredFeatures</span>(bcs)
+<span class="co">#&gt;           Bicluster.1 Bicluster.2 Bicluster.3</span>
+<span class="co">#&gt; YAL003W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL004W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL005C         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL008W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL010C         FALSE        TRUE        TRUE</span>
+<span class="co">#&gt; YAL011W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL016W         FALSE       FALSE        TRUE</span>
+<span class="co">#&gt; YAL018C         FALSE        TRUE        TRUE</span>
+<span class="co">#&gt; YAL019W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL020C         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL023C          TRUE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL025C         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL028W          TRUE       FALSE       FALSE</span>
+<span class="co">#&gt; YAL031C         FALSE        TRUE        TRUE</span>
+<span class="co">#&gt; YAL032C         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL034C         FALSE       FALSE        TRUE</span>
+<span class="co">#&gt; YAL035W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL036C         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL040C         FALSE        TRUE        TRUE</span>
+<span class="co">#&gt; YAL045C         FALSE       FALSE       FALSE</span>
+<span class="co">#&gt; YAL048C         FALSE        TRUE        TRUE</span>
+<span class="co">#&gt; YAL058W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL059W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt; YAL060W          TRUE       FALSE       FALSE</span>
+<span class="co">#&gt; YAL061W         FALSE       FALSE        TRUE</span>
+<span class="co">#&gt; YAL064W         FALSE        TRUE       FALSE</span>
+<span class="co">#&gt;  [ reached getOption(&quot;max.print&quot;) -- omitted 1073 rows ]</span></code></pre></div>
+<p>To make these results useful for functional analysis, we can extract a list of samples and features in each bicluster.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Samples and features in the first bicluster</span>
+<span class="kw">names</span>(<span class="kw">which</span>(<span class="kw">clusteredSamples</span>(bcs)[<span class="dv">1</span>, ]))
+<span class="co">#&gt; [1] &quot;V5&quot;  &quot;V6&quot;  &quot;V7&quot;  &quot;V8&quot;  &quot;V13&quot; &quot;V14&quot; &quot;V15&quot; &quot;V16&quot; &quot;V17&quot;</span>
+<span class="kw">names</span>(<span class="kw">which</span>(<span class="kw">clusteredFeatures</span>(bcs)[, <span class="dv">1</span>]))
+<span class="co">#&gt;  [1] &quot;YAL023C&quot; &quot;YAL028W&quot; &quot;YAL060W&quot; &quot;YAR003W&quot; &quot;YAR007C&quot; &quot;YAR009C&quot; &quot;YBL002W&quot;</span>
+<span class="co">#&gt;  [8] &quot;YBL009W&quot; &quot;YBL035C&quot; &quot;YBL111C&quot; &quot;YBL112C&quot; &quot;YBL113C&quot; &quot;YBR009C&quot; &quot;YBR010W&quot;</span>
+<span class="co">#&gt; [15] &quot;YBR056W&quot; &quot;YBR067C&quot; &quot;YBR070C&quot; &quot;YBR071W&quot; &quot;YBR088C&quot; &quot;YBR098W&quot; &quot;YBR126C&quot;</span>
+<span class="co">#&gt; [22] &quot;YBR149W&quot; &quot;YBR230C&quot; &quot;YBR241C&quot; &quot;YBR275C&quot; &quot;YBR288C&quot; &quot;YCL018W&quot; &quot;YCL022C&quot;</span>
+<span class="co">#&gt; [29] &quot;YCL023C&quot; &quot;YCL024W&quot; &quot;YCL040W&quot; &quot;YCL042W&quot; &quot;YCL061C&quot; &quot;YCR004C&quot; &quot;YCR005C&quot;</span>
+<span class="co">#&gt; [36] &quot;YCR061W&quot; &quot;YCR065W&quot; &quot;YDL003W&quot; &quot;YDL009C&quot; &quot;YDL010W&quot; &quot;YDL018C&quot; &quot;YDL027C&quot;</span>
+<span class="co">#&gt; [43] &quot;YDL096C&quot; &quot;YDL101C&quot; &quot;YDL102W&quot; &quot;YDL124W&quot; &quot;YDL155W&quot; &quot;YDL156W&quot; &quot;YDL163W&quot;</span>
+<span class="co">#&gt; [50] &quot;YDL164C&quot; &quot;YDL195W&quot; &quot;YDL197C&quot; &quot;YDR040C&quot; &quot;YDR097C&quot; &quot;YDR113C&quot; &quot;YDR133C&quot;</span>
+<span class="co">#&gt; [57] &quot;YDR207C&quot; &quot;YDR224C&quot; &quot;YDR225W&quot; &quot;YDR297W&quot; &quot;YDR309C&quot; &quot;YDR342C&quot; &quot;YDR355C&quot;</span>
+<span class="co">#&gt; [64] &quot;YDR400W&quot; &quot;YDR461W&quot; &quot;YDR480W&quot; &quot;YDR501W&quot; &quot;YDR503C&quot; &quot;YDR507C&quot; &quot;YDR508C&quot;</span>
+<span class="co">#&gt; [71] &quot;YDR516C&quot; &quot;YDR528W&quot; &quot;YDR545W&quot; &quot;YEL040W&quot; &quot;YEL047C&quot; &quot;YEL060C&quot; &quot;YEL071W&quot;</span>
+<span class="co">#&gt; [78] &quot;YEL075C&quot; &quot;YEL076C&quot; &quot;YEL077C&quot;</span>
+<span class="co">#&gt;  [ reached getOption(&quot;max.print&quot;) -- omitted 207 entries ]</span>
+
+<span class="co"># Samples and features in the second bicluster</span>
+ <span class="kw">names</span>(<span class="kw">which</span>(<span class="kw">clusteredSamples</span>(bcs)[<span class="dv">2</span>, ]))
+<span class="co">#&gt;  [1] &quot;V7&quot;  &quot;V8&quot;  &quot;V9&quot;  &quot;V10&quot; &quot;V11&quot; &quot;V12&quot; &quot;V13&quot; &quot;V14&quot; &quot;V15&quot; &quot;V16&quot; &quot;V17&quot;</span>
+<span class="co">#&gt; [12] &quot;V18&quot; &quot;V19&quot; &quot;V20&quot;</span>
+<span class="kw">names</span>(<span class="kw">which</span>(<span class="kw">clusteredFeatures</span>(bcs)[, <span class="dv">2</span>]))
+<span class="co">#&gt;  [1] &quot;YAL003W&quot;   &quot;YAL004W&quot;   &quot;YAL005C&quot;   &quot;YAL008W&quot;   &quot;YAL010C&quot;  </span>
+<span class="co">#&gt;  [6] &quot;YAL011W&quot;   &quot;YAL018C&quot;   &quot;YAL019W&quot;   &quot;YAL020C&quot;   &quot;YAL023C&quot;  </span>
+<span class="co">#&gt; [11] &quot;YAL025C&quot;   &quot;YAL031C&quot;   &quot;YAL032C&quot;   &quot;YAL035W&quot;   &quot;YAL036C&quot;  </span>
+<span class="co">#&gt; [16] &quot;YAL040C&quot;   &quot;YAL048C&quot;   &quot;YAL058W&quot;   &quot;YAL059W&quot;   &quot;YAL064W&quot;  </span>
+<span class="co">#&gt; [21] &quot;YAR002W&quot;   &quot;YAR018C&quot;   &quot;YAR033W&quot;   &quot;YAR053W&quot;   &quot;YAR069C&quot;  </span>
+<span class="co">#&gt; [26] &quot;YAR071W&quot;   &quot;YBL001C&quot;   &quot;YBL002W&quot;   &quot;YBL003C&quot;   &quot;YBL009W&quot;  </span>
+<span class="co">#&gt; [31] &quot;YBL014C&quot;   &quot;YBL016W&quot;   &quot;YBL018C&quot;   &quot;YBL023C&quot;   &quot;YBL028C&quot;  </span>
+<span class="co">#&gt; [36] &quot;YBL032W&quot;   &quot;YBL039C&quot;   &quot;YBL047C&quot;   &quot;YBL054W&quot;   &quot;YBL069W&quot;  </span>
+<span class="co">#&gt; [41] &quot;YBL070C&quot;   &quot;YBL072C&quot;   &quot;YBL082C&quot;   &quot;YBL083C&quot;   &quot;YBL093C&quot;  </span>
+<span class="co">#&gt; [46] &quot;YBL095W&quot;   &quot;YBR004C&quot;   &quot;YBR008C&quot;   &quot;YBR009C&quot;   &quot;YBR010W&quot;  </span>
+<span class="co">#&gt; [51] &quot;YBR034C&quot;   &quot;YBR037C&quot;   &quot;YBR038W&quot;   &quot;YBR049C&quot;   &quot;YBR052C&quot;  </span>
+<span class="co">#&gt; [56] &quot;YBR054W&quot;   &quot;YBR061C&quot;   &quot;YBR065C&quot;   &quot;YBR068C&quot;   &quot;YBR069C&quot;  </span>
+<span class="co">#&gt; [61] &quot;YBR078W&quot;   &quot;YBR079C&quot;   &quot;YBR083W&quot;   &quot;YBR084W&quot;   &quot;YBR085W&quot;  </span>
+<span class="co">#&gt; [66] &quot;YBR089C-A&quot; &quot;YBR090C&quot;   &quot;YBR092C&quot;   &quot;YBR093C&quot;   &quot;YBR103W&quot;  </span>
+<span class="co">#&gt; [71] &quot;YBR104W&quot;   &quot;YBR108W&quot;   &quot;YBR112C&quot;   &quot;YBR113W&quot;   &quot;YBR121C&quot;  </span>
+<span class="co">#&gt; [76] &quot;YBR123C&quot;   &quot;YBR133C&quot;   &quot;YBR135W&quot;   &quot;YBR139W&quot;   &quot;YBR143C&quot;  </span>
+<span class="co">#&gt;  [ reached getOption(&quot;max.print&quot;) -- omitted 505 entries ]</span>
+
+<span class="co"># and so on</span></code></pre></div>
+</div>
+<div id="optimizing-the-number-of-biclusters" class="section level1">
+<h1>Optimizing the number of biclusters</h1>
+<p>When a high-throughput assay is performed, there is not always prior knowledge of the number of phenotypes present. For example, even if two phenotypes are evident to the researcher, a dataset may have information about subcategories within those two phenotypes. <code>mfBiclust</code> can use bi-cross-validation (BCV) to determine the optimal number of biclusters for matrix-factorization-based biclustering. Since BCV, like n-fold cross-validation, is a stochastic procedure, <code>mfBiclust</code> repeats BCV until the distribution of results converges.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">auto_bcv</span>(<span class="dt">Y =</span> <span class="kw">as.matrix</span>(bce), <span class="dt">bestOnly =</span> <span class="ot">FALSE</span>)
+<span class="co">#&gt; Warning: Due to the number of holdouts, not all ks can be tested. A higher number of holdouts can be specified to test higher values of k, but the author does not recommend doing so.</span>
+<span class="co">#&gt; $best</span>
+<span class="co">#&gt; [1] 11</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; $counts</span>
+<span class="co">#&gt;  1  2  3  4  5  6  7  8  9 10 11 </span>
+<span class="co">#&gt;  0  0  0  0  0  0  0  0  0  0 22</span>
+<span class="co"># To omit the counts table, omit `bestOnly` argument</span></code></pre></div>
+</div>
+<div id="biclustering-algorithms" class="section level1">
+<h1>Biclustering algorithms</h1>
+<p>In all, <a href="bicluster-methods.html">four matrix factorization algorithms and two non-matrix factorization algorithms</a> are included in <code>mfBiclust</code>.</p>
+<div id="non-negative-matrix-factorization-nmf" class="section level2">
+<h2>Non-negative matrix factorization (NMF)</h2>
+<p>Two non-negative matrix factorization algorithms are included. NMF algorithms enforce non-negativity of <span class="math inline">\(W\)</span> and <span class="math inline">\(H\)</span> for interpretability, and unlike with singular value decomposition, the factors of NMF are not necessarily orthogonal. Alternating Least-Squares NMF (<code>type = als-nmf</code>) was implemented as described by <a href="https://doi.org/10.1002/env.3170050203">Paatero and Tapper</a>, adapting code from the <a href="https://cran.r-project.org/web/packages/NMF"><code>NMF</code></a> package. Sparse NMF (<code>type = snmf</code>) is a variant of Alternating Least-Squares NMF that uses regularization terms to increase the sparsity of the sample-bicluster matrix. <code>addStrat</code> wraps the <code>snmf/r</code> algorithm implemented in <code>NMF</code> with regularization coefficients <span class="math inline">\(\beta\)</span> and <span class="math inline">\(\eta\)</span> initially set to the mean of the input matrix; <span class="math inline">\(\beta\)</span> and <span class="math inline">\(\eta\)</span> are halved as necessary to complete the factorization without numerical errors. As this is merely a heuristic for completing the factorization without errors, users are encouraged to specify <span class="math inline">\(\beta\)</span> and <span class="math inline">\(\eta\)</span> explicitly to obtain the desired results.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bce &lt;-<span class="st"> </span><span class="kw">addStrat</span>(bce, <span class="dt">k =</span> <span class="dv">3</span>, <span class="dt">method =</span> <span class="st">&quot;snmf&quot;</span>, <span class="dt">beta =</span> <span class="dv">3</span>, <span class="dt">eta =</span> <span class="dv">3</span>)
+<span class="co">#&gt; Converting to pseudovalues (x + abs(min(x))) just for this BiclusterStrategy because negative values are not allowed.</span>
+<span class="co">#&gt; method: snmf/r </span>
+<span class="co">#&gt; parameters:</span>
+<span class="co">#&gt; beta: 3 </span>
+<span class="co">#&gt; eta: 3</span>
+<span class="co">#&gt; Added BiclusterStrategy named SNMF | Otsu | 3</span>
+<span class="kw">factorHeatmap</span>(bce, <span class="kw">getStrat</span>(bce, <span class="dv">2</span>), <span class="dt">type =</span> <span class="st">&quot;sample&quot;</span>, <span class="dt">colNames =</span> <span class="ot">TRUE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">factorHeatmap</span>(bce, <span class="kw">getStrat</span>(bce, <span class="dv">2</span>), <span class="dt">type =</span> <span class="st">&quot;feature&quot;</span>, <span class="dt">colNames =</span> <span class="ot">FALSE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="principal-components" class="section level2">
+<h2>Principal components</h2>
+<p><code>mfBiclust</code> includes two methods of approximating the factorization by calculating the component scores and loadings for the first <code>k</code> principal components of <span class="math inline">\(A\)</span>. For <code>(type = &quot;svd-pca&quot;)</code>, the principal components are calculated via singular value decomposition. For <code>(type = &quot;nipals-pca&quot;)</code>, the nonlinear iterative partial least squares algorithm is executed, which often requires more computation time than an SVD.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bce &lt;-<span class="st"> </span><span class="kw">addStrat</span>(bce, <span class="dt">k =</span> <span class="dv">3</span>, <span class="dt">method =</span> <span class="st">&quot;svd-pca&quot;</span>)
+<span class="co">#&gt; Added BiclusterStrategy named SVD-PCA | Otsu | 3</span>
+<span class="kw">factorHeatmap</span>(bce, <span class="kw">getStrat</span>(bce, <span class="dv">3</span>), <span class="dt">type =</span> <span class="st">&quot;sample&quot;</span>, <span class="dt">colNames =</span> <span class="ot">TRUE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">factorHeatmap</span>(bce, <span class="kw">getStrat</span>(bce, <span class="dv">3</span>), <span class="dt">type =</span> <span class="st">&quot;feature&quot;</span>, <span class="dt">colNames =</span> <span class="ot">FALSE</span>, <span class="dt">ordering =</span> <span class="st">&quot;cluster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="plaid-and-spectral" class="section level2">
+<h2>Plaid and Spectral</h2>
+<p><code>addStrat</code> wraps two biclustering algorithms not based on matrix factorization. <code>addStrat(type = &quot;plaid&quot;)</code> and <code>addStrat(type = &quot;spectral&quot;)</code> are wrappers for the Plaid and Spectral algorithms, respectively, implemented by <a href="https://cran.r-project.org/web/packages/biclust"><code>biclust::biclust</code></a>. Since Plaid and Spectral do not return fuzzy biclusters, the <span class="math inline">\(W\)</span> and <span class="math inline">\(H\)</span> matrices contained in the resulting <code>BiclusterStrategy</code> will be identical to the matrices returned by <code>clusteredSamples()</code> and <code>clusteredFeatures()</code>. <code>addStrat</code> sets all parameters of the back-end by default, but users may override any parameter by explicitly naming it in <code>addStrat()</code>.</p>
+<p>Initially Plaid is run with <code>max.layers = k, row.release = 1, col.release = 1</code>, the most conservative values. If the desired number of biclusters is not returned, <code>row.release</code> and <code>col.release</code> are simultaneously decremented by 0.1 until they reach 0.</p>
+<p>Initially Spectral is run using <code>normalization = &quot;log&quot;</code> and <code>numberOfEigenvalues</code> set to 3 or the next highest integer that allows for <code>k</code> biclusters to be found. For a matrix whose smaller dimension is <span class="math inline">\(a\)</span>, Spectral is executed with <code>withinVar</code> set to <span class="math inline">\(\{a, 2a, 3a, ...\}\)</span>, continuing until over <code>k</code> biclusters are returned.</p>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

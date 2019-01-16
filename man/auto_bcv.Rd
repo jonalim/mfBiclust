@@ -4,8 +4,8 @@
 \alias{auto_bcv}
 \title{Use BCV to estimate the optimal k until convergence}
 \usage{
-auto_bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
-  maxIter = 100L, tol = (10^-4), bestOnly = FALSE, verbose = TRUE,
+auto_bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 3L,
+  maxIter = 100L, tol = (10^-4), bestOnly = FALSE, verbose = FALSE,
   duplicable = TRUE, interactive = TRUE)
 }
 \arguments{
@@ -37,16 +37,16 @@ if \code{bestOnly = FALSE}, the predicted bicluster quantity. if
 }
 \description{
 Repeatedly chooses the k that minimizes the BCV until the the distribution of
-k's has converged. The median k is reported as "best".
+k's has converged. Often less than 50 iterations are required. The median k
+is reported as "best".
 }
 \details{
-Often less than 50 iterations are required. Decreasing \code{holdouts} will
-speed up each iteration at the cost of accuracy, and will also limit the
-highest testable k to \eqn{(\code{holdouts} - 1) / \code{holdouts} * \min(m,
-n)} for \eqn{Y_{m,n}}. A warning will be issued if not all \code{ks} can be
-tested. To minimize unnecessary computation, it is often helpful to run with
-\code{maxIter = 5} and \code{holdouts = 2}, incrementing holdouts as
-necessary to determine the range of results.
+The highest k tested is limited to \eqn{(\code{holdouts} - 1) /
+\code{holdouts} * \min(m, n)} for \eqn{Y_{m,n}}. A warning will be issued if
+not all \code{ks} can be tested.
+}
+\examples{
+auto_bcv(yeast_benchmark[[1]])
 }
 \seealso{
 \code{\link{bcv}()}

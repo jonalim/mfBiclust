@@ -3,17 +3,32 @@
 \docType{class}
 \name{BiclusterStrategy-class}
 \alias{BiclusterStrategy-class}
-\alias{clusteredFeatures,BiclusterStrategy-method}
-\alias{clusteredSamples,BiclusterStrategy-method}
+\alias{bcNames,BiclusterStrategy-method}
+\alias{featureFactor,BiclusterStrategy-method}
+\alias{featureThresh,BiclusterStrategy-method}
+\alias{sampleThresh,BiclusterStrategy-method}
+\alias{method,BiclusterStrategy-method}
+\alias{name,BiclusterStrategy-method}
 \alias{nclust,BiclusterStrategy-method}
+\alias{sampleFactor,BiclusterStrategy-method}
 \alias{threshAlgo,BiclusterStrategy-method}
 \title{Class "BiclusterStrategy" for biclusters}
 \usage{
-\S4method{clusteredFeatures}{BiclusterStrategy}(bcs, allBc = FALSE)
+\S4method{bcNames}{BiclusterStrategy}(bcs, allBc = FALSE)
 
-\S4method{clusteredSamples}{BiclusterStrategy}(bcs, allBc = FALSE)
+\S4method{featureFactor}{BiclusterStrategy}(bcs, allBc = FALSE)
+
+\S4method{featureThresh}{BiclusterStrategy}(bcs, allBc = FALSE)
+
+\S4method{sampleThresh}{BiclusterStrategy}(bcs, allBc = FALSE)
+
+\S4method{method}{BiclusterStrategy}(bcs)
+
+\S4method{name}{BiclusterStrategy}(bcs)
 
 \S4method{nclust}{BiclusterStrategy}(bcs, allBc = FALSE)
+
+\S4method{sampleFactor}{BiclusterStrategy}(bcs, allBc = FALSE)
 
 \S4method{threshAlgo}{BiclusterStrategy}(bcs)
 }
@@ -26,13 +41,29 @@ be stored with a warning. See note on slot \code{k} below.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{clusteredFeatures}: A binary matrix showing feature-bicluster
-membership
+\item \code{bcNames}: The names of biclusters in the
+BiclusterStrategy
 
-\item \code{clusteredSamples}: A binary matrix showing sample-bicluster
-membership
+\item \code{featureFactor}: Retrieves \code{bcs@factors@fit@W}, the
+matrix factor mapping features to biclusters
+
+\item \code{featureThresh}: Retrieves \code{bcs@featureThresh}, the threshold(s)
+used to determine each bicluster's feature membership
+
+\item \code{sampleThresh}: Retrieves \code{bcs@sampleThresh}, the threshold(s)
+used to determine each bicluster's sample membership
+
+\item \code{method}: Retrieves \code{bcs@factors@method}, the
+biclustering algorithm used to produce \code{bcs}
+
+\item \code{name}: Gets a display-friendly name of a
+BiclusterStrategy that includes its biclustering algorithm, its
+thresholding algorithm, and the number of biclusters.
 
 \item \code{nclust}: Number of clusters in a BiclusterStrategy
+
+\item \code{sampleFactor}: Retrieves \code{bcs@factors@fit@H}, the
+matrix factor mapping samples to biclusters
 
 \item \code{threshAlgo}: The algorithm used to calculate biclustering
 thresholds
@@ -45,9 +76,9 @@ thresholds
 \code{\link{genericFit-class}} containing a pair of matrices \eqn{L_{m,k}}
 and \eqn{R_{k,n}}.}
 
-\item{\code{scoreThresh}}{a vector of thresholds of length \eqn{k}}
+\item{\code{featureThresh}}{a vector of thresholds of length \eqn{k}}
 
-\item{\code{loadingThresh}}{a vector of thresholds of length \eqn{k}}
+\item{\code{sampleThresh}}{a vector of thresholds of length \eqn{k}}
 
 \item{\code{threshAlgo}}{the name of the thresholding algorithm, or "user"}
 
@@ -56,7 +87,7 @@ logical bicluster membership matrices and other information}
 
 \item{\code{k}}{the value of parameter \code{k} in \code{\link{addStrat}()}.
 \code{k} causes accessor methods to hide any extra biclusters stored
-in this object, unless said accessor methods are called with 
+in this object, unless said accessor methods are called with
 \code{allBc = TRUE}}
 
 \item{\code{name}}{a display friendly character string describing the object}

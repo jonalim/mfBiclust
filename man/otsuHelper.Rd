@@ -9,6 +9,13 @@ otsuHelper(matrix)
 \arguments{
 \item{matrix}{the target matrix, whose columns will be thresholded}
 }
+\value{
+numeric vector
+}
 \description{
 Calculate Otsu thresholds on each column of a matrix
+}
+\examples{
+m <- matrix(rnorm(400), 40, 10)
+otsuHelper(m)
 }

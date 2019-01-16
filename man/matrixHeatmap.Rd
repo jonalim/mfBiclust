@@ -6,6 +6,16 @@
 \usage{
 matrixHeatmap(m)
 }
+\arguments{
+\item{m}{A numeric matrix}
+}
+\value{
+Invisibly returns NULL
+}
 \description{
 Uses R's \code{image()} function to visualize a matrix.
+}
+\examples{
+matrixHeatmap(yeast_benchmark[[1]])
+
 }

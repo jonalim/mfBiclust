@@ -1,25 +1,25 @@
 set.seed(12345)
-nonoverlap_3biclusters <- genSimData(n = 3, overlapped = FALSE, noise = 0.03,
-                                     dynamSize = FALSE, dimx = 40)
-nonoverlap_15biclusters <- genSimData(n = 15, overlapped = FALSE, noise = 0.03,
-                                      dynamSize = FALSE, dimx = 40)
+# No background, sixteen non-overlapping 5x5 biclusters. Elements in
+# biclusters have value 5; all other elements are 0.
+fiveSquareConstant <- genSimData(n = 16, biclusterConstant = 5,
+ clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
 
-nonoverlap_10height <- genSimData(n= 3, overlapped = FALSE, noise = 0.03,
-                                  dynamSize = FALSE, dimx = 400, dimy = 50)
+# No background, two 5x5 biclusters causing row-shift effects
+fiveSquareRowShift <- genSimData(n = 2, rowBase = 1, rowShift = 1,
+ clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
 
-nonoverlap_10width <- genSimData(n= 3, overlapped = FALSE, noise = 0.03,
-                                 dynamSize = FALSE, dimx = 50, dimy = 400)
+# Three 5x5 biclusters, where the first and second biclusters overlap and the
+# second and third biclusters overlap. Both overlap regions are 4 rows by 2
+# columns.
+fiveSquareOverlapped <- genSimData(n = 3, rowBase = 1, rowShift = 1, overlapRows = 4,
+ overlapCols = 2, clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
 
-overlap_3biclusters <- genSimData(n = 3, overlapped = TRUE, noise = 0.03,
-                                  dynamSize = FALSE, dimx = 40)
-set.seed(123)
-overlap_4biclusters <- genSimData(n = 4, overlapped = TRUE, noise = 0.03,
-                                  dynamSize = FALSE, dimx = 40)
+# One 10x10 plaid bicluster
+plaid <- genSimData(n = 3, biclusterShift = 1, rowShift = 1, colShift = 1,
+ clusterHeight = 10, clusterWidth = 10, shuffle = FALSE)
 
-simdata <- list(nonoverlap_3biclusters, nonoverlap_15biclusters,
-                nonoverlap_10height, nonoverlap_10width, overlap_3biclusters,
-                overlap_4biclusters)
-names(simdata) <- c("nonoverlap_3biclusters", "nonoverlap_15biclusters",
-                    "nonoverlap_10height", "nonoverlap_10width", "overlap_3biclusters",
-                    "overlap_4biclusters")
+simdata <- list(fiveSquareConstant, fiveSquareRowShift,
+                fiveSquareOverlapped, plaid)
+names(simdata) <- c("fiveSquareConstant", "fiveSquareRowShift",
+                    "fiveSquareOverlapped", "plaid")
 usethis::use_data(simdata, overwrite = TRUE)

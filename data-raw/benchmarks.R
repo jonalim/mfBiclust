@@ -27,20 +27,17 @@ cancer_benchmark <- lapply(
     # Read without header because duplicate column names are not allowed
     tab <- read.table(file = paste0(dir, x), sep = "",
                       header = FALSE, stringsAsFactors = FALSE)
-    # first row contains labels; convert to classification matrix
+    # first row contains labels; convert to data.frame for easy import into
+    # BiclusterExperiment
     labels <- factor(as.character(tab[1, 2:ncol(tab)]))
-    classes <- levels(labels)
-    labels <- do.call(rbind, lapply(labels, function(lab) {
-      vec <- rep(0, length(classes))
-      names(vec) <- classes
-      vec[lab] <- 1
-      vec
-    }))
+    labels <- data.frame(phenotype = labels)
     
     # drop first row and column and convert all dataframe columns to numeric
     # do not include transcript identifiers (some transcript identifiers are
     # duplicates; skip dealing with those)
     tab <- sapply(tab[2:nrow(tab), 2:ncol(tab)], as.numeric)
+    
+    rownames(labels) <- colnames(tab)
 
     # for each dataset, include expression dataframe and classification matrix
     list(data = tab, labels = labels)
