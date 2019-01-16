@@ -1,14 +1,18 @@
 #' Simulated bicluster datasets
-#' 
-#' Simulated matrices containing biclusters and mild normally-distributed noise.
-#' Generated using \code{\link{genSimData}()}.
-#' 
+#'
+#' Simulated matrices containing biclusters of various models. Generated using
+#' \code{\link{genSimData}()}.
+#'
 #' @format A list of 4 matrices named:
 #' \describe{
-#'  \item{nonoverlap3}{}
-#'  \item{overlap3}{}
-#'  \item{nonoverlap10}{}
-#'  \item{overlap10}{}
+#'  \item{fiveSquareConstant}{No background, sixteen non-overlapping 5x5
+#'  biclusters. Elements in biclusters have value 5; all other elements are 0.}
+#'  \item{fiveSquareRowShift}{No background, two 5x5 biclusters causing
+#'  row-shift effects}
+#'  \item{fiveSquareOverlapped}{Three 5x5 biclusters, where the first and second
+#'  biclusters overlap and thesecond and third biclusters overlap. Both overlap
+#'  regions are 4 rows by 2 columns.}
+#'  \item{plaid}{A 10x10 plaid bicluster}
 #'  }
 "simdata"
 
@@ -17,7 +21,7 @@
 #' Pre-classified microarray and RNAseq datasets from human cancer samples,
 #' originally published by de Souto MC, Costa IG, de Araujo DS, Ludermir TB,
 #' Schliep A in 2008.
-#' 
+#'
 #' Redistributed from biclustlib: A Python library of biclustering algorithms
 #' and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
 #'
@@ -37,10 +41,10 @@
 #'
 #' Redistributed from biclustlib: A Python library of biclustering algorithms
 #' and evaluation measures. Copyright (C) 2017 Victor Alexandre Padilha.
-#' 
+#'
 #' @format A list of 17 matrices where columns are samples and rows are
 #'   genes, with ENSEMBL names
 #'
 #' @source \url{https://github.com/padilha/biclustlib/tree/master/}
-#' 
+#'
 "yeast_benchmark"

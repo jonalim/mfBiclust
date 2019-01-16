@@ -11,7 +11,7 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
   if(!suppressPackageStartupMessages(requireNamespace(orgDb, quietly = TRUE))) {
     stop(paste0("Package ", orgDb, " needed. Please install it. If it is ",
                 "present on BioConductor, the recommended method is ",
-               "BiocInstaller::biocLite(\"", orgDb, "\")"))
+               "BiocManager::install(\"", orgDb, "\")"))
   }
   
   bcs <- if(inherits(strategy, "BiclusterStrategy")) { strategy

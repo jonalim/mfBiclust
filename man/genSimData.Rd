@@ -5,10 +5,10 @@
 \title{Simulate an omics dataset with biclusters}
 \usage{
 genSimData(n = 1, clusterHeight = 20, clusterWidth = 20, dimx = 80,
-  dimy = 80, overlapRows = 0, overlapCols = 0, biclusterConstant = NULL,
-  biclusterShift = 0, rowBase = 0, rowShift = 0, rowScale = NULL,
-  colShift = 0, colScale = NULL, bgConst = 0, bgNorm = 0,
-  shuffle = TRUE, file = "")
+  dimy = 80, overlapRows = 0, overlapCols = 0, bgConst = 0,
+  bgNorm = 0, biclusterConstant = NULL, biclusterShift = 0,
+  rowBase = 0, rowShift = 0, rowScale = NULL, colShift = 0,
+  colScale = NULL, shuffle = TRUE, file = "")
 }
 \arguments{
 \item{n}{the number of biclusters}
@@ -25,14 +25,17 @@ genSimData(n = 1, clusterHeight = 20, clusterWidth = 20, dimx = 80,
 
 \item{overlapCols}{the number of columns that biclusters should share}
 
-\item{biclusterConstant}{if not NULL, \code{biclusterConstant} provides the
-value of every element in every bicluster, after creating the background}
+\item{bgConst}{initial value of the entire matrix}
+
+\item{bgNorm}{standard deviation of Gaussian noise}
+
+\item{biclusterConstant}{if not NULL, sets the value of every element in
+every bicluster, after creating the background}
 
 \item{biclusterShift}{standard deviation of bicluster-specific additive
 values}
 
-\item{rowBase}{standard deviation of bicluster-and-row-specific background
-values}
+\item{rowBase}{standard deviaton of base row values}
 
 \item{rowShift}{standard deviation of bicluster-and-row-specific shifts}
 
@@ -44,24 +47,22 @@ coefficients}
 \item{colScale}{standard deviation of bicluster-and-column-specific scaling
 coefficients}
 
-\item{bgConst}{initial value of the entire matrix}
-
-\item{bgNorm}{standard deviation of Gaussian noise}
-
 \item{shuffle}{if FALSE, biclusters will be deterministically arranged
 along the diagonal of the matrix}
 
 \item{file}{an optional string giving a prefix for .png and .csv files
 where the generated matrix should be written}
-
-\item{rowBase}{standard deviaton of base row values}
+}
+\value{
+A numeric matrix containing \code{n} biclusters created by the given
+  parameters.
 }
 \description{
-Most models of omics datasets use various combinations of effects in this
-function. Effects are applied in this order:
+Most models of omics datasets can be built using various combinations of
+effects in this function. Effects are applied in this order:
 \enumerate{
 \item Constant background value
-\item base row values (overrides constant background value)
+\item Base row values (overrides constant background value)
 \item Gaussian noise
 \item Constant value across all biclusters (overrides all previous effects)
 \item Additive bicluster-specific values
@@ -69,12 +70,34 @@ function. Effects are applied in this order:
 \item Multiplicative bicluster-and-column-specific values
 \item Additive bicluster-and-row-specific values
 \item Multiplicative bicluster-and-row-specific values
+\item Shuffling of rows and columns
 }
 }
 \details{
 Besides constant values across all biclusters (\code{biclusterConstant}),
 all effects are sampled from a normal distribution centered on 0 and with
 standard deviation given by the respective parameter.
+}
+\examples{
+# No background, sixteen non-overlapping 5x5 biclusters. Elements in
+# biclusters have value 5; all other elements are 0.
+mat <- genSimData(n = 16, biclusterConstant = 5,
+ clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
 
-A matrix containing \code{n} biclusters created by the given parameters.
+# No background, two 5x5 biclusters causing row-shift effects
+mat <- genSimData(n = 2, rowBase = 1, rowShift = 1,
+ clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
+matrixHeatmap(mat)
+
+# Three 5x5 biclusters, where the first and second biclusters overlap and the
+# second and third biclusters overlap. Both overlap regions are 4 rows by 2
+# columns.
+mat <- genSimData(n = 3, rowBase = 1, rowShift = 1, overlapRows = 4,
+ overlapCols = 2, clusterHeight = 5, clusterWidth = 5, shuffle = FALSE)
+matrixHeatmap(mat)
+
+# One 10x10 plaid bicluster
+mat <- genSimData(n = 3, biclusterShift = 1, rowShift = 1, colShift = 1,
+ clusterHeight = 10, clusterWidth = 10, shuffle = FALSE)
+ matrixHeatmap(mat)
 }

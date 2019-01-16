@@ -6,6 +6,19 @@
 \usage{
 method(bcs)
 }
+\arguments{
+\item{bcs}{A \code{\link{BiclusterStrategy-class}} object}
+}
+\value{
+character string
+}
 \description{
-Returns the name of the biclustering algorithm used to calculate a BiclusterStrategy
+Returns the name of the biclustering algorithm used to calculate a
+BiclusterStrategy
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 2)
+bcs <- getStrat(bce, 1)
+method(bcs)
 }

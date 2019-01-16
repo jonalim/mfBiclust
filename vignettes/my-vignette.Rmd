@@ -1,0 +1,172 @@
+---
+title: "Introduction to mfBiclust"
+author: "Jonathan Lim"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Basic usage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options("max.print" = 80)
+```
+
+# Introduction
+
+mfBiclust is a package that furnishes *m*atrix-*f*actorization tools for biological *biclust*ering. Biclustering is the problem of clustering both dimensions of a matrix simultaneously, typically for transcriptomic or proteomic datasets. Every resulting cluster of samples corresponds one-to-one with a cluster of variables that differentiate those samples from all other samples in the dataset. Thus, multiple phenotypes, defined by upregulation or downregulation of several biomolecules, can be identified simultaneously using the same dataset.
+
+(Approximate) matrix factorization is the approximation of the original data matrix $A_{m x n}$ as the product of two matrices $W_{m x k}$ and $H_{k x n}$. The parameter $k$ gives the number of biclusters. Row $i$ of $W$ gives the unitless degree to which features are biomarkers of bicluster $i$. Similarly, column $i$ of $H$ gives the unitless degree to which each sample expresses the phenotype of bicluster $i$. Thus by definition, matrix factorization allows the discovery of an arbitrary number of potentially overlapping biclusters, up to the same number as the smaller dimension of the dataset. Furthermore, `mfBiclust` provides an implementation of [Owen and Perry's bi-cross-validation](https://arxiv.org/abs/0908.2062), a linear-algebra-based method of optimizing the number of biclusters found.
+
+# Sample data
+
+For convenience we provide some of the gene expression datasets published in [biclustlib](https://github.com/padilha/biclustlib). These are available as `yeast_benchmark` and `cancer_benchmark`.
+
+```{r}
+library("mfBiclust")
+class(yeast_benchmark[[1]])
+dim(yeast_benchmark[[1]])
+
+dim(cancer_benchmark[[1]]$data)
+cancer_benchmark[[1]]$labels
+```
+
+# Graphical Interface
+
+The fastest way to analyze data with `mfBiclust` is to import a dataset into the `mfBiclust` graphical interface. Data can be imported graphically from a TXT or CSV file or passed in as an argument.
+
+```{r, eval = FALSE}
+biclusterGUI()
+biclusterGUI(yeast_benchmark[[1]])
+```
+
+# Performing biclustering using `mfBiclust` classes and functions
+
+Before biclustering, a dataset must be encapsulated by a `BiclusterExperiment` instance. Creating a `BiclusterExperiment` is simple.
+
+```{r}
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce
+```
+
+The class `BiclusterExperiment`, which subclasses the Biobase `eSet`, encapsulates the data along with its metadata (including sample and feature names) and all biclustering results computed from the dataset. A data matrix can be added as a numeric matrix or coerced from the [`eSet`](https://bioconductor.org/packages/release/bioc/html/Biobase.html) or [`XCMSSet`](https://bioconductor.org/packages/release/bioc/html/xcms.html) classes.
+
+Biclustering is performed by calling `addStrat`, which requires a `BiclusterExperiment` as input and returns the same `BiclusterExperiment` with the additional biclustering results. The two required parameters are the desired number of biclusters and the algorithm.
+
+```{r}
+bce <- addStrat(bce, k = 3, method = "als-nmf")
+```
+
+In the above example, we explicitly specified the number of biclusters and the biclustering algorithm to use. addStrat automatically handled the pre-processing required to run the selected algorithm. 
+
+The matrix factors created by `addStrat` are contained in the recently-created `BiclusterStrategy`.
+
+```{r}
+bcs <- getStrat(bce, 1)
+# Equivalent to getStrat(bce, "ALS-NMF | Otsu | 3")
+
+sampleFactor(bcs)
+featureFactor(bcs)
+```
+
+We can visualize bicluster-likeness by creating heatmaps.
+
+```{r, fig.show = "hold"}
+library("pheatmap")
+# Which samples associate with which bicluster?
+factorHeatmap(bce, bcs, type = "sample", colNames = TRUE, ordering = "cluster")
+```
+
+```{r}
+# Which features are strongly present in which bicluster?
+factorHeatmap(bce, bcs, type = "feature", colNames = FALSE, ordering = "cluster")
+```
+
+To determine the bicluster membership of the samples and features, the Otsu algorithm is used to segment each row of $W$ and each column of $H$. The thresholding performed for a specific bicluster can be visualized.
+
+```{r}
+bcNames(bcs)
+plotThreshold(bce = bce, bcs = bcs, type = "sample", bicluster = "Bicluster.1",
+                  ordering = "cluster", xlabs = TRUE)
+# ordering = "input" plots samples in the same order as their respective columns
+# in the BiclusterExperiment
+```
+
+
+```{r}
+plotThreshold(bce = bce, bcs = bcs, type = "feature", bicluster = "Bicluster.1",
+                  ordering = "cluster", xlabs = FALSE)
+```
+
+A boolean matrix describing cluster membership is accessible:
+
+```{r}
+clusteredSamples(bcs)
+clusteredFeatures(bcs)
+```
+
+To make these results useful for functional analysis, we can extract a list of samples and features in each bicluster.
+
+```{r}
+# Samples and features in the first bicluster
+names(which(clusteredSamples(bcs)[1, ]))
+names(which(clusteredFeatures(bcs)[, 1]))
+
+# Samples and features in the second bicluster
+ names(which(clusteredSamples(bcs)[2, ]))
+names(which(clusteredFeatures(bcs)[, 2]))
+
+# and so on
+```
+
+# Optimizing the number of biclusters
+
+When a high-throughput assay is performed, there is not always prior knowledge of the number of phenotypes present. For example, even if two phenotypes are evident to the researcher, a dataset may have information about subcategories within those two phenotypes. `mfBiclust` can use bi-cross-validation (BCV) to determine the optimal number of biclusters for matrix-factorization-based biclustering. Since BCV, like n-fold cross-validation, is a stochastic procedure, `mfBiclust` repeats BCV until the distribution of results converges.
+
+```{r}
+auto_bcv(Y = as.matrix(bce), bestOnly = FALSE)
+# To omit the counts table, omit `bestOnly` argument
+```
+
+# Biclustering algorithms
+
+In all, [four matrix factorization algorithms and two non-matrix factorization algorithms](bicluster-methods.html) are included in `mfBiclust`.
+
+## Non-negative matrix factorization (NMF)
+
+Two non-negative matrix factorization algorithms are included. NMF algorithms enforce non-negativity of $W$ and $H$ for interpretability, and unlike with singular value decomposition, the factors of NMF are not necessarily orthogonal. Alternating Least-Squares NMF (`type = als-nmf`) was implemented as described by [Paatero and Tapper](https://doi.org/10.1002/env.3170050203), adapting code from the [`NMF`](https://cran.r-project.org/web/packages/NMF) package. Sparse NMF (`type = snmf`) is a variant of Alternating Least-Squares NMF that uses regularization terms to increase the sparsity of the sample-bicluster matrix. `addStrat` wraps the `snmf/r` algorithm implemented in `NMF` with regularization coefficients $\beta$ and $\eta$ initially set to the mean of the input matrix; $\beta$ and $\eta$ are halved as necessary to complete the factorization without numerical errors. As this is merely a heuristic for completing the factorization without errors, users are encouraged to specify $\beta$ and $\eta$ explicitly to obtain the desired results.
+
+```{r}
+bce <- addStrat(bce, k = 3, method = "snmf", beta = 3, eta = 3)
+factorHeatmap(bce, getStrat(bce, 2), type = "sample", colNames = TRUE, ordering = "cluster")
+```
+
+```{r}
+factorHeatmap(bce, getStrat(bce, 2), type = "feature", colNames = FALSE, ordering = "cluster")
+```
+
+## Principal components
+
+`mfBiclust` includes two methods of approximating the factorization by calculating the component scores and loadings for the first `k` principal components of $A$. For `(type = "svd-pca")`, the principal components are calculated via singular value decomposition. For `(type = "nipals-pca")`, the nonlinear iterative partial least squares algorithm is executed, which often requires more computation time than an SVD.
+
+```{r}
+bce <- addStrat(bce, k = 3, method = "svd-pca")
+factorHeatmap(bce, getStrat(bce, 3), type = "sample", colNames = TRUE, ordering = "cluster")
+```
+
+```{r}
+factorHeatmap(bce, getStrat(bce, 3), type = "feature", colNames = FALSE, ordering = "cluster")
+```
+
+## Plaid and Spectral
+
+`addStrat` wraps two biclustering algorithms not based on matrix factorization. `addStrat(type = "plaid")` and `addStrat(type = "spectral")` are wrappers for the Plaid and Spectral algorithms, respectively, implemented by [`biclust::biclust`](https://cran.r-project.org/web/packages/biclust). Since Plaid and Spectral do not return fuzzy biclusters, the $W$ and $H$ matrices contained in the resulting `BiclusterStrategy` will be identical to the matrices returned by `clusteredSamples()` and `clusteredFeatures()`. `addStrat` sets all parameters of the back-end by default, but users may override any parameter by explicitly naming it in `addStrat()`.
+
+Initially Plaid is run with `max.layers = k, row.release = 1, col.release = 1`, the most conservative values. If the desired number of biclusters is not returned, `row.release` and `col.release` are simultaneously decremented by 0.1 until they reach 0.
+
+Initially Spectral is run using `normalization = "log"` and `numberOfEigenvalues` set to 3 or the next highest integer that allows for `k` biclusters to be found. For a matrix whose smaller dimension is $a$, Spectral is executed with `withinVar` set to $\{a, 2a, 3a, ...\}$, continuing until over `k` biclusters are returned.

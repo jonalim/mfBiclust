@@ -21,9 +21,12 @@ tagList(
     source(system.file('shinyApp', "fileUI.R", package='mfBiclust'), local = TRUE)$value,
     #### Bicluster tabpanel ####
     source(system.file('shinyApp', "biclusterUI.R", package='mfBiclust'), local = TRUE)$value,
-    source(system.file('shinyApp', "bcvUI.R", package='mfBiclust'), local = TRUE)$value, 
+    source(system.file('shinyApp', "bcvUI.R", package='mfBiclust'), local = TRUE)$value,
     source(system.file('shinyApp', "goUI.R", package='mfBiclust'), local = TRUE)$value,
     id = "navbarpage", fluid = TRUE
-  ), style = "height: calc(100vh - 39px);"),
+  )
+  , style = "height: calc(100vh - 39px);"
+  )
+ ,
   tags$footer(verbatimTextOutput("status"))
 )

@@ -13,11 +13,15 @@ more \code{\linkS4class{BiclusterStrategy}} objects}
 \item{id}{A character string or numeric index identifying the desired
 \code{\linkS4class{BiclusterStrategy}}}
 }
+\value{
+A \code{\link{BiclusterStrategy-class}} object
+}
 \description{
 Returns one BiclusterStrategy in \code{bce} identified by \code{id}.
 }
 \examples{
 bce <- BiclusterExperiment(yeast_benchmark[[1]])
-addStrat(bce, k = 2)
+bce <- addStrat(bce, k = 2)
 getStrat(bce, "ALS-NMF | Otsu | 2")
+getStrat(bce, 1)
 }

@@ -13,9 +13,28 @@ bicluster}
 \item{BiclusterCols}{a list, each element containing column indices in the
 bicluster}
 
-\item{matrix}{if true, returns a matrix where element i, j is the proportion
-of bicluster i overlapping with bicluster j}
+\item{matrix}{if true, returns a matrix \eqn{A} where element \eqn{A_{i,j}}
+is the overlap between biclusters \eqn{i} and \eqn{j}. Otherwise returns a
+list where the \eqn{i}th element is a vector giving the overlap between
+bicluster \eqn{i} and each bicluster, including itself. In both instances,
+the order of biclusters is preserved from the input.}
+}
+\value{
+If \code{matrix}, a numeric matrix. Else, a list of numeric vectors.
 }
 \description{
-Calculate overlaps between every pair of biclusters.
+The overlap between biclusters \eqn{i} and \eqn{j} is defined as the number
+of matrix elements shared by the two biclusters divided by the size of
+bicluster \eqn{i}.
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 2, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+biclusterLists <- biclusterMatrix2List(clusteredFeatures(bcs),
+ clusteredSamples(bcs))
+biclusterRows <- biclusterLists[[1]]
+biclusterCols <- biclusterLists[[2]]
+overlap(biclusterRows, biclusterCols)
+overlap(biclusterRows, biclusterCols, matrix = TRUE)
 }

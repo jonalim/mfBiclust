@@ -2,18 +2,37 @@
 % Please edit documentation in R/helperFunctions.R
 \name{union.biclust}
 \alias{union.biclust}
-\title{Create a binary matrix containing a union of biclusters}
+\title{Create a binary matrix describing a union of biclusters}
 \usage{
-union.biclust(RowxBiclust, BiclustxCol, choose = rep(TRUE, ncol(RowxBiclust)))
+union.biclust(RowxBiclust, BiclustxCol, choose = rep(TRUE,
+  ncol(RowxBiclust)))
 }
 \arguments{
-\item{RowxBiclust}{a boolean score matrix}
+\item{RowxBiclust}{a boolean row-membership matrix}
 
-\item{BiclustxCol}{a boolean loading matrix}
+\item{BiclustxCol}{a boolean column-membership matrix}
 
-\item{choose}{a vector of indexes of biclusters, should be the same length as
-the width of RowxBiclust}
+\item{choose}{If provided, each element of \code{choose} corresponds to a
+bicluster (a column of \code{RowxBiclust} and a row of \code{BiclustxCol}.
+FALSE elements will exclude biclusters from the calculation.}
+}
+\value{
+numeric matrix
 }
 \description{
-Create a binary matrix containing a union of biclusters
+Given feature-membership matrix \eqn{A_{m,k}} and sample-membership matrix
+\eqn{B_{k,n}} describing a set of biclusters, returns a binary matrix where
+any element that is a member of any bicluster is 1.
+}
+\examples{
+bce <- BiclusterExperiment(yeast_benchmark[[1]])
+bce <- addStrat(bce, k = 4, method = "als-nmf")
+bcs <- getStrat(bce, 1)
+
+# Combine all biclusters
+union.biclust(clusteredFeatures(bcs), clusteredSamples(bcs))
+
+# Combine only the first and second biclusters
+union.biclust(clusteredFeatures(bcs), clusteredSamples(bcs),
+ c(TRUE, TRUE, FALSE, FALSE))
 }

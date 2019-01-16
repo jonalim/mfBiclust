@@ -31,6 +31,10 @@ matrix \code{Y}.
 It is recommended to use auto_bcv to perform and analyze several replications
 of bi-cross-validation.
 }
+\examples{
+bcv(yeast_benchmark[[1]])
+
+}
 \seealso{
 \code{\link{auto_bcv}()}
 }

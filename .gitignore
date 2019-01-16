@@ -5,3 +5,4 @@ packrat/bundles/*
 data/other/*
 .Rhistory
 packrat/lib*/
+inst/doc
