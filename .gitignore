@@ -6,3 +6,6 @@ data/other/*
 .Rhistory
 packrat/lib*/
 inst/doc
+.Rprofile
+mfBiclust.Rproj
+src/mfBiclust.dll

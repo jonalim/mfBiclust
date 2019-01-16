@@ -3,7 +3,7 @@ Type: Package
 Title: Pipelines for Bi-Clustering Using Matrix Factorization
 Version: 0.99.0
 Date: 2018-08-16
-Authors@R: c(person("Jonathan", "Lim", email = "2329118L@student.gla.ac.uk", 
+Authors@R: c(person("Jonathan", "Lim", email = "jlim7@comcast.net", 
   role = c("aut", "cre")), person("Quan", "Gu", email = "quan.gu@glasgow.ac.uk",
   role = "ctb"))
 Description: A collection of pipelines for finding corresponding subsets

@@ -9,6 +9,10 @@ strategies(bce)
 \arguments{
 \item{bce}{A \code{BiclusterExperiment-class} object}
 }
+\value{
+A list containing zero or more \code{\link{BiclusterStrategy-class}}
+  objects
+}
 \description{
 Returns the contents of \code{\link{BiclusterExperiment-class}@strategies}.
 }
