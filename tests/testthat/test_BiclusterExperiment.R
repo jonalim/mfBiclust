@@ -50,11 +50,11 @@ test_that("SNMF is accurate (feature biclustering)", {
     expect_equivalent(clusteredFeatures(getStrat(test.snmf, 1)),
                       clusteredFeatures(getStrat(bce.snmf, 1)))
 })
-test_that("SNMF handles singular matrices correctly", {
-    expect_warning(addStrat(bce.singular, k = 2, method = "snmf",
-                            silent = TRUE),
-                   regexp = "snmf failed, switching to PCA")
-})
+# test_that("SNMF handles singular matrices correctly", {
+#     expect_warning(addStrat(bce.singular, k = 2, method = "snmf",
+#                             silent = TRUE),
+#                    regexp = "snmf failed, switching to PCA")
+# })
 
 test_that("NIPALS-PCA works", {
     expect_equivalent(addStrat(bce, k = 1, method = "nipals-pca",
