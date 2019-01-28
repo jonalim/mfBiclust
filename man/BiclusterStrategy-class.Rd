@@ -82,7 +82,7 @@ and \eqn{R_{k,n}}.}
 
 \item{\code{threshAlgo}}{the name of the thresholding algorithm, or "user"}
 
-\item{\code{biclust}}{a \code{\link[biclust]{Biclust-class}} object containing
+\item{\code{biclust}}{a \code{\link{Biclust-class}} object containing
 logical bicluster membership matrices and other information}
 
 \item{\code{k}}{the value of parameter \code{k} in \code{\link{addStrat}()}.

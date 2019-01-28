@@ -51,7 +51,7 @@ smaller matrix dimension.} }
 \seealso{
 \code{\link{als_nmf}}
 
-\code{\link[NMF]{nmfAlgorithm.SNMF_R}}
+\code{\link{nmfAlgorithm.SNMF_R}}
 
 \code{\link[biclust]{BCSpectral}}
 

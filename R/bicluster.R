@@ -40,7 +40,7 @@
 #' @param verbose report details about the underlying function calls
 #'
 #' @seealso \code{\link{als_nmf}}
-#' @seealso \code{\link[NMF]{nmfAlgorithm.SNMF_R}}
+#' @seealso \code{\link{nmfAlgorithm.SNMF_R}}
 #' @seealso \code{\link[biclust]{BCSpectral}}
 #' @seealso \code{\link[biclust]{BCPlaid}}
 #' @seealso \code{\link[nipals]{nipals}}

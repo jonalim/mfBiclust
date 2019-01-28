@@ -58,7 +58,7 @@
 This class encapsulates data for one or more biclustering runs derived from
 the same abundance data. Objects can be created using the
 \code{\link{BiclusterExperiment}} constructor. A subclass of
-\code{\link[Biobase]{eSet}}.
+\code{\link{eSet}}.
 }
 \section{Methods (by generic)}{
 \itemize{
@@ -92,7 +92,7 @@ can be passed as a name, integer index, or the BiclusterStrategy itself.
 \section{Slots}{
 
 \describe{
-\item{\code{assayData}}{Object of class \code{\link[Biobase]{AssayData-class}} in the
+\item{\code{assayData}}{Object of class \code{\link{AssayData-class}} in the
 "list" storage mode. \code{AssayData} must have a matrix named
 "abund" with rows representing features and columns representing samples.
 Any other matrices in assayData are ignored by this package.}
@@ -100,17 +100,17 @@ Any other matrices in assayData are ignored by this package.}
 \item{\code{strategies}}{A \code{\link{list}} of
 \code{\link{BiclusterStrategy-class}} objects}
 
-\item{\code{phenoData}}{See \code{\link[Biobase]{eSet-class}}.}
+\item{\code{phenoData}}{See \code{\link{eSet-class}}.}
 
-\item{\code{featureData}}{\code{\link[Biobase]{eSet-class}}.}
+\item{\code{featureData}}{\code{\link{eSet-class}}.}
 
-\item{\code{experimentData}}{\code{\link[Biobase]{eSet-class}}. Not accessed by any
+\item{\code{experimentData}}{\code{\link{eSet-class}}. Not accessed by any
 functions in \code{\link{mfBiclust}}.}
 
-\item{\code{annotation}}{\code{\link[Biobase]{eSet-class}}. Not accessed by any
+\item{\code{annotation}}{\code{\link{eSet-class}}. Not accessed by any
 functions in \code{\link{mfBiclust}}.}
 
-\item{\code{protocolData}}{\code{\link[Biobase]{eSet-class}}. Not accessed by any
+\item{\code{protocolData}}{\code{\link{eSet-class}}. Not accessed by any
 functions in \code{\link{mfBiclust}}.}
 }}
 
@@ -119,5 +119,5 @@ bce <- BiclusterExperiment(yeast_benchmark[[1]])
 
 }
 \seealso{
-\code{\link[Biobase]{eSet-class}}
+\code{\link{eSet-class}}
 }

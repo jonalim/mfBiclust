@@ -8,24 +8,24 @@ NULL
 #' This class encapsulates data for one or more biclustering runs derived from
 #' the same abundance data. Objects can be created using the
 #' \code{\link{BiclusterExperiment}} constructor. A subclass of
-#' \code{\link[Biobase]{eSet}}.
+#' \code{\link{eSet}}.
 #'
-#' @slot assayData Object of class \code{\link[Biobase]{AssayData-class}} in the
+#' @slot assayData Object of class \code{\link{AssayData-class}} in the
 #'   "list" storage mode. \code{AssayData} must have a matrix named
 #'   "abund" with rows representing features and columns representing samples.
 #'   Any other matrices in assayData are ignored by this package.
 #' @slot strategies A \code{\link{list}} of
 #'   \code{\link{BiclusterStrategy-class}} objects
-#' @slot phenoData See \code{\link[Biobase]{eSet-class}}.
-#' @slot featureData \code{\link[Biobase]{eSet-class}}.
-#' @slot experimentData \code{\link[Biobase]{eSet-class}}. Not accessed by any
+#' @slot phenoData See \code{\link{eSet-class}}.
+#' @slot featureData \code{\link{eSet-class}}.
+#' @slot experimentData \code{\link{eSet-class}}. Not accessed by any
 #'   functions in \code{\link{mfBiclust}}.
-#' @slot annotation \code{\link[Biobase]{eSet-class}}. Not accessed by any
+#' @slot annotation \code{\link{eSet-class}}. Not accessed by any
 #'   functions in \code{\link{mfBiclust}}.
-#' @slot protocolData \code{\link[Biobase]{eSet-class}}. Not accessed by any
+#' @slot protocolData \code{\link{eSet-class}}. Not accessed by any
 #'   functions in \code{\link{mfBiclust}}.
 #'
-#' @seealso \code{\link[Biobase]{eSet-class}}
+#' @seealso \code{\link{eSet-class}}
 #' @examples
 #' bce <- BiclusterExperiment(yeast_benchmark[[1]])
 #'
