@@ -35,6 +35,9 @@ of samples or features from \code{bce@assayData}. \code{"distance"}
 reorders based on Euclidean distance calculated from \code{bce@assayData}.
 \code{"cluster"} reorders based on bicluster membership.}
 
+\item{...}{Optional arguments \code{phenoLabels}, \code{biclustLabels},
+\code{ordering}, and \code{colNames}, described below:}
+
 \item{phenoLabels}{an optional character vector of labels to annotate. If
 \code{type = "feature"}, \code{phenoLabels} should be column names of
 \code{Biobase::phenoData(bce)}}

@@ -23,6 +23,9 @@ addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
 \item{duplicable}{Makes biclustering deterministic}
 
 \item{silent}{Suppresses warnings and messages}
+
+\item{...}{Additional parameters to pass to the
+\link[=bicluster-methods]{biclustering back-end}}
 }
 \value{
 A copy of \code{bce} with a new BiclusterStrategy added to
@@ -33,16 +36,25 @@ Returns a BiclusterExperiment identical to \code{bce} with an additional
 BiclusterStrategy accessible using \code{strategies()} or \code{getStrat()}.
 }
 \details{
-Argument \code{method} is used to compute a number of biclusters. Matrix
-factorization methods will store matrix factors in the \code{factors} slot of
-the \code{BiclusterStrategy}. The matrix factors will be thresholded to yield the
-binary matrices in the \code{clusteredSamples} and \code{clusteredFeatures}
-slots of the \code{BiclusterStrategy}.
+One of the \link[=bicluster-methods]{biclustering algorithms} is used to
+compute a number of biclusters. Matrix factorization methods will store
+matrix factors in the \code{factors} slot of the \code{BiclusterStrategy}.
+The matrix factors will be thresholded to yield the binary matrices in the
+\code{clusteredSamples} and \code{clusteredFeatures} slots of the
+\code{BiclusterStrategy}.
 }
 \section{Methods (by class)}{
 \itemize{
 \item \code{bce = BiclusterExperiment,k = numeric}: Default method
 }}
+
+\section{Additional arguments}{
+ \code{addStrat()} automatically manipulates
+  certain back-end arguments as needed to return the desired number of
+  biclusters (\code{k}). Back-end arguments besides those automatically
+  manipulated can be provided by name to \code{addStrat()}. See
+  \link{bicluster-methods} for a description of back-end arguments.
+}
 
 \section{Potential side effects}{
  Due to requirements of various biclustering

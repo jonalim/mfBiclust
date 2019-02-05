@@ -3,14 +3,8 @@
 #' @include helperFunctions.R
 
 #### Abundance heatmap #########################################################
-#' Expression plot
-#'
-#' Create a heatmap from assay data in a BiclusterExperiment object. A BiclusterStrategy and bicluster must be named if ordering = "cluster" or
-#' annotateCluster = TRUE.
-#'
 #' @importFrom pheatmap pheatmap
-#' @describeIn BiclusterExperiment Create a heatmap from
-#'   \code{BiclusterExperiment@@assayData}
+#' @rdname plot
 #' @export
 setMethod("plot", c(x = "BiclusterExperiment"),
           function(x, logBase = 0, phenoLabels = c(), biclustLabels = c(),
@@ -78,6 +72,8 @@ setGeneric("plotDist", signature = "bce", function(
 #'   reorders based on the distance calculated from \code{distType}.
 #'   \code{"cluster"} reorders based on bicluster membership.
 #' @param distType The formula to use for distance
+#' @param ... Optional parameters \code{phenoLabels}, \code{biclustLabels},
+#'   \code{strategy}, and \code{rowColNames}, described below:
 #' @param phenoLabels an optional character vector of labels to annotate. If
 #'   \code{type = "feature"}, \code{phenoLabels} should be column names of
 #'   \code{Biobase::phenoData(bce)}
@@ -87,7 +83,8 @@ setGeneric("plotDist", signature = "bce", function(
 #' @param strategy The name or index of an object in \code{bce@@strategies} from
 #'   which to obtain bicluster annotations, or a
 #'   \code{\link{BiclusterStrategy-class}} object.
-#' @param rowColNames Should feature/sample names be printed?
+#' @param rowColNames Should feature/sample names be printed
+#'
 #' @examples
 #' bce <- BiclusterExperiment(cancer_benchmark[[1]]$data)
 #' plotDist(bce, type = "sample", ordering = "distance", rowColNames = TRUE)
@@ -168,6 +165,8 @@ setMethod(
 #'   or the BiclusterStrategy object itself
 #' @param type either "feature" for feature-bicluster membership or "sample" for
 #'   sample-bicluster membership
+#' @param ... Optional arguments \code{phenoLabels}, \code{biclustLabels},
+#'   \code{ordering}, and \code{colNames}, described below:
 #' @param phenoLabels an optional character vector of labels to annotate. If
 #'   \code{type = "feature"}, \code{phenoLabels} should be column names of
 #'   \code{Biobase::phenoData(bce)}
@@ -299,16 +298,16 @@ matrixHeatmap <- function(m) {
 #' @param type Specifies whether to show thresholding for features or samples
 #' @param bicluster The character name of a bicluster in \code{bcs}. See
 #'  \code{\link{bcNames}}.
-#' @param ... Additional arguments:\describe{
-#'   \item{thresholds}{If not NULL, must be a numeric vector of theshold(s) to
-#'  replace the algorithmically chosen thresholds contained in \code{bcs}.}
-#'  \item{ordering}{Specifies the ordering of features or samples along the
+#' @param ... Optional arguments \code{thresholds}, \code{ordering}, and
+#'  \code{xlabs}, described below.
+#' @param thresholds If not NULL, must be a numeric vector of theshold(s) to
+#'  replace the algorithmically chosen thresholds contained in \code{bcs}.
+#' @param ordering Specifies the ordering of features or samples along the
 #'  x-axis. If "input", the input ordering is used. If "distance", ordering is
 #'  based on Euclidean distance calculated from \code{bce@@assayData}. If
 #'  "cluster", ordering is based on the bicluster membership of the samples or
-#'  features.}
-#'  \item{xlabs}{Should sample or feature labels be displayed?}
-#'  }
+#'  features.
+#' @param xlabs Should sample or feature labels be displayed?
 #'
 #' @examples
 #' bce <- BiclusterExperiment(yeast_benchmark[[1]])

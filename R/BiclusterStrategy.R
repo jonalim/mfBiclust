@@ -5,11 +5,15 @@ NULL
 #### CLASS #####################################################################
 #' Class "BiclusterStrategy" for biclusters
 #'
-#' This class encapsulates bicluster results for one biclustering algorithm, one
-#' thresholding algorithm, and one bicluster quantity \eqn{k}. If the
-#' biclustering algorithm returns more than biclusters than the value of
-#' \code{k} provided to \code{\link{addStrat}()}, the extra biclusters will
-#' be stored with a warning. See note on slot \code{k} below.
+#' This class encapsulates bicluster results created by a call to
+#' \code{\link{addStrat}()}.
+#'
+#' @section The \code{k} slot:
+#' The numbers of biclusters requested in the call to \code{addStrat()} is
+#' stored in \code{BiclusterStrategy@@k}. A \code{BiclusterStrategy-class}
+#' object may store more than \code{k} biclusters, but accessors only return
+#' data on the first \code{k} biclusters by default. To obtain data on all
+#' stored biclusters, accessors must be called with \code{allBc = TRUE}.
 #'
 #' @slot factors a \code{\link[NMF]{NMFfit-class}} or
 #'   \code{\link{genericFit-class}} containing a pair of matrices \eqn{L_{m,k}}
@@ -19,12 +23,14 @@ NULL
 #' @slot threshAlgo the name of the thresholding algorithm, or "user"
 #' @slot biclust a \code{\link{Biclust-class}} object containing
 #'   logical bicluster membership matrices and other information
-#' @slot k the value of parameter \code{k} in \code{\link{addStrat}()}.
-#'   \code{k} causes accessor methods to hide any extra biclusters stored
-#'   in this object, unless said accessor methods are called with
-#'   \code{allBc = TRUE}
+#' @slot k the number of biclusters to access when \code{allBc = FALSE}.
 #' @slot name a display friendly character string describing the object
+#'
+#' @param bcs A BiclusterSrategy class
+#' @param allBc Return data on all stored biclusters
+
 #' @importClassesFrom biclust Biclust
+#' @seealso \code{\link{getStrat}}
 setClass(
   "BiclusterStrategy",
   slots = list(

@@ -9,8 +9,7 @@ featureThresh(bcs, allBc = FALSE)
 \arguments{
 \item{bcs}{A BiclusterStrategy}
 
-\item{allBc}{TRUE to return data from biclusters that were not requested
-during the original call to \code{\link{addStrat}}}
+\item{allBc}{TRUE to return data from all stored biclusters}
 }
 \value{
 a numeric vector of length \eqn{m}

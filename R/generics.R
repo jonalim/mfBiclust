@@ -8,8 +8,7 @@ setGeneric("as.matrix")
 #' useful for graphical functions.
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return A character vector.
 #'
@@ -47,8 +46,7 @@ setGeneric("clean", function(object, cleanParam = 0, dimsRemain = FALSE)
 #' documentation, this format is called a "membership matrix".
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return A logical matrix
 #'
@@ -68,8 +66,7 @@ setGeneric("clusteredFeatures", signature = "bcs",
 #' documentation, this format is called a "membership matrix".
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return A logical matrix
 #'
@@ -123,7 +120,8 @@ setGeneric("method", signature = "bcs",
 #' For a data matrix \eqn{A_{m x n}} factorized as \eqn{W_{m x k}H_{k x n}},
 #' returns \eqn{H}.
 #'
-#' @param bcs A Bic
+#' @param bcs A BiclusterStrategy
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return a numeric matrix.
 #' @examples
@@ -145,9 +143,7 @@ setGeneric("sampleFactor", signature = "bcs",
 #'
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
-#'
+#' @param allBc TRUE to return data from all stored biclusters
 #' @export
 #'
 #' @examples
@@ -210,19 +206,18 @@ setGeneric("nclust", signature = "bcs", function(bcs, allBc = FALSE)
 #'
 #' @param x A \code{link{BiclusterExperiment-class}} object
 #' @param y Not used in the \code{BiclusterStrategy} method
-#' @param ... Additional arguments:\describe{
-#'   \item{logBase}{If TRUE, every assay value is transformed by the natural log}
-#'   \item{phenoLabels}{Display phenotype labels along the samples?}
-#'   \item{biclustLabels}{Display bicluster labels along the samples and features?}
-#'   \item{ordering}{If "input", samples and features are not reordered. If
+#' @param ... Additional arguments, described below:
+#' @param logBase If TRUE, every assay value is transformed by the natural log
+#' @param phenoLabels Display phenotype labels along the samples?
+#' @param biclustLabels Display bicluster labels along the samples and features?
+#' @param ordering If "input", samples and features are not reordered. If
 #'   "distance", sampels and features are reordered based on Euclidean distance.
 #'   If "cluster", samples and features are reordered based on bicluster
-#'   membership.}
-#'   \item{strategy}{The BiclusterStrategy to read biclusters from, if bicluster-
-#'  based information is to be plotted.}
-#'   \item{rowNames}{TRUE to show feature names}
-#'   \item{colNames}{TRUE to show sample names}
-#' }
+#'   membership.
+#' @param strategy The BiclusterStrategy to read biclusters from, if bicluster-
+#'   based information is to be plotted.
+#' @param rowNames TRUE to show feature names
+#' @param colNames TRUE to show sample names
 #'
 #' @return a \code{\link[pheatmap]{pheatmap}-class} object
 #'
@@ -239,8 +234,7 @@ setGeneric("plot")
 #' returns \eqn{W}.
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return a numeric matrix
 #' @examples
@@ -259,8 +253,7 @@ setGeneric("featureFactor", signature = "bcs",
 #' \eqn{W_{m x k}} to determine the samples in each bicluster.
 #'
 #' @param bcs A BiclusterStrategy
-#' @param allBc TRUE to return data from biclusters that were not requested
-#'   during the original call to \code{\link{addStrat}}
+#' @param allBc TRUE to return data from all stored biclusters
 #'
 #' @return a numeric vector of length \eqn{m}
 #'
@@ -278,7 +271,7 @@ setGeneric("featureThresh", signature = "bcs",
 #'
 #' Returns the contents of \code{\link{BiclusterExperiment-class}@@strategies}.
 #'
-#' @param bce A \code{BiclusterExperiment-class} object
+#' @param x A \code{BiclusterExperiment-class} object
 #'
 #' @return A list containing zero or more \code{\link{BiclusterStrategy-class}}
 #'   objects
@@ -288,8 +281,8 @@ setGeneric("featureThresh", signature = "bcs",
 #' bce <- addStrat(bce, k = 2, method = "als-nmf")
 #' bce <- addStrat(bce, k = 3, method = "als-nmf")
 #' strategies(bce)
-setGeneric("strategies", signature = "bce",
-           function(bce) standardGeneric("strategies"))
+setGeneric("strategies", signature = "x",
+           function(x) standardGeneric("strategies"))
 
 setGeneric("strategies<-",
            function(object, value) standardGeneric("strategies<-"))

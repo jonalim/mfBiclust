@@ -7,7 +7,9 @@
 sampleFactor(bcs, allBc = FALSE)
 }
 \arguments{
-\item{bcs}{A Bic}
+\item{bcs}{A BiclusterStrategy}
+
+\item{allBc}{TRUE to return data from all stored biclusters}
 }
 \value{
 a numeric matrix.

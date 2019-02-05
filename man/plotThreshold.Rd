@@ -32,16 +32,19 @@ BiclusterStrategy objects in \code{bce@strategies}}
 \item{bicluster}{The character name of a bicluster in \code{bcs}. See
 \code{\link{bcNames}}.}
 
-\item{...}{Additional arguments:\describe{
- \item{thresholds}{If not NULL, must be a numeric vector of theshold(s) to
+\item{...}{Optional arguments \code{thresholds}, \code{ordering}, and
+\code{xlabs}, described below.}
+
+\item{thresholds}{If not NULL, must be a numeric vector of theshold(s) to
 replace the algorithmically chosen thresholds contained in \code{bcs}.}
+
 \item{ordering}{Specifies the ordering of features or samples along the
 x-axis. If "input", the input ordering is used. If "distance", ordering is
 based on Euclidean distance calculated from \code{bce@assayData}. If
 "cluster", ordering is based on the bicluster membership of the samples or
 features.}
+
 \item{xlabs}{Should sample or feature labels be displayed?}
-}}
 }
 \value{
 Invisibly returns NULL

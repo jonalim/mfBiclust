@@ -26,6 +26,9 @@ reorders based on the distance calculated from \code{distType}.
 
 \item{distType}{The formula to use for distance}
 
+\item{...}{Optional parameters \code{phenoLabels}, \code{biclustLabels},
+\code{strategy}, and \code{rowColNames}, described below:}
+
 \item{phenoLabels}{an optional character vector of labels to annotate. If
 \code{type = "feature"}, \code{phenoLabels} should be column names of
 \code{Biobase::phenoData(bce)}}
@@ -38,7 +41,7 @@ Should be elements of \code{bcNames(bcs)}. Both \code{phenoLabels} and
 which to obtain bicluster annotations, or a
 \code{\link{BiclusterStrategy-class}} object.}
 
-\item{rowColNames}{Should feature/sample names be printed?}
+\item{rowColNames}{Should feature/sample names be printed}
 }
 \value{
 a \code{\link[pheatmap]{pheatmap}-class} object

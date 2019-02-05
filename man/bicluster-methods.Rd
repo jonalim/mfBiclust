@@ -3,59 +3,53 @@
 \name{bicluster-methods}
 \alias{bicluster-methods}
 \title{Biclustering algorithms}
-\arguments{
-\item{A}{the numeric matrix to bicluster}
-
-\item{k}{the number of biclusters to report}
-
-\item{duplicable}{fixes the random seed internally}
-
-\item{verbose}{report details about the underlying function calls}
-}
 \description{
 The \code{method} argument of \code{\link{addStrat}()} provides access to
-functions from packages \code{NMF} and \code{biclust}. Initially
-\code{addStrat()} uses the default parameters provided by the
-respective developers, then progressively relaxes parameters as
-needed to return the desired number of biclusters. Method-specific parameters
-besides those automatically manipulated can be provided by name to
-\code{addStrat()}. Method-specific parameters for "als-nmf", "svd-pca" and
-"nipals-pca" are described in their respective sections. For parameters
-specific to other methods, please see respective documentation in other
-packages.
+internal \code{mfBiclust} functions, which themselves call functions from
+packages \code{NMF} and \code{biclust} as back-ends.
+Back-end arguments for "als-nmf", "svd-pca" and "nipals-pca" are described on
+their respective pages. For arguments specific to other methods, please see
+respective documentation in other packages.
 }
 \details{
 \describe{
 \item{\link{als_nmf}}{Alternating-least-squares non-negative matrix
 approximation. Fast at low values of \code{k}, but rapidly slows as \code{k}
 increases.}
-\item{svd_pca}{The Singular value decmoposition algorithm. Each principal
-component is interpreted as the degree of membership in a single bicluster.
-The resulting score matrix is thresholded to binarize bicluster membership.
-\code{svd_pca} is the fastest provided algorithm.}
-\item{nipals_pca}{An iterative PCA algorithm that may tolerate missing data.
-  Slower than \code{svd_pca}, but still faster than the other algorithms.}
-\item{plaid}{The plaid algorithm as described in Turner et al., 2003.
-\code{release} is decremented towards 0.1 in steps of 0.1, then
-\code{shuffle} is incremented towards 10 in steps of 1.}
-\item{snmf}{Sparse non-negative matrix factorization. Alternating
-least-squares with the sparsity-inducing regularization factors introduced by
-Kim and Park (2007). \code{eta} and \code{beta} are initialized at
-mean(\code{A}) and are halved progressively as needed.}
-\item{spectral}{The Spectral algorithm. For smaller matrices, the parameter
-\code{numberOfEigenvalues} is automatically set to enable finding the number
-of biclusters requested. The parameter \code{withinVar} is initialized equal
-to the smaller matrix dimension and allowed to increase up to 10 times the
-smaller matrix dimension.} }
+\item{\link{svd_pca}}{The Singular value decmoposition algorithm. Each
+principal component is interpreted as the degree of membership in a single
+bicluster. The resulting score matrix is thresholded to binarize bicluster
+membership. \code{svd_pca} is the fastest provided algorithm.}
+\item{\link{nipals_pca}}{An iterative PCA algorithm that may tolerate missing
+data. Slower than \code{svd_pca}, but still faster than the other
+algorithms.}
+\item{plaid}{Uses \code{\link[=BCPlaid]{biclust::biclust(method = BCPlaid(),
+...)}} as its back-end. To get \code{k} biclusters, back-end arguments
+\code{row.release} and \code{col.release} are simultaneously decremented
+towards 0.1 in steps of 0.1, then \code{shuffle} is incremented towards 10 in
+steps of 1.}
+\item{snmf}{\strong{S}parse \strong{n}on-negative \strong{m}atrix
+\strong{f}actorization. Uses
+\code{\link[=nmfAlgorithm.SNMF_R]{NMF::nmf(method = "snmf/r", ...)}} as its
+back-end. To get \code{k} biclusters, back-end arguments \code{eta} and
+\code{beta} are initialized at mean(\code{A}) and are halved progressively.}
+\item{spectral}{Uses \code{\link[=BCSpectral]{biclust::biclust(method =
+BCSpectral(), ...)}} as its back-end. For smaller matrices, the back-end
+argument \code{numberOfEigenvalues} is automatically set to enable finding
+the number of biclusters requested. The back-end argument \code{withinVar} is
+initialized equal to the smaller matrix dimension and allowed to increase up
+to 10 times the smaller matrix dimension to find \code{k} biclusters.} }
 }
 \seealso{
 \code{\link{als_nmf}}
+
+\code{\link{svd_pca}}
+
+\code{\link[nipals]{nipals}}
 
 \code{\link{nmfAlgorithm.SNMF_R}}
 
 \code{\link[biclust]{BCSpectral}}
 
 \code{\link[biclust]{BCPlaid}}
-
-\code{\link[nipals]{nipals}}
 }

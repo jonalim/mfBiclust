@@ -4,10 +4,10 @@
 \alias{strategies}
 \title{Results of biclustering runs on a single dataset}
 \usage{
-strategies(bce)
+strategies(x)
 }
 \arguments{
-\item{bce}{A \code{BiclusterExperiment-class} object}
+\item{x}{A \code{BiclusterExperiment-class} object}
 }
 \value{
 A list containing zero or more \code{\link{BiclusterStrategy-class}}

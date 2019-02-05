@@ -25,7 +25,10 @@ NULL
 #' @slot protocolData \code{\link{eSet-class}}. Not accessed by any
 #'   functions in \code{\link{mfBiclust}}.
 #'
+#' @param x A \code{BiclusterExperiment-class} object
+#'
 #' @seealso \code{\link{eSet-class}}
+#' @seealso \code{\link{getStrat}}
 #' @examples
 #' bce <- BiclusterExperiment(yeast_benchmark[[1]])
 #'
@@ -110,33 +113,38 @@ setGeneric(
     standardGeneric("BiclusterExperiment")
 })
 
-#' @describeIn BiclusterExperiment default constuctor method
-setMethod("BiclusterExperiment", c(m = "matrix"), function(m, bcs, phenoData, featureData, pp, maxNa) {
-  if(pp) {
-    m <- clean(m, 1 - maxNa)
-  }
+#' @inheritParams BiclusterExperiment
+#' @describeIn BiclusterExperiment Default constructor method
+setMethod(
+    "BiclusterExperiment", c(m = "matrix"),
+    function(m, bcs, phenoData, featureData, pp, maxNa) {
+        if(pp) {
+            m <- clean(m, 1 - maxNa)
+        }
 
-  if(!inherits(phenoData, "AnnotatedDataFrame")) {
-    phenoData <- AnnotatedDataFrame(phenoData)
-  }
-  if(!inherits(featureData, "AnnotatedDataFrame")) {
-    featureData <- AnnotatedDataFrame(featureData)
-  }
+        if(!inherits(phenoData, "AnnotatedDataFrame")) {
+            phenoData <- AnnotatedDataFrame(phenoData)
+        }
+        if(!inherits(featureData, "AnnotatedDataFrame")) {
+            featureData <- AnnotatedDataFrame(featureData)
+        }
 
-  ad <- Biobase::assayDataNew(storage.mode = "list")
-  ad$abund <- m
+        ad <- Biobase::assayDataNew(storage.mode = "list")
+        ad$abund <- m
 
-  if(inherits(bcs, "list")) {
-    names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
-  } else if(!is.null(bcs)) {
-    bcs <- list(bcs)
-    names(bcs) <- name(bcs[[1]])
-  } else {
-    bcs <- list()
-  }
-  new("BiclusterExperiment", assayData = ad, phenoData = phenoData,
-      featureData = featureData, strategies = bcs)
+        if(inherits(bcs, "list")) {
+            names(bcs) <- lapply(bcs, function(bcs) {name(bcs)})
+        } else if(!is.null(bcs)) {
+            bcs <- list(bcs)
+            names(bcs) <- name(bcs[[1]])
+        } else {
+            bcs <- list()
+        }
+        new("BiclusterExperiment", assayData = ad, phenoData = phenoData,
+            featureData = featureData, strategies = bcs)
 })
+
+#' @inheritParams BiclusterExperiment
 #' @describeIn BiclusterExperiment Attempts to coerce \code{m} to a matrix before
 #'  encapsulating it in a \code{BiclusterExperiment}
 setMethod("BiclusterExperiment", c(m = "ANY"), function(m, bcs, phenoData, featureData, pp, maxNa) {
@@ -179,17 +187,13 @@ validBiclusterExperiment <- function( object ) {
 }
 setValidity("BiclusterExperiment", validBiclusterExperiment)
 
-#' @param x a \code{\link{BiclusterExperiment-class}} object
-#' @describeIn BiclusterExperiment Get abundance values in a BiclusterExperiment
+#' @rdname BiclusterExperiment-class
 #' @export
 setMethod("as.matrix", "BiclusterExperiment", function(x) {
   Biobase::assayDataElement(x, "abund")
 })
 
-#' @param object a BiclusterExperiment
-#' @param cleanParam what proportion of data must be present
-#' @param dimsRemain return extra information about remaining rows and columns
-#' @describeIn BiclusterExperiment Remove rows and columns with less than \code{cleanParam} entries present
+#' @rdname clean
 setMethod("clean", c(object = "BiclusterExperiment"),
           function(object, cleanParam, dimsRemain = FALSE) {
   if(!(cleanParam <= 1 && cleanParam >= 0)) {
@@ -208,8 +212,7 @@ setMethod("clean", c(object = "BiclusterExperiment"),
     }
 })
 
-#' @describeIn BiclusterExperiment Get a BiclusterStrategy contained by a
-#'   BiclusterExperiment, by providing either name or integer index
+#' @rdname getStrat
 #' @export
 setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
   res <- strategies(bce)[[id]]
@@ -219,15 +222,18 @@ setMethod("getStrat", c(bce = "BiclusterExperiment"), function(bce, id) {
   return(res)
 })
 
-#' @describeIn BiclusterExperiment Character names of BiclusterStrategies in this BiclusterExperiment
+#' @inheritParams BiclusterExperiment-class
+#' @describeIn BiclusterExperiment Retrieves the names of any encapsulated
+#'  \code{\link{BiclusterStrategy-class}} objects.
 #' @export
 setMethod("names", "BiclusterExperiment", function(x) names(x@strategies))
 
+#' @inheritParams BiclusterExperiment-class
 #' @describeIn BiclusterExperiment Get/set a list of the BiclusterStrategy objects
 #'   contained by this BiclusterExperiment.
 #' @export
-setMethod("strategies", c(bce = "BiclusterExperiment"), function(bce) {
-  bce@strategies
+setMethod("strategies", c(x = "BiclusterExperiment"), function(x) {
+  x@strategies
 })
 
 setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
@@ -239,16 +245,14 @@ setReplaceMethod("strategies", signature(object = "BiclusterExperiment",
                  }
 )
 
-#' @describeIn BiclusterExperiment Return this BiclusterExperiment with all BiclusterStrategy objects removed
+#' @rdname wipe
 #' @export
 setMethod("wipe", c(bce = "BiclusterExperiment"), function(bce) {
   strategies(bce) <- list()
   return(bce)
 })
 
-#' @describeIn BiclusterExperiment Return this BiclusterExperiment with all
-#'   BiclusterStrategy objects removed except \code{bcs}. Argument \code{bcs}
-#'   can be passed as a name, integer index, or the BiclusterStrategy itself.
+#' @rdname wipeExcept
 #' @export
 setMethod("wipeExcept", c(bce = "BiclusterExperiment"), function(bce, bcs) {
   if(inherits(bcs, "character") || inherits(bcs, "numeric")) {
