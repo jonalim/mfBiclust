@@ -5,7 +5,7 @@
 \title{Alternating-least-squares non-negative matrix approximation}
 \usage{
 als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
-  duplicable = TRUE, verbose = FALSE, ...)
+  verbose = FALSE, ...)
 }
 \arguments{
 \item{A}{the matrix to factorize}
@@ -17,8 +17,6 @@ als_nmf(A, k, reps = 4L, maxIter = 100L, eps_conv = 1e-04,
 \item{maxIter}{the maximum number of least-squares steps}
 
 \item{eps_conv}{convergence tolerance}
-
-\item{duplicable}{fix the random seed internally}
 
 \item{verbose}{Print the mean squared error every 10 iterations}
 

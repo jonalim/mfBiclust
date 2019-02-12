@@ -6,7 +6,7 @@
 \usage{
 auto_bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 3L,
   maxIter = 100L, tol = (10^-4), bestOnly = FALSE, verbose = FALSE,
-  duplicable = TRUE, interactive = TRUE)
+  interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}
@@ -24,8 +24,6 @@ holdouts will be \code{holdouts} ^ 2.}
 of result counts is returned}
 
 \item{verbose}{provide output after each iteration}
-
-\item{duplicable}{fix the random seed internally}
 
 \item{interactive}{prompt before running bcv on matrices with missing values}
 }

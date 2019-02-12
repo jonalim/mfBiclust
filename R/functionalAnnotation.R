@@ -1,22 +1,22 @@
 # RETURN list of named vectors of BH-adjusted p-values
 # Each list element should be named after a bicluster
-testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "CC"), 
-                   parallel = FALSE, duplicable = TRUE) {
+testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "CC"),
+                   parallel = FALSE) {
   if(length(strategy) != 1) {
     stop(paste("Provide exactly one BiclusterStrategy object, name or index. Run",
                "names(strategies(bce)) to see BiclusterStrategy objects."))
   }
-  
+
   # Look for the gene-to-GO database
   if(!suppressPackageStartupMessages(requireNamespace(orgDb, quietly = TRUE))) {
     stop(paste0("Package ", orgDb, " needed. Please install it. If it is ",
                 "present on BioConductor, the recommended method is ",
                "BiocManager::install(\"", orgDb, "\")"))
   }
-  
+
   bcs <- if(inherits(strategy, "BiclusterStrategy")) { strategy
     } else getStrat(bce, strategy)
-  
+
   go <- match.arg(go, several.ok = TRUE)
 
   lappl <- lapply
@@ -29,12 +29,10 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
       mappl <- BiocParallel::bpmapply
     }
   }
-  
-  if(duplicable) { duplicable("testFE") }
-  
+
   # thresholded loading matrix
   biclusterxCol <- clusteredFeatures(bcs)
-  
+
   geneLists <- lapply(seq_len(ncol(clusteredFeatures(bcs))), function(biclust) {
     rownames(bce)[biclusterxCol[, biclust] == 1]
   })
@@ -44,7 +42,7 @@ testFE <- function(bce, strategy, orgDb = "org.Sc.sgd.db", go = c("BP", "MF", "C
   # ontology
   mFun <- function(geneList, name, universe, ontology, fun, orgDb) {
     # test each requested GO
-    lappl(go, fun, 
+    lappl(go, fun,
           geneList = geneList, name = name, universe = universe,
           orgDb = orgDb)
   }
@@ -69,7 +67,7 @@ hyperGGO <- function(ontology = c("MF", "BP", "CC"), geneList, name, universe,
                             annotation = orgDb,
                             ontology = ontology,
                             pvalueCutoff = 1,
-                            testDirection = "over", 
+                            testDirection = "over",
                             conditional = TRUE))
   ))
 }

@@ -1,6 +1,8 @@
 context("BiclusterExperiment")
 
-oldSeed <- mfBiclust:::duplicable("test")
+if (!exists(".Random.seed", mode="numeric")) sample(NA)
+oldSeed <- .Random.seed
+set.seed(1261534)
 input <- matrix(runif(n = 36), nrow = 6)
 input[1:2, 1:2] <- 20
 bce <- BiclusterExperiment(m = input)

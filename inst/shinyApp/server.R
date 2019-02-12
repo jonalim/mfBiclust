@@ -446,7 +446,8 @@ function(input, output, session) {
                         params$biclusterargs$withinVar * nrow(bce)
                 }
                 # append any optional debug-mode arguments
-                withCallingHandlers(
+                withCallingHandlers({
+                    set.seed(12345)
                     bce <- do.call(
                         addStrat,
                         c(
@@ -454,10 +455,9 @@ function(input, output, session) {
                             k = kSliderProxy$value,
                             method = input$algo,
                             verbose = FALSE,
-                            duplicable = TRUE,
                             params$biclusterargs
                         )
-                    ),
+                    )},
                     warning = function(w) {
                         # In case less than the requested number of biclusters
                         # was found

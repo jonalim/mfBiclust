@@ -56,10 +56,10 @@ setGeneric("BiclusterStrategy", signature = c("obj", "k"),
            function(obj, k, method = c("als-nmf", "svd-pca", "snmf",
                                        "nipals-pca", "plaid", "spectral"),
                     threshAlgo = "otsu", featureThresh = threshAlgo,
-                    sampleThresh = threshAlgo, duplicable = TRUE, ...)
+                    sampleThresh = threshAlgo, ...)
              standardGeneric("BiclusterStrategy"))
 setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
-  obj, k, method, threshAlgo, featureThresh, sampleThresh, duplicable, ...) {
+  obj, k, method, threshAlgo, featureThresh, sampleThresh, ...) {
   method <- match.arg(method)
 
   #### Matrix factorization ###################################################
@@ -79,7 +79,7 @@ setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
   if(method == "als-nmf" || method == "snmf") obj <- pseudovalues(obj)
 
   # Same arguments regardless of algorithm
-  biclustArgs <- c(list(A = obj, k = k, duplicable = duplicable), list(...))
+  biclustArgs <- c(list(A = obj, k = k), list(...))
 
   # Function names here have underscores instead of hyphens
   hyphen <- regexpr(pattern = "-", text = method)[[1]]
@@ -96,10 +96,10 @@ setMethod("BiclusterStrategy", c(obj = "matrix", k = "numeric"), function(
   # bc may be NMFfit, biclust::Biclust, or genericFit
   # dispatch to appropriate BiclusterStrategy()
   BiclusterStrategy(obj = bc, k, method, threshAlgo, featureThresh, sampleThresh,
-                    duplicable, ...)
+                    ...)
 })
 setMethod("BiclusterStrategy", c(obj = "Biclust", k = "numeric"), function(
-  obj, k, method, threshAlgo, featureThresh, sampleThresh, duplicable, ...) {
+  obj, k, method, threshAlgo, featureThresh, sampleThresh, ...) {
 
   if(obj@Number < k) {
     k <- obj@Number # sometimes the biclustering method returns less than
@@ -132,7 +132,7 @@ setMethod("BiclusterStrategy", c(obj = "Biclust", k = "numeric"), function(
 })
 
 setMethod("BiclusterStrategy", c(obj = "genericFit", k = "numeric"), function(
-  obj, k, method, threshAlgo, featureThresh, sampleThresh, duplicable, ...) {
+  obj, k, method, threshAlgo, featureThresh, sampleThresh, ...) {
   fit <- obj
 
   # sometimes the biclustering method returns less than k biclusters
@@ -163,7 +163,7 @@ setMethod("BiclusterStrategy", c(obj = "genericFit", k = "numeric"), function(
 })
 
 setMethod("BiclusterStrategy", c(obj = "NMFfit", k = "numeric"), function(
-  obj, k, method, threshAlgo, featureThresh, sampleThresh, duplicable, ...) {
+  obj, k, method, threshAlgo, featureThresh, sampleThresh, ...) {
 
   # assume that NMF methods always return k biclusters
   fit <- obj

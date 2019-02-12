@@ -60,7 +60,6 @@ NULL
 #' @param reps the number of replications to choose from
 #' @param maxIter the maximum number of least-squares steps
 #' @param eps_conv convergence tolerance
-#' @param duplicable fix the random seed internally
 #' @param verbose Print the mean squared error every 10 iterations
 #' @param ... Present for compatibility. \code{als_nmf} has no other
 #'   parameters
@@ -69,16 +68,11 @@ NULL
 #' @export
 #' @importFrom NMF .fcnnls
 als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
-                    eps_conv = 1e-4, duplicable = TRUE, verbose= FALSE, ...){
+                    eps_conv = 1e-4, verbose= FALSE, ...){
     ###% Adapted from NMF v0.21.0 written by Renaud Gaujoux, Cathal Seoighe.
     ###% (2018)
     ###% https://cran.r-project.org/web/packages/NMF/
     ###% http://renozao.github.io/NMF
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    } else { reps <- 1 }
-
     if(any(A < 0)) {stop("Negative values are not allowed")}
 
     m = nrow(A); n = ncol(A); erravg1 = numeric();
@@ -221,12 +215,7 @@ als_nmf <- function(A, k, reps = 4L, maxIter= 100L,
     return(res)
 }
 
-nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    }
-
+nipals_pca_nocatch <- function(A, k, ...) {
     args <- list(...)
     args <- c(scale = args$scale, center = args$center, maxiter = args$maxiter,
               tol = args$tol,
@@ -265,7 +254,6 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
 #' @param A the matrix to factorize
 #' @param k the number of factors to compute
 #' @param cleanParam passed to \code{\link{clean}()}
-#' @param duplicable fix the random seed internally
 #' @param verbose report recursive calls and all values of \code{cleanParam}
 #' @param ... Additional parameters will be passed to
 #'   \code{\link[nipals]{nipals}}.
@@ -279,11 +267,7 @@ nipals_pca_nocatch <- function(A, k, duplicable = TRUE, ...) {
 #'   }
 #' @export
 nipals_pca <- function(A, k, cleanParam = 0,
-                       duplicable = FALSE, verbose = TRUE, ...) {
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    }
+                       verbose = TRUE, ...) {
     cleanRes <- clean(A, cleanParam, dimsRemain = TRUE)
     mClean <- cleanRes$obj
     indexRem <- cleanRes$dimsRemain
@@ -299,17 +283,13 @@ nipals_pca <- function(A, k, cleanParam = 0,
                               "cleanParam at", cleanParam))
             }
             # pass the original m so indexRemaining is valid for the user's matrix
-            return(nipals_pca_nocatch(A, k, cleanParam, duplicable))
+            return(nipals_pca_nocatch(A, k, cleanParam))
         } else { stop(e) }
     })
 }
 
 # Returns a biclust::Biclust-class object
-plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    }
+plaid <- function(A, k, verbose = TRUE, ...) {
 
     args <- list(...)
     row.release <- list(...)$row.release
@@ -358,12 +338,7 @@ plaid <- function(A, k, duplicable = TRUE, verbose = TRUE, ...) {
     return(best)
 }
 
-snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    }
-
+snmf <- function(A, k, verbose = TRUE, ...) {
     eta <- list(...)$eta
     beta <- list(...)$beta
     args <- list(...)
@@ -466,17 +441,12 @@ snmf <- function(A, k, verbose = TRUE, duplicable = TRUE, ...) {
 }
 
 # Returns a biclust::Biclust-class object
-spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
+spectral <- function(A, k, minSize = NULL, reps = 1,
                      verbose = TRUE, ...) {
     # spectral may find over k biclusters, but only k will be returned
 
     # minSize can be used to force biclusters to be a certain fraction of the
     # smaller matrix dimension
-    if(duplicable) {
-        oldSeed <- duplicable("biclus") # do not modify the R global environment
-        on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-    }
-
     minDim <- min(nrow(A), ncol(A))
     minx <- if(is.null(minSize)) 2 else floor(minDim * minSize)
     if(nrow(A) < 6 || ncol(A) < 6) {
@@ -550,13 +520,12 @@ spectral <- function(A, k, minSize = NULL, reps = 1, duplicable = TRUE,
 #'
 #' @param A the matrix to factorize
 #' @param k the number of factors to compute
-#' @param duplicable fix the random seed internally
 #' @param ... Present for compatibility. \code{als_nmf} has no other
 #'   parameters
 #'
 #' @return a \code{\link{genericFit-class}} object
 #' @export
-svd_pca <- function(A, k, duplicable = NULL, ...) {
+svd_pca <- function(A, k, ...) {
     prcmp <- prcomp(t(A), rank. = k, retx = TRUE, center = FALSE)
     new(
         "genericFit",

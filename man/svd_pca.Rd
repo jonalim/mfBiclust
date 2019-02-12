@@ -4,14 +4,12 @@
 \alias{svd_pca}
 \title{Principal component dimensionality reduction using SVD}
 \usage{
-svd_pca(A, k, duplicable = NULL, ...)
+svd_pca(A, k, ...)
 }
 \arguments{
 \item{A}{the matrix to factorize}
 
 \item{k}{the number of factors to compute}
-
-\item{duplicable}{fix the random seed internally}
 
 \item{...}{Present for compatibility. \code{als_nmf} has no other
 parameters}

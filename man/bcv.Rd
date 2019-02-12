@@ -5,7 +5,7 @@
 \title{Calculate bi-cross-validation}
 \usage{
 bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
-  duplicable = FALSE, interactive = TRUE)
+  interactive = TRUE)
 }
 \arguments{
 \item{Y}{the input matrix}
@@ -14,8 +14,6 @@ bcv(Y, ks = seq_len(min(nrow(Y), ncol(Y)) - 1), holdouts = 10L,
 
 \item{holdouts}{the number of row and column partitions. The true number of
 holdouts will be \code{holdouts} ^ 2.}
-
-\item{duplicable}{fix the random seed internally}
 
 \item{interactive}{prompt before running if \code{Y} is missing values}
 }
@@ -32,6 +30,8 @@ It is recommended to use auto_bcv to perform and analyze several replications
 of bi-cross-validation.
 }
 \examples{
+# Set seed for reproducibility
+set.seed(12345)
 bcv(yeast_benchmark[[1]])
 
 }

@@ -7,11 +7,11 @@
 \title{Add a BiclusterStrategy to a BiclusterExperiment}
 \usage{
 addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
-  "plaid", "spectral"), duplicable = TRUE, silent = FALSE, ...)
+  "plaid", "spectral"), silent = FALSE, ...)
 
 \S4method{addStrat}{BiclusterExperiment,numeric}(bce, k,
   method = c("als-nmf", "svd-pca", "snmf", "nipals-pca", "plaid",
-  "spectral"), duplicable = TRUE, silent = FALSE, ...)
+  "spectral"), silent = FALSE, ...)
 }
 \arguments{
 \item{bce}{A \code{\link{BiclusterExperiment-class}} object to analyze}
@@ -19,8 +19,6 @@ addStrat(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
 \item{k}{The number of biclusters to find}
 
 \item{method}{The biclustering algorithm}
-
-\item{duplicable}{Makes biclustering deterministic}
 
 \item{silent}{Suppresses warnings and messages}
 
@@ -65,6 +63,8 @@ The matrix factors will be thresholded to yield the binary matrices in the
 
 \examples{
 bce <- BiclusterExperiment(yeast_benchmark[[1]])
+# Set seed for reproducibility
+set.seed(12345)
 bce <- addStrat(bce, k = 2)
 
 }

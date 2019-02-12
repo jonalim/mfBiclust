@@ -108,22 +108,6 @@ setMethod("clean", c(object = "matrix"), function(object, cleanParam,
 
 })
 
-# Use a string to set the random seed
-#
-# Returns the output of .Random.seed. Call
-# \code{on.exit(assign(".Random.seed", oldSeed, envir=globalenv()), add = TRUE)
-# } to restore the random seed.
-duplicable <- function(str) {
-  if (!exists(".Random.seed", mode="numeric")) sample(NA)
-  oldSeed <- .Random.seed
-  newSeed <- strtoi(str, 35L)
-  if(!is.na(newSeed)) set.seed(newSeed) else {
-    set.seed(12345)
-    warning("Argument could not be encoded as numeric. Seed set to 12345")
-  }
-  oldSeed
-}
-
 #' Filter biclusters by overlap and quantity
 #'
 #' First all biclusters encompassing the whole matrix are removed. Next,

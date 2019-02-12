@@ -7,6 +7,7 @@ options("max.print" = 80)
 
 ## ------------------------------------------------------------------------
 library("mfBiclust")
+set.seed(12345) # set seed for reproducibility
 class(yeast_benchmark[[1]])
 dim(yeast_benchmark[[1]])
 

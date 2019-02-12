@@ -4,8 +4,7 @@
 \alias{nipals_pca}
 \title{Principal component dimensionality reduction using NIPALS}
 \usage{
-nipals_pca(A, k, cleanParam = 0, duplicable = FALSE, verbose = TRUE,
-  ...)
+nipals_pca(A, k, cleanParam = 0, verbose = TRUE, ...)
 }
 \arguments{
 \item{A}{the matrix to factorize}
@@ -13,8 +12,6 @@ nipals_pca(A, k, cleanParam = 0, duplicable = FALSE, verbose = TRUE,
 \item{k}{the number of factors to compute}
 
 \item{cleanParam}{passed to \code{\link{clean}()}}
-
-\item{duplicable}{fix the random seed internally}
 
 \item{verbose}{report recursive calls and all values of \code{cleanParam}}
 

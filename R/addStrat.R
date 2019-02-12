@@ -25,7 +25,6 @@
 #' @param bce A \code{\link{BiclusterExperiment-class}} object to analyze
 #' @param k The number of biclusters to find
 #' @param method The biclustering algorithm
-#' @param duplicable Makes biclustering deterministic
 #' @param silent Suppresses warnings and messages
 #' @param ... Additional parameters to pass to the
 #'   \link[=bicluster-methods]{biclustering back-end}
@@ -35,13 +34,15 @@
 #'
 #' @examples
 #' bce <- BiclusterExperiment(yeast_benchmark[[1]])
+#' # Set seed for reproducibility
+#' set.seed(12345)
 #' bce <- addStrat(bce, k = 2)
 #'
 #' @export
 setGeneric("addStrat", signature = c("bce", "k"),
            function(bce, k, method = c("als-nmf", "svd-pca", "snmf",
                                        "nipals-pca", "plaid", "spectral"),
-                    duplicable = TRUE, silent = FALSE, ...) {
+                    silent = FALSE, ...) {
                standardGeneric("addStrat")
 })
 #' @describeIn addStrat Default method
@@ -49,7 +50,7 @@ setMethod(
     "addStrat", c(bce = "BiclusterExperiment", k = "numeric"),
     function(bce, k, method = c("als-nmf", "svd-pca", "snmf", "nipals-pca",
                                 "plaid", "spectral"),
-             duplicable, silent, ...) {
+             silent, ...) {
         # Validate parameters
         # k must be whole number, smaller than both dimensions of m
         m <- as.matrix(bce)
@@ -69,8 +70,7 @@ setMethod(
                               "algorithm must be used."))
             }
             nipals.res <- nipals_pca(A = m, cleanParam = 0,
-                                     k = k, center = FALSE,
-                                     duplicable = duplicable)
+                                     k = k, center = FALSE)
             bcs <- BiclusterStrategy(obj = nipals.res$genericFit, k = k,
                                      method = "nipals-pca")
             oldDims <- dim(bce)
@@ -85,8 +85,7 @@ setMethod(
         } else {
             #### DEFUALT CALL ####
             bcs <- BiclusterStrategy(obj = m, k = k, method = method,
-                                     duplicable = duplicable, verbose = !silent,
-                                     ...)
+                                     verbose = !silent, ...)
         }
 
         name <- name(bcs)
